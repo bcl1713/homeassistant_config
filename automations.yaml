@@ -1,0 +1,170 @@
+- id: '1712629967178'
+  alias: Nightly Lock
+  description: Lock the door at the specified time.
+  trigger:
+  - platform: time
+    at: '23:00:00'
+  condition:
+  - condition: device
+    device_id: e8122c3d5707be758f88db1335814109
+    domain: lock
+    entity_id: 54d6cdc89903d7af8272a094efa907ee
+    type: is_unlocked
+  action:
+  - service: lock.lock
+    metadata: {}
+    data: {}
+    target:
+      device_id: e8122c3d5707be758f88db1335814109
+  mode: single
+- id: '1712631613236'
+  alias: Unlock on Arrival
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - person.hester
+    - person.brian
+    from: not_home
+    to: home
+  condition:
+  - condition: device
+    device_id: e8122c3d5707be758f88db1335814109
+    domain: lock
+    entity_id: 54d6cdc89903d7af8272a094efa907ee
+    type: is_locked
+  action:
+  - service: lock.unlock
+    metadata: {}
+    data: {}
+    target:
+      device_id: e8122c3d5707be758f88db1335814109
+  mode: single
+- id: '1712873414114'
+  alias: Vacuum - Weekdays
+  description: Vacuum on weekdays at 0900 if the battery is high enough and we are
+    not home.
+  trigger:
+  - platform: time
+    at: 09:00:00
+  condition:
+  - condition: time
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+  - condition: not
+    conditions:
+    - condition: zone
+      entity_id: person.brian
+      zone: zone.home
+    - condition: zone
+      entity_id: person.hester
+      zone: zone.home
+  - type: is_battery_level
+    condition: device
+    device_id: f08bf02653d1af84a6f3fd313f99d055
+    entity_id: 6afda91024de40d715704a677c7839d5
+    domain: sensor
+    above: 80
+  action:
+  - device_id: f08bf02653d1af84a6f3fd313f99d055
+    domain: vacuum
+    entity_id: 9b79835e95e49477ecb4361af0462da0
+    type: clean
+  mode: single
+- id: '1713788356734'
+  alias: 'Front Camera Notification '
+  description: ''
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.front_drive
+      notify_group: all_mobile_devices
+      base_url: https://home.hblucas.org
+      update_thumbnail: true
+      state_filter: true
+      state_entity: input_boolean.camera_notifications
+      state_filter_states:
+      - 'on'
+      silence_timer: 0
+      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
+      debug: true
+      labels:
+      - person
+      url_1: '{{base_url}}/api/camera_proxy_stream/camera.{{trigger.payload_json[''after''][''camera''].lower()}}?token={{state_attr(
+        ''camera.'' ~ camera, ''access_token'')}}'
+      button_1: View Stream
+      tap_action: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
+- id: '1713804264702'
+  alias: 'Back Door Camera Notification '
+  description: ''
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.back_door
+      notify_group: all_mobile_devices
+      base_url: https://home.hblucas.org
+      update_thumbnail: true
+      state_filter: true
+      state_entity: input_boolean.camera_notifications
+      state_filter_states:
+      - 'on'
+      silence_timer: 0
+      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
+      debug: true
+      tv_duration: 0
+- id: '1713818857301'
+  alias: Bus Detected On School Days
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.front_drive_bus_occupancy
+    from: 'off'
+    to: 'on'
+  condition:
+  - condition: time
+    after: 07:00:00
+    before: 07:45:00
+  action:
+  - service: tts.speak
+    metadata: {}
+    data:
+      cache: true
+      media_player_entity_id: media_player.all_speakers
+      message: Alert! Alert! The bus is coming!  Get on the bus!
+    target:
+      entity_id: tts.google_en_com
+  - service: camera.play_stream
+    metadata: {}
+    data:
+      entity_id: camera.front_drive
+      format: hls
+      media_player: media_player.kitchen_display
+  mode: single
+- id: '1715367143008'
+  alias: Front Doorbell Notification
+  description: ''
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.front_doorbell
+      notify_group: all_mobile_devices
+      base_url: https://home.hblucas.org
+      update_thumbnail: true
+      state_filter: true
+      state_entity: input_boolean.camera_notifications
+      state_filter_states:
+      - 'on'
+      silence_timer: 0
+      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
+      debug: true
+      labels:
+      - person
+      url_1: '{{base_url}}/api/camera_proxy_stream/camera.{{trigger.payload_json[''after''][''camera''].lower()}}?token={{state_attr(
+        ''camera.'' ~ camera, ''access_token'')}}'
+      button_1: View Stream
+      tap_action: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'

@@ -1,0 +1,16 @@
+# Ignore Everything
+*
+
+# Uningore the following
+!*.yaml
+!.gitignore
+!*.md
+
+# Make sure these are ignored
+.storage
+.cloud
+.google.token
+ip_bans.yaml
+secrets.yaml
+known_devices.yaml
+SERVICE_ACCOUNT.json

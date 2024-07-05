@@ -1,0 +1,108 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 192.168.86.2
+
+google_assistant:
+  project_id: homeassistant-32654
+  service_account: !include SERVICE_ACCOUNT.json
+  report_state: true
+
+# Custom Configs Below
+recorder: !include recorder.yaml
+
+notify:
+  - platform: group
+    name: all_mobile_devices
+    services:
+      - service: mobile_app_pixel_6_pro
+      - service: mobile_app_pixel_7_pro
+
+alarm_control_panel:
+  - platform: manual
+    name: Home Alarm
+    code_arm_required: false
+
+rest:
+  - resource: "http://api.airplanes.live/v2/hex/adfeb3"
+    scan_interval: 30 
+    sensor:
+      - name: "676 Callsign"
+        value_template: "{{ value_json['ac'][0]['flight'] }}"
+      - name: "676 Altitude"
+        value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
+      - name: "676 Latitude"
+        value_template: "{{ value_json['ac'][0]['lat'] }}"
+      - name: "676 Longitude"
+        value_template: "{{ value_json['ac'][0]['lon'] }}"
+  - resource: "http://api.airplanes.live/v2/hex/adfeb4"
+    scan_interval: 30 
+    sensor:
+      - name: "677 Callsign"
+        value_template: "{{ value_json['ac'][0]['flight'] }}"
+      - name: "677 Altitude"
+        value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
+      - name: "677 Latitude"
+        value_template: "{{ value_json['ac'][0]['lat'] }}"
+      - name: "677 Longitude"
+        value_template: "{{ value_json['ac'][0]['lon'] }}"
+  - resource: "http://api.airplanes.live/v2/hex/adfeb5"
+    scan_interval: 30 
+    sensor:
+      - name: "787 Callsign"
+        value_template: "{{ value_json['ac'][0]['flight'] }}"
+      - name: "787 Altitude"
+        value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
+      - name: "787 Latitude"
+        value_template: "{{ value_json['ac'][0]['lat'] }}"
+      - name: "787 Longitude"
+        value_template: "{{ value_json['ac'][0]['lon'] }}"
+  - resource: "http://api.airplanes.live/v2/hex/adfeb6"
+    scan_interval: 30 
+    sensor:
+      - name: "125 Callsign"
+        value_template: "{{ value_json['ac'][0]['flight'] }}"
+      - name: "125 Altitude"
+        value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
+      - name: "125 Latitude"
+        value_template: "{{ value_json['ac'][0]['lat'] }}"
+      - name: "125 Longitude"
+        value_template: "{{ value_json['ac'][0]['lon'] }}"
+template:
+  sensor:
+    - name: "Aircraft 676"
+      state: "{{states('sensor.676_callsign')}}"
+      attributes:
+        latitude: "{{states('sensor.676_latitude')}}"
+        longitude: "{{states('sensor.676_longitude')}}"
+        altitude: "{{states('sensor.676_altitude')}}"
+    - name: "Aircraft 677"
+      state: "{{states('sensor.677_callsign')}}"
+      attributes:
+        latitude: "{{states('sensor.677_latitude')}}"
+        longitude: "{{states('sensor.677_longitude')}}"
+        altitude: "{{states('sensor.677_altitude')}}"
+    - name: "Aircraft 787"
+      state: "{{states('sensor.787_callsign')}}"
+      attributes:
+        latitude: "{{states('sensor.787_latitude')}}"
+        longitude: "{{states('sensor.787_longitude')}}"
+        altitude: "{{states('sensor.787_altitude')}}"
+    - name: "Aircraft 125"
+      state: "{{states('sensor.125_callsign')}}"
+      attributes:
+        latitude: "{{states('sensor.125_latitude')}}"
+        longitude: "{{states('sensor.125_longitude')}}"
+        altitude: "{{states('sensor.125_altitude')}}"
