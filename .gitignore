@@ -5,6 +5,7 @@
 !*.yaml
 !.gitignore
 !*.md
+!packages
 
 # Make sure these are ignored
 .storage
