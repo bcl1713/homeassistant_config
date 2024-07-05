@@ -1,4 +1,6 @@
-
+homeassistant:
+  packages: !include_dir_named packages
+  
 # Loads default set of integrations. Do not remove.
 default_config:
 
@@ -9,7 +11,6 @@ frontend:
 automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
-packages: !include_dir_named packages
 
 http:
   use_x_forwarded_for: true
