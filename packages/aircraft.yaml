@@ -1,10 +1,11 @@
 rest:
-  - resource: "http://api.airplanes.live/v2/hex/adfeb3"
+  - resource: "http://api.airplanes.live/v2/hex/ae1197"
     scan_interval: 30 
     sensor:
-      - name: "676 Callsign"
+      - name: "676 Callsign" 
         value_template: "{{ value_json['ac'][0]['flight'] }}"
       - name: "676 Altitude"
+        id: 676-altitude
         value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
       - name: "676 Latitude"
         value_template: "{{ value_json['ac'][0]['lat'] }}"
