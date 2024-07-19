@@ -5,7 +5,6 @@ rest:
       - name: "676 Callsign" 
         value_template: "{{ value_json['ac'][0]['flight'] }}"
       - name: "676 Altitude"
-        id: 676-altitude
         value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
       - name: "676 Latitude"
         value_template: "{{ value_json['ac'][0]['lat'] }}"
