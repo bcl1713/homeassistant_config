@@ -71,3 +71,8 @@ template:
         latitude: "{{states('sensor.125_latitude')}}"
         longitude: "{{states('sensor.125_longitude')}}"
         altitude: "{{states('sensor.125_altitude')}}"
+input_number:
+  - name: 676 Altitude
+    min: -1000
+    max: 60000
+    step: 1
