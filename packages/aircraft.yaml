@@ -45,6 +45,9 @@ rest:
         value_template: "{{ value_json['ac'][0]['lon'] }}"
 template:
   sensor:
+    - name: "676 Raw Altitude"
+      value_template: "{{ states('sensor.676_altitude') }}"
+      entity_id: sensor.676_altitude
     - name: "Aircraft 676"
       state: "{{states('sensor.676_callsign')}}"
       attributes:
