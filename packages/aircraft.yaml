@@ -1,5 +1,5 @@
 rest:
-  - resource: "http://api.airplanes.live/v2/hex/ae1197"
+  - resource: "http://api.airplanes.live/v2/hex/ae1233"
     scan_interval: 30 
     sensor:
       - name: "676 Callsign" 
@@ -71,9 +71,3 @@ template:
         latitude: "{{states('sensor.125_latitude')}}"
         longitude: "{{states('sensor.125_longitude')}}"
         altitude: "{{states('sensor.125_altitude')}}"
-input_number:
-  676_altitude:
-    name: 676 Altitude
-    min: -1000
-    max: 60000
-    step: 1
