@@ -52,7 +52,7 @@ template:
       attributes:
         latitude: "{{states('sensor.676_latitude')}}"
         longitude: "{{states('sensor.676_longitude')}}"
-        altitude: "{{states('sensor.676_altitude')}}"
+        altitude: "{{states('sensor.676_altitude') | int(0)}}"
     - name: "Aircraft 677"
       state: "{{states('sensor.677_callsign')}}"
       attributes:
