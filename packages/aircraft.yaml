@@ -47,7 +47,7 @@ template:
   sensor:
     - name: "Aircraft 676"
       state: >
-        {% if states('sensor.676_callsign') not in ['unknown', 'unavailable'] %}
+        {% if states('sensor.676_callsign') not in ['unknown', 'unavailable', ''] %}
           {{ states('sensor.676_callsign') }}
         {% else %}
           {{ states('sensor.aircraft_676') }}
@@ -76,7 +76,7 @@ template:
           {% endif %}
     - name: "Aircraft 677"
       state: >
-        {% if states('sensor.677_callsign') not in ['unknown', 'unavailable'] %}
+        {% if states('sensor.677_callsign') not in ['unknown', 'unavailable', ''] %}
           {{ states('sensor.677_callsign') }}
         {% else %}
           {{ states('sensor.aircraft_677') }}
@@ -105,7 +105,7 @@ template:
           {% endif %}
     - name: "Aircraft 787"
       state: >
-        {% if states('sensor.787_callsign') not in ['unknown', 'unavailable'] %}
+        {% if states('sensor.787_callsign') not in ['unknown', 'unavailable', ''] %}
           {{ states('sensor.787_callsign') }}
         {% else %}
           {{ states('sensor.aircraft_787') }}
@@ -134,7 +134,7 @@ template:
           {% endif %}
     - name: "Aircraft 125"
       state: >
-        {% if states('sensor.125_callsign') not in ['unknown', 'unavailable'] %}
+        {% if states('sensor.125_callsign') not in ['unknown', 'unavailable', ''] %}
           {{ states('sensor.125_callsign') }}
         {% else %}
           {{ states('sensor.aircraft_125') }}
