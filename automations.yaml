@@ -211,4 +211,9 @@
       option: 'Off'
     target:
       entity_id: select.front_doorbell_security_light
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.front_doorbell_ring_light
   mode: single
