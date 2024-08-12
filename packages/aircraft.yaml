@@ -1,5 +1,5 @@
 rest:
-  - resource: "http://api.airplanes.live/v2/hex/ae1233"
+  - resource: "http://api.airplanes.live/v2/hex/ae080c"
     scan_interval: 30 
     sensor:
       - name: "676 Callsign" 
@@ -45,8 +45,6 @@ rest:
         value_template: "{{ value_json['ac'][0]['lon'] }}"
 template:
   sensor:
-    - name: "676 Raw Altitude"
-      state: "{{ states('sensor.676_altitude') }}"
     - name: "Aircraft 676"
       state: "{{states('sensor.676_callsign')}}"
       attributes:
