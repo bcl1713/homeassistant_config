@@ -1,5 +1,5 @@
 rest:
-  - resource: "http://api.airplanes.live/v2/hex/ae080c"
+  - resource: "http://api.airplanes.live/v2/hex/ae5f9d"
     scan_interval: 30 
     sensor:
       - name: "676 Callsign" 
