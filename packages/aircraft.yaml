@@ -55,21 +55,21 @@ template:
       attributes:
         latitude: >
           {% set new_latitude = states('sensor.676_latitude') %}
-          {% if new_latitude.isnumeric() %}
+          {% if new_latitude | float(0) != 0 %}
             {{ new_latitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_676', 'latitude') }}
           {% endif %}
         longitude: >
           {% set new_longitude = states('sensor.676_longitude') %}
-          {% if new_longitude.isnumeric() %}
+          {% if new_longitude | float(0) != 0 %}
             {{ new_longitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_676', 'longitude') }}
           {% endif %}
         altitude: >
           {% set new_altitude = states('sensor.676_altitude') %}
-          {% if new_altitude.isnumeric() %}
+          {% if new_altitude | float(0) != 0 %}
             {{ new_altitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_676', 'altitude') }}
@@ -84,21 +84,21 @@ template:
       attributes:
         latitude: >
           {% set new_latitude = states('sensor.677_latitude') %}
-          {% if new_latitude.isnumeric() %}
+          {% if new_latitude | float(0) != 0 %}
             {{ new_latitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_677', 'latitude') }}
           {% endif %}
         longitude: >
           {% set new_longitude = states('sensor.677_longitude') %}
-          {% if new_longitude.isnumeric() %}
+          {% if new_longitude | float(0) != 0 %}
             {{ new_longitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_677', 'longitude') }}
           {% endif %}
         altitude: >
           {% set new_altitude = states('sensor.677_altitude') %}
-          {% if new_altitude.isnumeric() %}
+          {% if new_altitude | float(0) != 0 %}
             {{ new_altitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_677', 'altitude') }}
@@ -113,21 +113,21 @@ template:
       attributes:
         latitude: >
           {% set new_latitude = states('sensor.787_latitude') %}
-          {% if new_latitude.isnumeric() %}
+          {% if new_latitude | float(0) != 0 %}
             {{ new_latitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_787', 'latitude') }}
           {% endif %}
         longitude: >
           {% set new_longitude = states('sensor.787_longitude') %}
-          {% if new_longitude.isnumeric() %}
+          {% if new_longitude | float(0) != 0 %}
             {{ new_longitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_787', 'longitude') }}
           {% endif %}
         altitude: >
           {% set new_altitude = states('sensor.787_altitude') %}
-          {% if new_altitude.isnumeric() %}
+          {% if new_altitude | float(0) != 0 %}
             {{ new_altitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_787', 'altitude') }}
@@ -142,21 +142,21 @@ template:
       attributes:
         latitude: >
           {% set new_latitude = states('sensor.125_latitude') %}
-          {% if new_latitude.isnumeric() %}
+          {% if new_latitude | float(0) != 0 %}
             {{ new_latitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_125', 'latitude') }}
           {% endif %}
         longitude: >
           {% set new_longitude = states('sensor.125_longitude') %}
-          {% if new_longitude.isnumeric() %}
+          {% if new_longitude | float(0) != 0 %}
             {{ new_longitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_125', 'longitude') }}
           {% endif %}
         altitude: >
           {% set new_altitude = states('sensor.125_altitude') %}
-          {% if new_altitude.isnumeric() %}
+          {% if new_altitude | float(0) != 0 %}
             {{ new_altitude | float }}
           {% else %}
             {{ state_attr('sensor.aircraft_125', 'altitude') }}
