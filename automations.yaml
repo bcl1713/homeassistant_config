@@ -171,3 +171,44 @@
       button_1: View Stream
       tap_action: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
       critical: 'true'
+- id: '1723494714339'
+  alias: Turn on the security light if theres people at the door
+  description: ''
+  trigger:
+  - type: occupied
+    platform: device
+    device_id: a2dc0e695a20de335259887a45858243
+    entity_id: c017d7a35d72da6ebdb4c606e5c03532
+    domain: binary_sensor
+  condition: []
+  action:
+  - action: select.select_option
+    metadata: {}
+    data:
+      option: 'On'
+    target:
+      entity_id: select.front_doorbell_security_light
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.front_doorbell_ring_light
+  mode: single
+- id: '1723494857986'
+  alias: Turn off the security light if the front door camera is unoccupied
+  description: ''
+  trigger:
+  - type: not_occupied
+    platform: device
+    device_id: a2dc0e695a20de335259887a45858243
+    entity_id: c017d7a35d72da6ebdb4c606e5c03532
+    domain: binary_sensor
+  condition: []
+  action:
+  - action: select.select_option
+    metadata: {}
+    data:
+      option: 'Off'
+    target:
+      entity_id: select.front_doorbell_security_light
+  mode: single
