@@ -98,6 +98,7 @@
         ''camera.'' ~ camera, ''access_token'')}}'
       button_1: View Stream
       tap_action: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
+      critical: 'true'
 - id: '1713804264702'
   alias: 'Back Door Camera Notification '
   description: ''
@@ -116,6 +117,7 @@
       notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
       debug: true
       tv_duration: 0
+      critical: 'true'
 - id: '1713818857301'
   alias: Bus Detected On School Days
   description: ''
@@ -168,3 +170,4 @@
         ''camera.'' ~ camera, ''access_token'')}}'
       button_1: View Stream
       tap_action: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
+      critical: 'true'
