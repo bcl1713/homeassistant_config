@@ -1,0 +1,15 @@
+template:
+  - trigger:
+      - platform: time_pattern
+        hours: /1
+    action:
+      - action: weather.get_forecasts
+        data:
+          type: hourly
+        target:
+          entity_id: weather.forecast_home
+        response_variable: hourly
+    sensor:
+      - name: Condition forecast next hour
+        unique_id: condition_forecast_next_hour
+        state: "{{ hourly['weather.home'].forecast[0].condition }}"
