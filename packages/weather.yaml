@@ -12,4 +12,4 @@ template:
     sensor:
       - name: Condition forecast next hour
         unique_id: condition_forecast_next_hour
-        state: "{{ hourly['weather.forecast_home'].forecast[1].condition }}"
+        state: "{{ hourly['weather.forecast_home'].forecast[0].condition }}"
