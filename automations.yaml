@@ -129,7 +129,7 @@
     to: 'on'
   condition:
   - condition: time
-    after: 07:00:00
+    after: 07:35:00
     before: 07:59:00
   action:
   - metadata: {}
@@ -217,7 +217,7 @@
   use_blueprint:
     path: sbyx/low-battery-level-detection-notification-for-all-battery-sensors.yaml
     input:
-      threshold: 33
+      threshold: 20
       exclude:
         entity_id: []
         device_id:
@@ -235,3 +235,60 @@
         data:
           message: Battery low on {{sensors}}
       time: 08:00:00
+- id: '1724451860125'
+  alias: Notify me if it is going to rain soon.
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - sensor.condition_forecast_next_hour
+    to: rainy
+  condition: []
+  action:
+  - action: notify.mobile_app_pixel_7_pro
+    metadata: {}
+    data:
+      message: It's likely going to rain soon.
+  mode: single
+- id: '1727826258340'
+  alias: Back Yard Light On for Person
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.back_door_person_occupancy
+    to: 'on'
+    from: 'off'
+  condition:
+  - condition: numeric_state
+    entity_id: sun.sun
+    attribute: elevation
+    below: 0
+  action:
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      device_id: a4b52ca5d89416656bad42f92486939d
+  mode: single
+- id: '1727826316411'
+  alias: Backyard Light Off for Clear
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.back_door_person_occupancy
+    to: 'off'
+    from: 'on'
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+  condition: []
+  action:
+  - action: light.turn_off
+    target:
+      device_id:
+      - a4b52ca5d89416656bad42f92486939d
+    data: {}
+  mode: single
