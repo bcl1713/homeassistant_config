@@ -1,0 +1,242 @@
+- id: "1712631613236"
+  alias: Unlock on Arrival
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - person.hester
+        - person.brian
+      from: not_home
+      to: home
+  condition:
+    - condition: device
+      device_id: e8122c3d5707be758f88db1335814109
+      domain: lock
+      entity_id: 54d6cdc89903d7af8272a094efa907ee
+      type: is_locked
+  action:
+    - service: lock.unlock
+      metadata: {}
+      data: {}
+      target:
+        device_id: e8122c3d5707be758f88db1335814109
+  mode: single
+- id: "1713788356734"
+  alias: "Front Camera Notification "
+  description: ""
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.front_drive
+      notify_group: all_mobile_devices
+      base_url: https://home.hblucas.org
+      update_thumbnail: true
+      state_filter: true
+      state_entity: input_boolean.camera_notifications
+      state_filter_states:
+        - "on"
+      silence_timer: 0
+      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
+      debug: true
+      labels:
+        - person
+      url_1:
+        "{{base_url}}/api/camera_proxy_stream/camera.{{trigger.payload_json['after']['camera'].lower()}}?token={{state_attr(
+        'camera.' ~ camera, 'access_token')}}"
+      button_1: View Stream
+      tap_action: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4"
+      critical: "true"
+- id: "1713804264702"
+  alias: "Back Door Camera Notification "
+  description: ""
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.back_door
+      notify_group: all_mobile_devices
+      base_url: https://home.hblucas.org
+      update_thumbnail: true
+      state_filter: true
+      state_entity: input_boolean.camera_notifications
+      state_filter_states:
+        - "on"
+      silence_timer: 0
+      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
+      debug: true
+      tv_duration: 0
+      critical: "true"
+- id: "1713818857301"
+  alias: Bus Detected On School Days
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.front_drive_bus_occupancy
+      from: "off"
+      to: "on"
+  condition:
+    - condition: time
+      after: 07:35:00
+      before: 07:59:00
+  action:
+    - metadata: {}
+      data:
+        cache: true
+        media_player_entity_id: media_player.all_speakers
+        message: Bus detected.
+      target:
+        entity_id: tts.google_en_com
+      action: tts.speak
+  mode: single
+- id: "1715367143008"
+  alias: Front Doorbell Notification
+  description: ""
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.front_doorbell
+      notify_group: all_mobile_devices
+      base_url: https://home.hblucas.org
+      update_thumbnail: true
+      state_filter: true
+      state_entity: input_boolean.camera_notifications
+      state_filter_states:
+        - "on"
+      silence_timer: 0
+      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
+      debug: true
+      labels:
+        - person
+      url_1:
+        "{{base_url}}/api/camera_proxy_stream/camera.{{trigger.payload_json['after']['camera'].lower()}}?token={{state_attr(
+        'camera.' ~ camera, 'access_token')}}"
+      button_1: View Stream
+      tap_action: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4"
+      critical: "true"
+- id: "1723494714339"
+  alias: Turn on the security light if theres people at the door
+  description: ""
+  trigger:
+    - type: occupied
+      platform: device
+      device_id: a2dc0e695a20de335259887a45858243
+      entity_id: c017d7a35d72da6ebdb4c606e5c03532
+      domain: binary_sensor
+  condition: []
+  action:
+    - action: select.select_option
+      metadata: {}
+      data:
+        option: "On"
+      target:
+        entity_id: select.front_doorbell_security_light
+    - action: light.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: light.front_doorbell_ring_light
+  mode: single
+- id: "1723494857986"
+  alias: Turn off the security light if the front door camera is unoccupied
+  description: ""
+  trigger:
+    - type: not_occupied
+      platform: device
+      device_id: a2dc0e695a20de335259887a45858243
+      entity_id: c017d7a35d72da6ebdb4c606e5c03532
+      domain: binary_sensor
+  condition: []
+  action:
+    - action: select.select_option
+      metadata: {}
+      data:
+        option: "Off"
+      target:
+        entity_id: select.front_doorbell_security_light
+    - action: light.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: light.front_doorbell_ring_light
+  mode: single
+- id: "1724376507293"
+  alias: Low battery level detection & notification for all battery sensors
+  description: ""
+  use_blueprint:
+    path: sbyx/low-battery-level-detection-notification-for-all-battery-sensors.yaml
+    input:
+      threshold: 20
+      exclude:
+        entity_id: []
+        device_id:
+          - 8be77dc2dee6a60fb692f353fc93fe02
+          - 4c8007e7032b078b730b67a468dd5e1b
+          - 8cb3bce4e5b26f4978b2d715130fe5b9
+      actions:
+        - action: notify.send_message
+          metadata: {}
+          data:
+            message: Battery Low on {{sensors}}
+          target:
+            device_id: 90d6e89b4df4abd4baf23e600e635a37
+        - action: notify.mobile_app_pixel_7_pro
+          data:
+            message: Battery low on {{sensors}}
+      time: 08:00:00
+- id: "1724451860125"
+  alias: Notify me if it is going to rain soon.
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - sensor.condition_forecast_next_hour
+      to: rainy
+  condition: []
+  action:
+    - action: notify.mobile_app_pixel_7_pro
+      metadata: {}
+      data:
+        message: It's likely going to rain soon.
+  mode: single
+- id: "1727826258340"
+  alias: Back Yard Light On for Person
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.back_door_person_occupancy
+      to: "on"
+      from: "off"
+  condition:
+    - condition: numeric_state
+      entity_id: sun.sun
+      attribute: elevation
+      below: 0
+  action:
+    - action: light.turn_on
+      metadata: {}
+      data: {}
+      target:
+        device_id: a4b52ca5d89416656bad42f92486939d
+  mode: single
+- id: "1727826316411"
+  alias: Backyard Light Off for Clear
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.back_door_person_occupancy
+      to: "off"
+      from: "on"
+      for:
+        hours: 0
+        minutes: 5
+        seconds: 0
+  condition: []
+  action:
+    - action: light.turn_off
+      target:
+        device_id:
+          - a4b52ca5d89416656bad42f92486939d
+      data: {}
+  mode: single
