@@ -6,6 +6,7 @@
 !.gitignore
 !*.md
 !packages
+!input_boolean
 
 # Make sure these are ignored
 .storage
