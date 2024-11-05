@@ -7,6 +7,7 @@
 !*.md
 !packages
 !input_boolean
+!automation
 
 # Make sure these are ignored
 .storage

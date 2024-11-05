@@ -1,0 +1,22 @@
+- alias: "Good Night Trigger"
+  trigger:
+    - platform: state
+      entity_id: input_boolean.good_night
+      to: "on"
+      from: "off"
+  condition:
+    - condition: state
+      entity_id: sun.sun
+      state: "below_horizon"
+    - condition: state
+      entity_id: input_boolean.guest_mode
+      state: "off"
+  action:
+    - service: input_boolean.turn_off
+      entity_id: input_boolean.good_night
+    - service: homeassistant.turn_off
+      entity_id: light.main_floor_lights
+    - service: input_boolean.turn_on
+      entity_id: input_boolean.camera_notifications
+    - service: lock.lock
+      entity_id: lock.front_door
