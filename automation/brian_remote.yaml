@@ -7,6 +7,6 @@
         label: Scene 001
         value: KeyPressed
   actions:
-    - action: light.turn_off
-      entity_id: light.kitchen_bar_light
+    - action: input_boolean.turn_on
+      entity_id: input_boolean.good_night
   mode: single
