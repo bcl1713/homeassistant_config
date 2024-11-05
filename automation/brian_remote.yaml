@@ -1,0 +1,12 @@
+- alias: Brian Remote Good Night
+  triggers:
+    - trigger: event
+      event_type: zwave_js_value_notification
+      event_data:
+        device_id: 7208c07c752cc38fd6b147f38261f829
+        label: Scene 001
+        value: KeyPressed
+  actions:
+    - action: light.turn_off
+      entity_id: light.kitchen_bar_light
+  mode: single
