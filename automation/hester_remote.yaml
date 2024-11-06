@@ -10,3 +10,29 @@
     - action: input_boolean.turn_on
       entity_id: input_boolean.good_night
   mode: single
+
+- alias: Hester Bedside On
+  triggers:
+    - trigger: event
+      event_type: zwave_js_value_notification
+      event_data:
+        device_id: b9e908c896f44c782113acbaf0985571
+        label: Scene 004
+        value: KeyPressed
+  actions:
+    - action: light.turn_on
+      entity_id: light.hester_s_table_lamp
+  mode: single
+
+- alias: Hester Bedside Off
+  triggers:
+    - trigger: event
+      event_type: zwave_js_value_notification
+      event_data:
+        device_id: b9e908c896f44c782113acbaf0985571
+        label: Scene 003
+        value: KeyPressed
+  actions:
+    - action: light.turn_off
+      entity_id: light.hester_s_table_lamp
+  mode: single
