@@ -42,7 +42,7 @@
     - trigger: event
       event_type: zwave_js_value_notification
       event_data:
-        device_id: 720c07c752cc38fd6b147f38261f829
+        device_id: 7208c07c752cc38fd6b147f38261f829
         label: Scene 004
         value: KeyPressed2x
   actions:
