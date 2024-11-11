@@ -44,7 +44,7 @@
       event_data:
         device_id: 720c07c752cc38fd6b147f38261f829
         label: Scene 004
-        value: KeyPressedx2
+        value: KeyPressed2x
   actions:
     - action: light.turn_on
       entity_id: light.brian_s_table_lamp
