@@ -17,7 +17,7 @@
       event_type: zwave_js_value_notification
       event_data:
         device_id: b9e908c896f44c782113acbaf0985571
-        label: Scene 004
+        label: Scene 003
         value: KeyPressed
   actions:
     - action: light.turn_on
@@ -30,7 +30,7 @@
       event_type: zwave_js_value_notification
       event_data:
         device_id: b9e908c896f44c782113acbaf0985571
-        label: Scene 003
+        label: Scene 004
         value: KeyPressed
   actions:
     - action: light.turn_off
