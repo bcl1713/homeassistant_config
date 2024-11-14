@@ -1,0 +1,28 @@
+- alias: "Everyone Left"
+  trigger:
+    - platform: state
+      entity_id:
+        - zone.home
+      to: 0
+      for:
+        hours: 0
+        minutes: 1
+        seconds: 0
+  condition:
+    - condition: state
+      entity_id: input_boolean.guest_mode
+      state: "off"
+  action:
+    - service: input_boolean.turn_on
+      entity_id: input_boolean.away_mode
+
+- alias: "Someone Came Home"
+  trigger:
+    - platform: state
+      entity_id:
+        - zone.home
+      to: 1
+      from: 0
+  action:
+    - service: input_boolean.turn_off
+      entity_id: input_boolean.away_mode
