@@ -6,4 +6,4 @@
   action:
     - service: notify.all_mobile_devices
       data:
-        message: "Test Message"
+        message: "The doorbell rang"
