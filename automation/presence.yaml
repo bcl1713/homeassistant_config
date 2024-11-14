@@ -1,6 +1,6 @@
 - alias: "Everyone Left"
   trigger:
-    - platform: state
+    - platform: numeric_state
       entity_id:
         - zone.home
       to: 0
@@ -18,7 +18,7 @@
 
 - alias: "Someone Came Home"
   trigger:
-    - platform: state
+    - platform: numeric_state
       entity_id:
         - zone.home
       to: 1
