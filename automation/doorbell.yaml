@@ -1,0 +1,9 @@
+- alias: "Doorbell Rang"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.front_doorbell_button_pressed
+      to: "on"
+  action:
+    - service: notify.all_mobile_devices
+      data:
+        message: "Test Message"
