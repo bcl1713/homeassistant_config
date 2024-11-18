@@ -1,0 +1,34 @@
+input_boolean:
+  away_mode:
+    name: Away Mode
+    initial: false
+    icon: mdi:shield-lock
+
+light:
+  - platform: group
+    name: After Dark Entry Lights
+    entities:
+      - light.front_yard_lights
+      - light.hallway_entry
+      - light.hallway_corridor
+
+automation:
+  - alias: "Disable Away Mode Actions"
+    description: "Unlock door and control lights when away mode is turned off"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.away_mode
+        from: "on"
+        to: "off"
+    condition: []
+    action:
+      - service: lock.unlock
+        target:
+          entity_id: lock.front_door
+      - condition: state
+        entity_id: sun.sun
+        state: "below_horizon"
+      - service: light.turn_on
+        target:
+          entity_id: light.after_dark_entry_lights
+    mode: single
