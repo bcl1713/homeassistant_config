@@ -1,26 +1,3 @@
-- id: "1712631613236"
-  alias: Unlock on Arrival
-  description: ""
-  trigger:
-    - platform: state
-      entity_id:
-        - person.hester
-        - person.brian
-      from: not_home
-      to: home
-  condition:
-    - condition: device
-      device_id: e8122c3d5707be758f88db1335814109
-      domain: lock
-      entity_id: 54d6cdc89903d7af8272a094efa907ee
-      type: is_locked
-  action:
-    - service: lock.unlock
-      metadata: {}
-      data: {}
-      target:
-        device_id: e8122c3d5707be758f88db1335814109
-  mode: single
 - id: "1713788356734"
   alias: "Front Camera Notification "
   description: ""
