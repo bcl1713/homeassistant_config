@@ -20,6 +20,7 @@
         - light.outside_lights
         - remote.living_room_tv
         - remote.master_bedroom_tv
+        - switch.outdoor_plug
     - service: input_boolean.turn_on
       entity_id: input_boolean.camera_notifications
     - service: lock.lock
