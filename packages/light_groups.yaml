@@ -1,4 +1,7 @@
 light:
+  - platform: switch
+    name: Hallway Lamp
+    entity_id: switch.hallway_lamp
   - platform: group
     name: Holiday Lights
     entities:
@@ -15,6 +18,6 @@ light:
       - light.living_room_left
       - light.living_room_right
       - light.kitchen_bar_lights
-      - light.kichenc_counter_lights
-      - light.kitchen_fan_light
+      - light.kitchen_counter_lights
+      - light.kitchen_fan
       - light.hallway_lamp
