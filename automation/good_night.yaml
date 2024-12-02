@@ -16,7 +16,7 @@
       entity_id: input_boolean.good_night
     - service: homeassistant.turn_off
       entity_id:
-        - light.main_floor_lights
+        - light.downstairs_lights
         - light.outside_lights
         - remote.living_room_tv
         - remote.master_bedroom_tv
