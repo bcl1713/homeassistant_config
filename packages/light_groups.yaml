@@ -1,0 +1,20 @@
+light:
+  - platform: group
+    name: Holiday Lights
+    entities:
+      - light.front_yard_lights
+      - light.outdoor_plug_light
+      - light.christmas_tree
+  - platform: group
+    name: Downstairs Lights
+    entities:
+      - light.dining_room_table_light
+      - light.hallway_corridor
+      - light.hallway_entry
+      - light.living_room_center
+      - light.living_room_left
+      - light.living_room_right
+      - light.kitchen_bar_lights
+      - light.kichenc_counter_lights
+      - light.kitchen_fan_light
+      - light.hallway_lamp
