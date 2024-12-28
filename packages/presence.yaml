@@ -1,0 +1,50 @@
+automation:
+  - alias: "Everyone Left"
+    trigger:
+      - platform: numeric_state
+        entity_id:
+          - zone.home
+        below: 1
+        for:
+          hours: 0
+          minutes: 1
+          seconds: 0
+    condition:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+    action:
+      - service: input_boolean.turn_on
+        entity_id: input_boolean.away_mode
+
+  - alias: "Someone Came Home"
+    trigger:
+      - platform: numeric_state
+        entity_id:
+          - zone.home
+        above: 0
+    action:
+      - service: input_boolean.turn_off
+        entity_id: input_boolean.away_mode
+
+  - alias: "Secure the house if no one is home"
+    trigger:
+      platform: state
+      entity_id: input_boolean.away_mode
+      to: on
+    action:
+      - service: homeassistant.turn_off
+        entity_id:
+          - light.downstairs_lights
+          - light.outside_lights
+          - remote.living_room_tv
+          - remote.master_bedroom_tv
+          - light.holiday_lights
+          - media_player.kitchen_display
+          - media_player.living_room_speaker
+          - media_player.music_room_speaker
+      - service: input_boolean.turn_on
+        entity_id: input_boolean.camera_notifications
+      - service: lock.lock
+        entity_id: lock.front_door
+    mode: single
