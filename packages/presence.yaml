@@ -31,7 +31,7 @@ automation:
     trigger:
       platform: state
       entity_id: input_boolean.away_mode
-      to: on
+      to: "on"
     action:
       - service: homeassistant.turn_off
         entity_id:
