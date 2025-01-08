@@ -54,7 +54,7 @@
         - conditions:
             - condition: state
               entity_id: sensor.dishwasher_state
-              state: "Run"
+              state: "BSH.Common.EnumType.OperationState.Run"
           sequence:
             - service: homeassistant.turn_off
               entity_id:
@@ -109,7 +109,7 @@
                 action: ignore
             - platform: state
               entity_id: sensor.dishwasher_state
-              to: "Run"
+              to: "BSH.Common.EnumType.OperationState.Run"
           continue_on_timeout: false
 
         # If dishwasher started, wait 2 minutes before turning off kitchen lights
@@ -117,7 +117,7 @@
             - conditions:
                 - condition: state
                   entity_id: sensor.dishwasher_state
-                  state: "Run"
+                  state: "BSH.Common.EnumType.OperationState.Run"
               sequence:
                 - delay: "00:02:00"
 
