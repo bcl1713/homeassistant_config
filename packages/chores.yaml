@@ -112,12 +112,12 @@ template:
             ) }}
           {% endif %}
 script:
-  show_dashboard:
+  show_chores:
     sequence:
       - action: cast.show_lovelace_view
         data:
-          dashboard_path: dashboard-home
-          view_path: home-new
+          dashboard_path: dashboard-chore
+          view_path: 0
           entity_id: media_player.kitchen_display
 # # Lovelace dashboard configuration
 # # Add this to your dashboard configuration
