@@ -92,9 +92,9 @@ template:
         unique_id: chores_summary
         state: >
           {% macro format_chore(assignee, chore_name, completed_state) %}
-            - 
-            {%- if states(completed_state) == 'off' %} [ ]{% endif %}.
-            {%- if states(completed_state) == 'on' %} [x]{% endif %}.
+            *  
+            {%- if states(completed_state) == 'off' %} [ ]{% endif %}
+            {%- if states(completed_state) == 'on' %} [x]{% endif %}
             {{ assignee }} needs to {{ chore_name }}
           {% endmacro %}
 
