@@ -81,6 +81,12 @@ automation:
           entity_id: input_select.chore_bathroom_assignee
 
 template:
+  - binary_sensor:
+      - name: "Is Weekend"
+        unique_id: is_weekend
+        state: >
+          {{ now().weekday() in [5,6] }}
+
   - sensor:
       - name: "Chores Summary"
         unique_id: chores_summary
@@ -98,7 +104,7 @@ template:
           ) }}
 
           {# Weekend chores #}
-          {% if now().weekday() in [5,6] %}
+          {% if is_state('binary_sensor.is_weekend', 'on') %}
             {{ format_chore(
                 states('input_select.chore_bathroom_assignee'),
                 'clean the bathroom',
