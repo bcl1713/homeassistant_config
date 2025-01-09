@@ -1,0 +1,107 @@
+# packages/chores.yaml
+#
+# Home Assistant Chore Management Package
+# Features:
+# - Daily dishwasher rotation between Towner and Porter
+# - Weekly bathroom cleaning rotation between Towner and Porter
+# - Automatic rotation on completion
+# - Easy manual override capability
+# 
+# To use: Place this file in your /config/packages/ directory and ensure
+# packages: !include_dir_named packages/
+# is in your configuration.yaml
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      kids: &kids
+        - "Towner"
+        - "Porter"
+      common_icons: &icons
+        dishwasher: mdi:dishwasher
+        bathroom: mdi:bathroom
+        completed: mdi:check-circle
+
+input_select:
+  chore_dishwasher_assignee:
+    name: "Dishwasher Duty"
+    options: *kids
+    icon: *icons.dishwasher
+  
+  chore_bathroom_assignee:
+    name: "Bathroom Duty"
+    options: *kids
+    icon: *icons.bathroom
+
+input_boolean:
+  chore_dishwasher_completed:
+    name: "Dishwasher - Completed Today"
+    icon: *icons.completed
+  
+  chore_bathroom_completed:
+    name: "Bathroom - Completed This Weekend"
+    icon: *icons.completed
+
+automation:
+  - alias: "Reset Daily Chores"
+    description: "Resets daily chores at midnight if they were completed"
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.chore_dishwasher_completed
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.chore_dishwasher_completed
+      - service: input_select.select_next
+        target:
+          entity_id: input_select.chore_dishwasher_assignee
+
+  - alias: "Reset Weekly Chores"
+    description: "Resets weekly chores on Monday if they were completed"
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    condition:
+      - condition: time
+        weekday:
+          - mon
+      - condition: state
+        entity_id: input_boolean.chore_bathroom_completed
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.chore_bathroom_completed
+      - service: input_select.select_next
+        target:
+          entity_id: input_select.chore_bathroom_assignee
+
+template:
+  - sensor:
+      - name: "Chores Summary"
+        unique_id: chores_summary
+        state: >
+          {% macro format_chore(assignee, chore_name, completed_state) %}
+            {{ assignee }} needs to {{ chore_name }}
+            {%- if states(completed_state) == 'on' %} (✓){% endif %}.
+          {% endmacro %}
+
+          {# Daily chores #}
+          {{ format_chore(
+              states('input_select.chore_dishwasher_assignee'),
+              'empty the dishwasher',
+              'input_boolean.chore_dishwasher_completed'
+          ) }}
+
+          {# Weekend chores #}
+          {% if now().weekday() in [5,6] %}
+            {{ format_chore(
+                states('input_select.chore_bathroom_assignee'),
+                'clean the bathroom',
+                'input_boolean.chore_bathroom_completed'
+            ) }}
+          {% endif %}
