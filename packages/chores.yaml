@@ -117,7 +117,6 @@ script:
       - action: cast.show_lovelace_view
         data:
           dashboard_path: dashboard-chore
-          view_path: 0
           entity_id: media_player.kitchen_display
 # # Lovelace dashboard configuration
 # # Add this to your dashboard configuration
