@@ -6,7 +6,7 @@
 # - Weekly bathroom cleaning rotation between Towner and Porter
 # - Automatic rotation on completion
 # - Easy manual override capability
-# 
+#
 # To use: Place this file in your /config/packages/ directory and ensure
 # packages: !include_dir_named packages/
 # is in your configuration.yaml
@@ -17,30 +17,30 @@ homeassistant:
       kids: &kids
         - "Towner"
         - "Porter"
-      common_icons: &icons
-        dishwasher: mdi:dishwasher
-        bathroom: mdi:bathroom
-        completed: mdi:check-circle
+      icons: &icons
+        - &icon_dishwasher "mdi:dishwasher"
+        - &icon_bathroom "mdi:bathroom"
+        - &icon_completed "mdi:check-circle"
 
 input_select:
   chore_dishwasher_assignee:
     name: "Dishwasher Duty"
     options: *kids
-    icon: *icons.dishwasher
-  
+    icon: *icon_dishwasher
+
   chore_bathroom_assignee:
     name: "Bathroom Duty"
     options: *kids
-    icon: *icons.bathroom
+    icon: *icon_bathroom
 
 input_boolean:
   chore_dishwasher_completed:
     name: "Dishwasher - Completed Today"
-    icon: *icons.completed
-  
+    icon: *icon_completed
+
   chore_bathroom_completed:
     name: "Bathroom - Completed This Weekend"
-    icon: *icons.completed
+    icon: *icon_completed
 
 automation:
   - alias: "Reset Daily Chores"
@@ -105,3 +105,36 @@ template:
                 'input_boolean.chore_bathroom_completed'
             ) }}
           {% endif %}
+
+# # Lovelace dashboard configuration
+# # Add this to your dashboard configuration
+# lovelace:
+#   dashboards:
+#     chores:
+#       mode: yaml
+#       title: Chores Dashboard
+#       filename: dashboards/chores.yaml
+#       show_in_sidebar: true
+#       icon: mdi:calendar-check
+#       require_admin: false
+#
+# # Save this part as dashboards/chores.yaml
+# dashboard_content: &dashboard
+#   title: "Chores Dashboard"
+#   views:
+#     - title: "Today's Chores"
+#       path: chores
+#       badges: []
+#       cards:
+#         - type: entities
+#           title: "Today's Chores"
+#           entities:
+#             - entity: sensor.chores_summary
+#             - type: section
+#               label: "Assignments"
+#             - entity: input_select.chore_dishwasher_assignee
+#             - entity: input_select.chore_bathroom_assignee
+#             - type: section
+#               label: "Completion Status"
+#             - entity: input_boolean.chore_dishwasher_completed
+#             - entity: input_boolean.chore_bathroom_completed
