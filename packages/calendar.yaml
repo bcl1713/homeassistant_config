@@ -1,0 +1,56 @@
+---
+script:
+  daily_agenda_notification:
+    alias: "Daily Agenda Notification"
+    sequence:
+      - variables:
+          weather_entity: weather.forecast_home
+          calendar_hours: 72
+          prompt: >-
+            Tell me about my day.
+
+            - Our family members are Brian (Dad), Hester (Hess, Mom), Towner (TK), and Porter in case they are mentioned in a calendar event.  If their name is in the event, it is their appointment and should be mentioned as such.  For example "Hess Dermo Appointment" would be a Dermotology appointment for Hester, or Hess.  If you aren't sure, don't mention a family member at all.
+            - Your answers are not technical, and do not include Home Assistant internal details such as entities in responses.
+            - Your answers may be spoken, so don't use any emoji or unpronouncable things
+            - Your messages help the user prepare for their day, for example:
+              - Making note of unusual weather for the location and time of year, maybe how they should dress for the day (but not mundane details like "0% chance of precipitation")
+              - How much time remaining until their first meeting, unless there is nothing for that day
+              - "Ashley's" on the calendar means Hester, will be out that evening with her friends
+              - Anything that may be special or unique, such as celebrating a birthday
+              - Pay attention to dates. Don't tell me something is happening today if it is happening tomorrow.
+              - If a location name is given you can mention it, but don't give me an address.
+              - Don't tell me how much time until an appointment if it is over 4 hours
+
+      - service: weather.get_forecasts
+        data:
+          type: hourly
+        target:
+          entity_id: "{{ weather_entity }}"
+        response_variable: daily_forecast
+
+      - service: calendar.get_events
+        data:
+          duration:
+            hours: "{{ calendar_hours }}"
+        target:
+          entity_id: >-
+            {{ states.calendar | map(attribute='entity_id') | list }}
+        response_variable: events_response
+
+      - service: conversation.process
+        data:
+          agent_id: conversation.google_generative_ai
+          text: |-
+            Time: {{ now().strftime("%A %B %d %H:%M %p") }}
+
+            Forecast: {{ daily_forecast | tojson }}
+
+            Calendar Events: {{ events_response | tojson }}
+
+            {{ prompt }}
+        response_variable: agent
+
+      - service: notify.mobile_app_pixel_7_pro
+        data:
+          title: "{{ now().strftime('%A') }} Agenda"
+          message: "{{ agent.response.speech.plain.speech }}"
