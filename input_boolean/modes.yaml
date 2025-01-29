@@ -1,0 +1,18 @@
+guest_mode:
+  name: Guest Mode
+  icon: mdi:account-alert
+  initial: off
+
+good_night:
+  name: Good Night
+  initial: off
+
+camera_notifications:
+  name: Camera Notifications
+  icon: mdi:camera
+  initial: off
+
+away_mode:
+  name: Away Mode
+  icon: mdi:home-export-outline
+  initial: off

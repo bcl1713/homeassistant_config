@@ -1,9 +1,3 @@
-input_boolean:
-  away_mode:
-    name: Away Mode
-    initial: false
-    icon: mdi:shield-lock
-
 light:
   - platform: group
     name: After Dark Entry Lights
