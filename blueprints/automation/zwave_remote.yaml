@@ -193,7 +193,7 @@ action:
           - "{{ scene_number == '001' and press_type == 'KeyPressed5x' }}"
         sequence: !input scene_001_quintuple
       - conditions:
-          - "{{ scene_number == '001' and press_type == 'KeyHeld' }}"
+          - "{{ scene_number == '001' and press_type == 'KeyHeldDown' }}"
         sequence: !input scene_001_held
       - conditions:
           - "{{ scene_number == '001' and press_type == 'KeyReleased' }}"
@@ -216,7 +216,7 @@ action:
           - "{{ scene_number == '002' and press_type == 'KeyPressed5x' }}"
         sequence: !input scene_002_quintuple
       - conditions:
-          - "{{ scene_number == '002' and press_type == 'KeyHeld' }}"
+          - "{{ scene_number == '002' and press_type == 'KeyHeldDown' }}"
         sequence: !input scene_002_held
       - conditions:
           - "{{ scene_number == '002' and press_type == 'KeyReleased' }}"
@@ -239,7 +239,7 @@ action:
           - "{{ scene_number == '003' and press_type == 'KeyPressed5x' }}"
         sequence: !input scene_003_quintuple
       - conditions:
-          - "{{ scene_number == '003' and press_type == 'KeyHeld' }}"
+          - "{{ scene_number == '003' and press_type == 'KeyHeldDown' }}"
         sequence: !input scene_003_held
       - conditions:
           - "{{ scene_number == '003' and press_type == 'KeyReleased' }}"
@@ -262,7 +262,7 @@ action:
           - "{{ scene_number == '004' and press_type == 'KeyPressed5x' }}"
         sequence: !input scene_004_quintuple
       - conditions:
-          - "{{ scene_number == '004' and press_type == 'KeyHeld' }}"
+          - "{{ scene_number == '004' and press_type == 'KeyHeldDown' }}"
         sequence: !input scene_004_held
       - conditions:
           - "{{ scene_number == '004' and press_type == 'KeyReleased' }}"
