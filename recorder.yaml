@@ -1,5 +1,4 @@
 # recorder.yaml
-recorder:
-  purge_keep_days: 30 # Only keep last 30 days of history
-  commit_interval: 30 # Commit to database every 30 seconds
-  auto_purge: true # Automatically purge old data
+purge_keep_days: 30 # Only keep last 30 days of history
+commit_interval: 30 # Commit to database every 30 seconds
+auto_purge: true # Automatically purge old data
