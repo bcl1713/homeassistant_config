@@ -26,18 +26,18 @@ script:
     sequence:
       - service: input_boolean.turn_on
         target:
-          entity_id: "{{ dimming_helper }}"
+          entity_id: "{{ variables.dimming_helper }}"
       - repeat:
           while:
             - condition: state
-              entity_id: "{{ dimming_helper }}"
+              entity_id: "{{ variables.dimming_helper }}"
               state: "on"
           sequence:
             - service: light.turn_on
               target:
-                entity_id: "{{ lamp }}"
+                entity_id: "{{ variables.lamp }}"
               data:
-                brightness_step_pct: "{{ 10 if direction == 'up' else -10 }}"
+                brightness_step_pct: "{{ 10 if variables.direction == 'up' else -10 }}"
                 transition: 1
             - delay: 1
 
@@ -54,7 +54,7 @@ automation:
   - id: brian_remote
     alias: "Brian's Remote Control"
     use_blueprint:
-      path: remotes.yaml
+      path: packages/remotes
       input:
         remote_device: 7208c07c752cc38fd6b147f38261f829
         scene_001_press:
@@ -90,7 +90,7 @@ automation:
   - id: hester_remote
     alias: "Hester's Remote Control"
     use_blueprint:
-      path: remotes.yaml
+      path: packages/remotes
       input:
         remote_device: b9e908c896f44c782113acbaf0985571
         scene_001_press:
