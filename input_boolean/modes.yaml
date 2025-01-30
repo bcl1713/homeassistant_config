@@ -11,8 +11,3 @@ camera_notifications:
   name: Camera Notifications
   icon: mdi:camera
   initial: off
-
-away_mode:
-  name: Away Mode
-  icon: mdi:home-export-outline
-  initial: off
