@@ -1,47 +1,3 @@
-- id: "1713788356734"
-  alias: "Front Camera Notification "
-  description: ""
-  use_blueprint:
-    path: SgtBatten/Stable.yaml
-    input:
-      camera: camera.front_drive
-      notify_group: all_mobile_devices
-      base_url: https://home.hblucas.org
-      update_thumbnail: true
-      state_filter: true
-      state_entity: input_boolean.camera_notifications
-      state_filter_states:
-        - "on"
-      silence_timer: 0
-      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
-      debug: true
-      labels:
-        - person
-      url_1:
-        "{{base_url}}/api/camera_proxy_stream/camera.{{trigger.payload_json['after']['camera'].lower()}}?token={{state_attr(
-        'camera.' ~ camera, 'access_token')}}"
-      button_1: View Stream
-      tap_action: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4"
-      critical: "true"
-- id: "1713804264702"
-  alias: "Back Door Camera Notification "
-  description: ""
-  use_blueprint:
-    path: SgtBatten/Stable.yaml
-    input:
-      camera: camera.back_door
-      notify_group: all_mobile_devices
-      base_url: https://home.hblucas.org
-      update_thumbnail: true
-      state_filter: true
-      state_entity: input_boolean.camera_notifications
-      state_filter_states:
-        - "on"
-      silence_timer: 0
-      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
-      debug: true
-      tv_duration: 0
-      critical: "true"
 - id: "1713818857301"
   alias: Bus Detected On School Days
   description: ""
@@ -65,31 +21,6 @@
         entity_id: tts.google_en_com
       action: tts.speak
   mode: single
-- id: "1715367143008"
-  alias: Front Doorbell Notification
-  description: ""
-  use_blueprint:
-    path: SgtBatten/Stable.yaml
-    input:
-      camera: camera.front_doorbell
-      notify_group: all_mobile_devices
-      base_url: https://home.hblucas.org
-      update_thumbnail: true
-      state_filter: true
-      state_entity: input_boolean.camera_notifications
-      state_filter_states:
-        - "on"
-      silence_timer: 0
-      notify_device: 8cb3bce4e5b26f4978b2d715130fe5b9
-      debug: true
-      labels:
-        - person
-      url_1:
-        "{{base_url}}/api/camera_proxy_stream/camera.{{trigger.payload_json['after']['camera'].lower()}}?token={{state_attr(
-        'camera.' ~ camera, 'access_token')}}"
-      button_1: View Stream
-      tap_action: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4"
-      critical: "true"
 - id: "1723494714339"
   alias: Turn on the security light if theres people at the door
   description: ""

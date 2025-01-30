@@ -1,8 +1,10 @@
-input_boolean:
-  away_mode:
-    name: Away Mode
-    initial: false
-    icon: mdi:shield-lock
+alarm_control_panel:
+  - platform: manual
+    name: Home Alarm
+    code_arm_required: false
+    delay_time: 60
+    trigger_time: 120
+    disarm_after_trigger: false
 
 light:
   - platform: group
@@ -16,68 +18,84 @@ automation:
   - alias: "Everyone Left"
     trigger:
       - platform: numeric_state
-        entity_id:
-          - zone.home
+        entity_id: zone.home
         below: 1
         for:
-          hours: 0
           minutes: 1
-          seconds: 0
     condition:
       - condition: state
         entity_id: input_boolean.guest_mode
         state: "off"
     action:
-      - service: input_boolean.turn_on
-        entity_id: input_boolean.away_mode
+      - service: alarm_control_panel.alarm_arm_away
+        target:
+          entity_id: alarm_control_panel.home_alarm
 
   - alias: "Someone Came Home"
     trigger:
       - platform: numeric_state
-        entity_id:
-          - zone.home
+        entity_id: zone.home
         above: 0
     action:
-      - service: input_boolean.turn_off
-        entity_id: input_boolean.away_mode
+      - service: alarm_control_panel.alarm_disarm
+        target:
+          entity_id: alarm_control_panel.home_alarm
 
-  - alias: "Turn on the lights and unlock the door when someone comes home"
-    description: "Unlock door and control lights when away mode is turned off"
+  - alias: "Handle Home Alarm Armed Away"
+    description: "Secure house when alarm is armed away"
     trigger:
       - platform: state
-        entity_id: input_boolean.away_mode
-        from: "on"
-        to: "off"
-    condition: []
+        entity_id: alarm_control_panel.home_alarm
+        to: "armed_away"
+    action:
+      - service: homeassistant.turn_off
+        target:
+          entity_id:
+            - remote.living_room_tv
+            - remote.master_bedroom_tv
+            - media_player.kitchen_display
+            - media_player.living_room_speaker
+            - media_player.music_room_speaker
+      - service: light.turn_off
+        target:
+          entity_id: all
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.camera_notifications
+      - service: lock.lock
+        target:
+          entity_id: lock.front_door
+
+  - alias: "Handle Home Alarm Armed Home"
+    description: "Secure house for night or home mode"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.home_alarm
+        to: "armed_home"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.camera_notifications
+      - service: lock.lock
+        target:
+          entity_id: lock.front_door
+
+  - alias: "Handle Home Alarm Disarmed"
+    description: "Welcome actions when system disarmed"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.home_alarm
+        to: "disarmed"
     action:
       - service: lock.unlock
         target:
           entity_id: lock.front_door
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.camera_notifications
       - condition: state
         entity_id: sun.sun
         state: "below_horizon"
       - service: light.turn_on
         target:
           entity_id: light.after_dark_entry_lights
-    mode: single
-
-  - alias: "Secure the house if no one is home"
-    trigger:
-      platform: state
-      entity_id: input_boolean.away_mode
-      to: "on"
-    action:
-      - service: homeassistant.turn_off
-        entity_id:
-          - remote.living_room_tv
-          - remote.master_bedroom_tv
-          - media_player.kitchen_display
-          - media_player.living_room_speaker
-          - media_player.music_room_speaker
-      - service: light.turn_off
-        entity_id: all
-      - service: input_boolean.turn_on
-        entity_id: input_boolean.camera_notifications
-      - service: lock.lock
-        entity_id: lock.front_door
-    mode: single

@@ -1,0 +1,50 @@
+# packages/cameras.yaml
+automation:
+  - id: "camera_notifications"
+    alias: "Universal Camera Person Detection"
+    description: "Unified notifications for all cameras detecting people"
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.front_drive_person_occupancy
+          - binary_sensor.back_door_person_occupancy
+          - binary_sensor.front_doorbell_person_occupancy
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.camera_notifications
+        state: "on"
+    action:
+      - variables:
+          camera_map:
+            binary_sensor.front_drive_person_occupancy:
+              camera: camera.front_drive
+              name: "Front Drive"
+            binary_sensor.back_door_person_occupancy:
+              camera: camera.back_door
+              name: "Back Door"
+            binary_sensor.front_doorbell_person_occupancy:
+              camera: camera.front_doorbell
+              name: "Front Doorbell"
+      - service: notify.all_mobile_devices
+        data:
+          message: "Person detected at {{ camera_map[trigger.entity_id].name }}"
+          data:
+            url: >-
+              https://home.hblucas.org/api/camera_proxy_stream/{{ camera_map[trigger.entity_id].camera }}?token={{state_attr(camera_map[trigger.entity_id].camera, 'access_token')}}
+            actions:
+              - action: "view_stream"
+                title: "View Stream"
+            critical: true
+
+  # Special case for doorbell button press
+  - alias: "Doorbell Button Press"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.front_doorbell_button_pressed
+        to: "on"
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          message: "Doorbell pressed"
+          critical: true
