@@ -3,10 +3,10 @@ template:
   - trigger:
       - platform: event
         event_type: zwave_js_value_notification
-    trigger_variables:
-      dim_step: 10
-      dim_delay: 1
-      dim_transition: 1
+        variables:
+          dim_step: 10
+          dim_delay: 1
+          dim_transition: 1
     binary_sensor:
       - name: "Is Remote Button Held"
         state: "{{ trigger.event.data.value == 'KeyHeld' }}"
