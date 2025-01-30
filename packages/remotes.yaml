@@ -52,7 +52,7 @@ automation:
   - id: brian_remote
     alias: "Brian's Remote Control"
     use_blueprint:
-      path: packages/remotes
+      path: packages/remotes.yaml
       input:
         remote_device: 7208c07c752cc38fd6b147f38261f829
         scene_001_press:
@@ -88,7 +88,7 @@ automation:
   - id: hester_remote
     alias: "Hester's Remote Control"
     use_blueprint:
-      path: packages/remotes
+      path: packages/remotes.yaml
       input:
         remote_device: b9e908c896f44c782113acbaf0985571
         scene_001_press:
