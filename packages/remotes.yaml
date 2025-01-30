@@ -24,20 +24,18 @@ script:
         data:
           entity_id: "{{ variables.dimming_helper }}"
 
-      # Initial brightness change
-      - service: light.turn_on
-        data:
-          entity_id: "{{ variables.lamp }}"
-          brightness_step_pct: "{{ 10 if variables.direction == 'up' else -10 }}"
-          transition: 1
-
-      - wait_for:
+      - while:
           - condition: state
             entity_id: "{{ variables.dimming_helper }}"
-            state: "off"
-        timeout:
-          minutes: 5
-        continue_on_timeout: false
+            state: "on"
+        sequence:
+          - service: light.turn_on
+            data:
+              entity_id: "{{ variables.lamp }}"
+              brightness_step_pct: "{{ 10 if variables.direction == 'up' else -10 }}"
+              transition: 1
+          - delay:
+              milliseconds: 500
 
 automation:
   - id: brian_remote
