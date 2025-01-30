@@ -14,25 +14,19 @@ script:
       direction: null # 'up' or 'down'
       dimming_helper: null
     sequence:
-      # Log the start of dimming
-      - service: system_log.write
-        data:
-          message: "Starting dim sequence for {{ variables.lamp }} direction {{ variables.direction }}"
-          level: debug
-
       - service: input_boolean.turn_on
         data:
-          entity_id: "{{ variables.dimming_helper }}"
+          entity_id: "{{ dimming_helper }}"
 
       - repeat:
           while:
             - condition: template
-              value_template: "{{ is_state(variables.dimming_helper, 'on') }}"
+              value_template: "{{ is_state(dimming_helper, 'on') }}"
           sequence:
             - service: light.turn_on
               data:
-                entity_id: "{{ variables.lamp }}"
-                brightness_step_pct: "{{ 10 if variables.direction == 'up' else -10 }}"
+                entity_id: "{{ lamp }}"
+                brightness_step_pct: "{{ 10 if direction == 'up' else -10 }}"
                 transition: 1
             - delay:
                 milliseconds: 500
