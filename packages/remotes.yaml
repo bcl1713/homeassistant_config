@@ -25,17 +25,16 @@ script:
       dimming_helper: null
     sequence:
       - service: input_boolean.turn_on
-        target:
-          entity_id: "{{ variables.dimming_helper }}"
+        data:
+          entity_id: !template "{{ variables.dimming_helper }}"
       - repeat:
           while:
-            - condition: state
-              entity_id: "{{ variables.dimming_helper }}"
-              state: "on"
+            - condition: template
+              value_template: "{{ is_state(variables.dimming_helper, 'on') }}"
           sequence:
             - service: light.turn_on
               target:
-                entity_id: "{{ variables.lamp }}"
+                entity_id: !template "{{ variables.lamp }}"
               data:
                 brightness_step_pct: "{{ 10 if variables.direction == 'up' else -10 }}"
                 transition: 1
