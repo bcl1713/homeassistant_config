@@ -1,0 +1,124 @@
+# First define common templates
+template:
+  - trigger:
+      - platform: event
+        event_type: zwave_js_value_notification
+    trigger_variables:
+      dim_step: 10
+      dim_delay: 1
+      dim_transition: 1
+    binary_sensor:
+      - name: "Is Remote Button Held"
+        state: "{{ trigger.event.data.value == 'KeyHeld' }}"
+      - name: "Is Remote Button Released"
+        state: "{{ trigger.event.data.value == 'KeyReleased' }}"
+    sensor:
+      - name: "Remote Scene Number"
+        state: "{{ trigger.event.data.label | regex_replace('Scene ','') }}"
+
+# Define reusable light control sequences
+script:
+  lamp_dim_sequence:
+    variables:
+      lamp: null
+      direction: null # 'up' or 'down'
+      dimming_helper: null
+    sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: "{{ dimming_helper }}"
+      - repeat:
+          while:
+            - condition: state
+              entity_id: "{{ dimming_helper }}"
+              state: "on"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ lamp }}"
+              data:
+                brightness_step_pct: "{{ 10 if direction == 'up' else -10 }}"
+                transition: 1
+            - delay: 1
+
+# Then the actual implementation
+input_boolean:
+  brian_lamp_dimming:
+    name: "Brian's Lamp Dimming Active"
+    initial: false
+  hester_lamp_dimming:
+    name: "Hester's Lamp Dimming Active"
+    initial: false
+
+automation:
+  - id: brian_remote
+    alias: "Brian's Remote Control"
+    use_blueprint:
+      path: remotes.yaml
+      input:
+        remote_device: 7208c07c752cc38fd6b147f38261f829
+        scene_001_press:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.good_night
+        scene_004_press: &brian_lamp_on
+          - service: light.turn_on
+            target:
+              entity_id: light.brian_s_table_lamp
+        scene_004_held:
+          - service: script.lamp_dim_sequence
+            data:
+              lamp: light.brian_s_table_lamp
+              direction: up
+              dimming_helper: input_boolean.brian_lamp_dimming
+        scene_004_released: &stop_brian_dimming
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.brian_lamp_dimming
+        scene_003_press: &brian_lamp_off
+          - service: light.turn_off
+            target:
+              entity_id: light.brian_s_table_lamp
+        scene_003_held:
+          - service: script.lamp_dim_sequence
+            data:
+              lamp: light.brian_s_table_lamp
+              direction: down
+              dimming_helper: input_boolean.brian_lamp_dimming
+        scene_003_released: *stop_brian_dimming
+
+  - id: hester_remote
+    alias: "Hester's Remote Control"
+    use_blueprint:
+      path: remotes.yaml
+      input:
+        remote_device: b9e908c896f44c782113acbaf0985571
+        scene_001_press:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.good_night
+        scene_003_press: &hester_lamp_on
+          - service: light.turn_on
+            target:
+              entity_id: light.hester_s_table_lamp
+        scene_003_held:
+          - service: script.lamp_dim_sequence
+            data:
+              lamp: light.hester_s_table_lamp
+              direction: up
+              dimming_helper: input_boolean.hester_lamp_dimming
+        scene_003_released: &stop_hester_dimming
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.hester_lamp_dimming
+        scene_004_press: &hester_lamp_off
+          - service: light.turn_off
+            target:
+              entity_id: light.hester_s_table_lamp
+        scene_004_held:
+          - service: script.lamp_dim_sequence
+            data:
+              lamp: light.hester_s_table_lamp
+              direction: down
+              dimming_helper: input_boolean.hester_lamp_dimming
+        scene_004_released: *stop_hester_dimming
