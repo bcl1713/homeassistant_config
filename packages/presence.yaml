@@ -5,10 +5,6 @@ alarm_control_panel:
     delay_time: 60
     trigger_time: 120
     disarm_after_trigger: false
-    states:
-      - armed_home
-      - armed_away
-      - disarmed
 
 light:
   - platform: group
