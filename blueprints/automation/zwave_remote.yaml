@@ -180,7 +180,6 @@ action:
   - service: logbook.log
     data:
       message: "{{ debug_msg }}"
-      level: debug
   - choose:
       # Scene 001 actions
       - conditions:
