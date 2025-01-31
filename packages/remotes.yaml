@@ -13,6 +13,8 @@ script:
       lamp: null
       direction: null # 'up' or 'down'
       dimming_helper: null
+      transition_step: 5
+      transition_time: 250
     mode: restart
     sequence:
       # Start by making sure helper is in correct state
@@ -26,10 +28,10 @@ script:
             - service: light.turn_on
               data:
                 entity_id: "{{ lamp }}"
-                brightness_step_pct: "{{ 10 if direction == 'up' else -10 }}"
-                transition: 1
+                brightness_step_pct: "{{ transition_step if direction == 'up' else (transition_step * -1) }}"
+                transition: { { transition_time / 1000 } }
             - delay:
-                seconds: 1
+                seconds: { { transition_time / 1000 } }
 
 automation:
   - id: brian_remote
