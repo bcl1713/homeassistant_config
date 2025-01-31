@@ -112,6 +112,56 @@ script:
               'conditions': weather.conditions | list
             } | tojson }}
 
+      # Get device issues
+      - variables:
+          device_issues: >
+            {% set issues = namespace(batteries=[], offline=[], critical=[]) %}
+
+            {# Check battery levels #}
+            {% for entity in states if entity.attributes.battery_level is defined %}
+              {% set raw_level = entity.attributes.battery_level %}
+              {% set level = raw_level | float(-1) | int %}
+              {% if level >= 0 %}
+                {% if level <= 20 %}
+                  {% set issues.batteries = issues.batteries + [
+                    {'device': entity.name,
+                     'level': level,
+                     'is_critical': level <= 10}
+                  ] %}
+                  {% if level <= 10 %}
+                    {% set issues.critical = issues.critical + [
+                      {'type': 'battery',
+                       'device': entity.name,
+                       'details': 'Battery at ' ~ level ~ '%'}
+                    ] %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+
+            {# Check offline devices #}
+            {% set critical_devices = ['camera', 'alarm_control_panel', 'lock'] %}
+            {% for entity in states if entity.state == 'unavailable' %}
+              {% if entity.domain in critical_devices %}
+                {% set issues.critical = issues.critical + [
+                  {'type': 'offline',
+                   'device': entity.name,
+                   'details': 'Critical device offline'}
+                ] %}
+              {% endif %}
+              {% set issues.offline = issues.offline + [
+                {'device': entity.name,
+                 'type': entity.domain,
+                 'is_critical': entity.domain in critical_devices}
+              ] %}
+            {% endfor %}
+
+            {{ {
+              'batteries': issues.batteries | list,
+              'offline': issues.offline | list,
+              'critical': issues.critical | list
+            } | tojson }}
+
   daily_brief:
     alias: "Daily Status Brief"
     sequence:
