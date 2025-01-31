@@ -1,5 +1,19 @@
 script:
-  daily_brief:
+  - test:
+    alias: "Test stuffs"
+    sequence:
+      - variables:
+          is_detailed: >
+            {% set hour = now().hour %}
+            {% if hour >= 6 and hour < 10 %}
+              true {# Morning detailed brief #}
+            {% elif hour >= 17 and hour < 23 %}
+              true {# Evening detailed brief #}
+            {% else %}
+              false {# Quick brief during the day #}
+            {% endif %}
+
+  - daily_brief:
     alias: "Daily Status Brief"
     sequence:
       - variables:
