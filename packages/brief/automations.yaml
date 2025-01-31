@@ -35,6 +35,7 @@ automation:
       - platform: calendar
         event: start
         offset: "00:30:00" # 30 minutes before event starts
+        entity_id: "{{ ','.join(states.calendar | map(attribute='entity_id') | list) }}"
     action:
       - service: script.turn_on
         target:
@@ -71,7 +72,7 @@ automation:
         event_data:
           action: PLAY_TTS
     action:
-      - service: tts.google_translate_say
+      - service: tts.cloud_say
         target:
           entity_id: media_player.kitchen_display
         data:
