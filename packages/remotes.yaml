@@ -29,9 +29,9 @@ script:
               data:
                 entity_id: "{{ lamp }}"
                 brightness_step_pct: "{{ transition_step if direction == 'up' else (transition_step * -1) }}"
-                transition: { { transition_time / 1000 } }
+                transition: "{{ transition_time / 1000 }}"
             - delay:
-                seconds: { { transition_time / 1000 } }
+                seconds: "{{ transition_time / 1000 }}"
 
 automation:
   - id: brian_remote
