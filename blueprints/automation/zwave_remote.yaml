@@ -173,8 +173,14 @@ variables:
     {{ trigger.event.data.label | regex_replace('Scene ','') }}
   press_type: >
     {{ trigger.event.data.value }}
+  debug_msg: >
+    Remote Event - Scene: {{ scene_number }}, Press Type: {{ trigger.event.data.value }}
 
 action:
+  - service: logger.log
+    data:
+      message: "{{ debug_msg }}"
+      level: debug
   - choose:
       # Scene 001 actions
       - conditions:
