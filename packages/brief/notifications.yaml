@@ -1,5 +1,5 @@
 script:
-  - test:
+  test:
     alias: "Test stuffs"
     sequence:
       - variables:
@@ -13,7 +13,7 @@ script:
               false {# Quick brief during the day #}
             {% endif %}
 
-  - daily_brief:
+  daily_brief:
     alias: "Daily Status Brief"
     sequence:
       - variables:
