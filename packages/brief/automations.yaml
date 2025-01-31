@@ -32,10 +32,14 @@ automation:
   - alias: "Calendar Update Brief Trigger"
     description: "Triggers quick brief when new events are about to start"
     trigger:
-      - platform: calendar
-        event: start
-        offset: "00:30:00" # 30 minutes before event starts
-        entity_id: "{{ ','.join(states.calendar | map(attribute='entity_id') | list) }}"
+      platform: event
+      event_type: calendar_event_start
+      event_data: {}
+    condition:
+      - condition: template
+        value_template: "{{ trigger.event.data.offset_reached == false }}"
+      - condition: template
+        value_template: "{{ trigger.event.data.offset == 1800 }}" # 30 minutes in seconds
     action:
       - service: script.turn_on
         target:
