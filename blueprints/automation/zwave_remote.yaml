@@ -179,6 +179,7 @@ variables:
 action:
   - service: logbook.log
     data:
+      name: "Blueprint Test"
       message: "{{ debug_msg }}"
   - choose:
       # Scene 001 actions
