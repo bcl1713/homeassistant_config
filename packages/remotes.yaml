@@ -15,6 +15,10 @@ script:
       dimming_helper: null
     mode: restart
     sequence:
+      # Start by making sure helper is in correct state
+      - service: input_boolean.turn_off
+        data:
+          entity_id: "{{ dimming_helper }}"
       - service: input_boolean.turn_on
         data:
           entity_id: "{{ dimming_helper }}"
@@ -42,6 +46,11 @@ script:
             - delay:
                 seconds: 1
 
+    stop:
+      - service: input_boolean.turn_off
+        data:
+          entity_id: "{{ dimming_helper }}"
+
 automation:
   - id: brian_remote
     alias: "Brian's Remote Control"
@@ -51,11 +60,11 @@ automation:
         remote_device: 7208c07c752cc38fd6b147f38261f829
         scene_001_press:
           - service: input_boolean.turn_on
-            target:
+            data:
               entity_id: input_boolean.good_night
         scene_004_press:
           - service: light.turn_on
-            target:
+            data:
               entity_id: light.brian_s_table_lamp
         scene_004_held:
           - service: script.lamp_dim_sequence
@@ -65,17 +74,16 @@ automation:
               dimming_helper: input_boolean.brian_lamp_dimming
         scene_004_released:
           - service: input_boolean.turn_off
-            target:
+            data:
               entity_id: input_boolean.brian_lamp_dimming
         scene_004_double:
           - service: light.turn_on
-            target:
-              entity_id: light.brian_s_table_lamp
             data:
+              entity_id: light.brian_s_table_lamp
               brightness_pct: 100
         scene_003_press:
           - service: light.turn_off
-            target:
+            data:
               entity_id: light.brian_s_table_lamp
         scene_003_held:
           - service: script.lamp_dim_sequence
@@ -85,7 +93,7 @@ automation:
               dimming_helper: input_boolean.brian_lamp_dimming
         scene_003_released:
           - service: input_boolean.turn_off
-            target:
+            data:
               entity_id: input_boolean.brian_lamp_dimming
 
   - id: hester_remote
@@ -96,11 +104,11 @@ automation:
         remote_device: b9e908c896f44c782113acbaf0985571
         scene_001_press:
           - service: input_boolean.turn_on
-            target:
+            data:
               entity_id: input_boolean.good_night
         scene_003_press:
           - service: light.turn_on
-            target:
+            data:
               entity_id: light.hester_s_table_lamp
         scene_003_held:
           - service: script.lamp_dim_sequence
@@ -110,11 +118,11 @@ automation:
               dimming_helper: input_boolean.hester_lamp_dimming
         scene_003_released:
           - service: input_boolean.turn_off
-            target:
+            data:
               entity_id: input_boolean.hester_lamp_dimming
         scene_004_press:
           - service: light.turn_off
-            target:
+            data:
               entity_id: light.hester_s_table_lamp
         scene_004_held:
           - service: script.lamp_dim_sequence
@@ -124,5 +132,5 @@ automation:
               dimming_helper: input_boolean.hester_lamp_dimming
         scene_004_released:
           - service: input_boolean.turn_off
-            target:
+            data:
               entity_id: input_boolean.hester_lamp_dimming
