@@ -33,6 +33,7 @@ script:
 
 automation:
   - id: brian_remote
+    mode: restart
     alias: "Brian's Remote Control"
     use_blueprint:
       path: zwave_remote.yaml
@@ -77,6 +78,7 @@ automation:
               entity_id: input_boolean.brian_lamp_dimming
 
   - id: hester_remote
+    mode: restart
     alias: "Hester's Remote Control"
     use_blueprint:
       path: zwave_remote.yaml
