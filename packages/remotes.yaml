@@ -14,7 +14,7 @@ script:
       direction: null # 'up' or 'down'
       dimming_helper: null
       transition_step: 5
-      transition_time: 250
+      transition_time: 500
     mode: restart
     sequence:
       # Start by making sure helper is in correct state
