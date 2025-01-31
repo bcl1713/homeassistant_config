@@ -46,11 +46,6 @@ script:
             - delay:
                 seconds: 1
 
-    stop:
-      - service: input_boolean.turn_off
-        data:
-          entity_id: "{{ dimming_helper }}"
-
 automation:
   - id: brian_remote
     alias: "Brian's Remote Control"
