@@ -69,17 +69,17 @@ script:
         response_variable: events_response
 
       # # Get commute information
-      # - variables:
-      #     commute_info: >
-      #       {% if now().weekday() | int < 5 and now().hour | int < 10 %}
-      #         {{ {
-      #           'commute_time': states('sensor.travel_time_to_brian_s_work'),
-      #           'is_workday': true
-      #         } | tojson }}
-      #       {% else %}
-      #         {{ { 'is_workday': false } | tojson }}
-      #       {% endif %}
-      #
+      - variables:
+          commute_info: >
+            {% if now().weekday() | int < 5 and now().hour | int < 10 %}
+              {{ {
+                'commute_time': states('sensor.travel_time_to_brian_s_work'),
+                'is_workday': true
+              } | tojson }}
+            {% else %}
+              {{ { 'is_workday': false } | tojson }}
+            {% endif %}
+
       # # Process weather data
       # - variables:
       #     processed_weather: >
