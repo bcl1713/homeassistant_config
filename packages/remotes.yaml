@@ -16,35 +16,32 @@ script:
     mode: restart
     sequence:
       # Start by making sure helper is in correct state
-      - service: input_boolean.turn_off
-        data:
-          entity_id: "{{ dimming_helper }}"
       - service: input_boolean.turn_on
         data:
           entity_id: "{{ dimming_helper }}"
 
-      - repeat:
-          while:
-            - condition: template
-              value_template: "{{ is_state(dimming_helper, 'on') }}"
-          sequence:
-            - choose:
-                - conditions:
-                    - "{{ (direction == 'up' and state_attr(lamp, 'brightness') | default(0) >= 255) or
-                      (direction == 'down' and state_attr(lamp, 'brightness') | default(0) <= 0) }}"
-                  sequence:
-                    - service: input_boolean.turn_off
-                      data:
-                        entity_id: "{{ dimming_helper }}"
-                    - stop: "Reached brightness limit"
-
-            - service: light.turn_on
-              data:
-                entity_id: "{{ lamp }}"
-                brightness_step_pct: "{{ 10 if direction == 'up' else -10 }}"
-                transition: 1
-            - delay:
-                seconds: 1
+      # - repeat:
+      #     while:
+      #       - condition: template
+      #         value_template: "{{ is_state(dimming_helper, 'on') }}"
+      #     sequence:
+      #       - choose:
+      #           - conditions:
+      #               - "{{ (direction == 'up' and state_attr(lamp, 'brightness') | default(0) >= 255) or
+      #                 (direction == 'down' and state_attr(lamp, 'brightness') | default(0) <= 0) }}"
+      #             sequence:
+      #               - service: input_boolean.turn_off
+      #                 data:
+      #                   entity_id: "{{ dimming_helper }}"
+      #               - stop: "Reached brightness limit"
+      #
+      #       - service: light.turn_on
+      #         data:
+      #           entity_id: "{{ lamp }}"
+      #           brightness_step_pct: "{{ 10 if direction == 'up' else -10 }}"
+      #           transition: 1
+      #       - delay:
+      #           seconds: 1
 
 automation:
   - id: brian_remote
