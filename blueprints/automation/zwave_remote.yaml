@@ -177,7 +177,7 @@ variables:
     Remote Event - Scene: {{ scene_number }}, Press Type: {{ trigger.event.data.value }}
 
 action:
-  - service: logger.log
+  - service: logbook.log
     data:
       message: "{{ debug_msg }}"
       level: debug
