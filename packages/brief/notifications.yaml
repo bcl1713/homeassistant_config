@@ -113,19 +113,22 @@ script:
 
             {# Check battery levels #}
             {% for entity in states if entity.attributes.battery_level is defined %}
-              {% set level = entity.attributes.battery_level | int %}
-              {% if level <= 20 %}
-                {% set issues.batteries = issues.batteries + [
-                  {'device': entity.name,
-                   'level': level,
-                   'is_critical': level <= 10}
-                ] %}
-                {% if level <= 10 %}
-                  {% set issues.critical = issues.critical + [
-                    {'type': 'battery',
-                     'device': entity.name,
-                     'details': 'Battery at ' ~ level ~ '%'}
+              {% set level = entity.attributes.battery_level %}
+              {% if level is number %}
+                {% set level = level | int %}
+                {% if level <= 20 %}
+                  {% set issues.batteries = issues.batteries + [
+                    {'device': entity.name,
+                     'level': level,
+                     'is_critical': level <= 10}
                   ] %}
+                  {% if level <= 10 %}
+                    {% set issues.critical = issues.critical + [
+                      {'type': 'battery',
+                       'device': entity.name,
+                       'details': 'Battery at ' ~ level ~ '%'}
+                    ] %}
+                  {% endif %}
                 {% endif %}
               {% endif %}
             {% endfor %}
@@ -149,9 +152,9 @@ script:
 
             {# Format final output #}
             {{ {
-              'batteries': issues.batteries | sort(attribute='level'),
-              'offline': issues.offline,
-              'critical': issues.critical
+              'batteries': issues.batteries | list,
+              'offline': issues.offline | list,
+              'critical': issues.critical | list
             } | tojson }}
 
       # Process everything with AI
