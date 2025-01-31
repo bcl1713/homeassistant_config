@@ -163,36 +163,36 @@ script:
             } | tojson }}
 
       # # Process everything with AI
-      # - service: conversation.process
-      #   data:
-      #     agent_id: conversation.google_generative_ai
-      #     text: |-
-      #       Context Data:
-      #       {
-      #         "currentTime": "{{ now().strftime("%Y-%m-%d %H:%M") }}",
-      #         "timeOfDay": "{{ 'morning' if now().hour | int < 12 else 'afternoon' if now().hour | int < 17 else 'evening' }}",
-      #         "isWeekday": {{ (now().weekday() | int) < 5 | lower }},
-      #         "isDetailedBrief": {{ is_detailed | lower }}
-      #       }
-      #
-      #       Weather Information:
-      #       {{ processed_weather }}
-      #
-      #       Calendar Events:
-      #       {{ events_response | tojson }}
-      #
-      #       Commute Information:
-      #       {{ commute_info }}
-      #
-      #       Device Status:
-      #       {{ device_issues }}
-      #
-      #       Chores Status:
-      #       {{ states('sensor.chores_summary') | replace('\n', ' | ') }}
-      #
-      #       {{ base_prompt }}
-      #   response_variable: agent
-      #
+      - service: conversation.process
+        data:
+          agent_id: conversation.google_generative_ai
+          text: |-
+            Context Data:
+            {
+              "currentTime": "{{ now().strftime("%Y-%m-%d %H:%M") }}",
+              "timeOfDay": "{{ 'morning' if now().hour | int < 12 else 'afternoon' if now().hour | int < 17 else 'evening' }}",
+              "isWeekday": {{ (now().weekday() | int) < 5 | lower }},
+              "isDetailedBrief": {{ is_detailed | lower }}
+            }
+
+            Weather Information:
+            {{ processed_weather }}
+
+            Calendar Events:
+            {{ events_response | tojson }}
+
+            Commute Information:
+            {{ commute_info }}
+
+            Device Status:
+            {{ device_issues }}
+
+            Chores Status:
+            {{ states('sensor.chores_summary') | replace('\n', ' | ') }}
+
+            {{ base_prompt }}
+        response_variable: agent
+
       # # Send notifications
       # - choose:
       #     # Morning notification (Detailed)
