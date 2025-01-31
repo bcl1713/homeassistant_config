@@ -3,6 +3,9 @@ script:
     alias: "Test stuffs"
     sequence:
       - variables:
+          weather_entity: weather.forecast_home
+          calendar_hours: 72
+          # Determine brief type based on context
           is_detailed: >
             {% set hour = now().hour %}
             {% if hour >= 6 and hour < 10 %}
@@ -12,6 +15,40 @@ script:
             {% else %}
               false {# Quick brief during the day #}
             {% endif %}
+          base_prompt: >
+            Instructions for generating a home status brief:
+
+            Family Context:
+            - Family members: Brian (Dad), Hester (Hess, Mom), Towner (TK), and Porter
+            - When a family member's name appears in an event title, treat it as their appointment
+            - "Ashley's" on calendar means Hester is out with friends
+
+            General Guidelines:
+            - Create a conversational, spoken-word appropriate response
+            - Start with an appropriate greeting based on the time (morning/afternoon/evening)
+            - Avoid technical terms and Home Assistant terminology
+            - Don't use emoji or special characters
+            - Round numbers naturally (say "around 3" instead of "2.87")
+
+            {% if is_detailed %}
+            Content Requirements (Detailed Brief):
+            - Analyze weather for next 72 hours - highlight unusual conditions or changes
+            - List all calendar events chronologically up to 72 hours ahead
+            - Report all device issues (batteries, offline devices)
+            - Include status of all pending chores
+            - For morning briefs on weekdays, include current commute time to work
+            - If events have locations, mention them without addresses
+            {% else %}
+            Content Requirements (Quick Brief):
+            - Only mention events in next 4 hours
+            - Only report critical device issues (dead batteries, key offline devices)
+            - Only mention overdue chores
+            - Only include weather that could impact immediate plans
+            {% endif %}
+
+            Time Context:
+            - Current time: {{ now().strftime("%H:%M") }}
+            - If mentioning times, use conversational format ("in about 2 hours" rather than "at 14:30")
 
   daily_brief:
     alias: "Daily Status Brief"
