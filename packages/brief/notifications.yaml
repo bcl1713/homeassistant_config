@@ -80,6 +80,38 @@ script:
               {{ { 'is_workday': false } | tojson }}
             {% endif %}
 
+      # Process weather data
+      - variables:
+          processed_weather: >
+            {% set weather = namespace(alerts=[], conditions=[]) %}
+            {% set prev_condition = None %}
+            {% for forecast in daily_forecast if forecast is mapping %}
+              {% if forecast.get('condition', '') != prev_condition %}
+                {% set temp = forecast.get('temperature') %}
+                {% if temp is string %}
+                  {% set temp = temp | float(0) %}
+                {% endif %}
+                {% set prob = forecast.get('precipitation_probability') %}
+                {% if prob is string %}
+                  {% set prob = prob | float(0) %}
+                {% endif %}
+                {% set weather.conditions = weather.conditions + [
+                  {'time': forecast.get('datetime', ''),
+                   'condition': forecast.get('condition', ''),
+                   'temperature': temp,
+                   'precipitation_probability': prob}
+                ] %}
+              {% endif %}
+              {% if forecast.get('weather_alert') %}
+                {% set weather.alerts = weather.alerts + [forecast.get('weather_alert')] %}
+              {% endif %}
+              {% set prev_condition = forecast.get('condition', '') %}
+            {% endfor %}
+            {{ {
+              'alerts': weather.alerts | list,
+              'conditions': weather.conditions | list
+            } | tojson }}
+
   daily_brief:
     alias: "Daily Status Brief"
     sequence:
