@@ -67,8 +67,7 @@ script:
             hours: "{{ calendar_hours }}"
         target:
           entity_id: >-
-            {% for calendar in states.calendar %}
-              {{ calendar.entity_id }}{{ ',' if not loop.last }}
+            {{ states.calendar | map(attribute='entity_id') | list }}
         response_variable: events_response
 
       # Get commute information
