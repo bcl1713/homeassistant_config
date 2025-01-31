@@ -59,15 +59,15 @@ script:
         response_variable: daily_forecast
 
       # # Get calendar events
-      # - service: calendar.get_events
-      #   data:
-      #     duration:
-      #       hours: "{{ calendar_hours }}"
-      #   target:
-      #     entity_id: >-
-      #       {{ states.calendar | map(attribute='entity_id') | list }}
-      #   response_variable: events_response
-      #
+      - service: calendar.get_events
+        data:
+          duration:
+            hours: "{{ calendar_hours }}"
+        target:
+          entity_id: >-
+            {{ states.calendar | map(attribute='entity_id') | list }}
+        response_variable: events_response
+
       # # Get commute information
       # - variables:
       #     commute_info: >
