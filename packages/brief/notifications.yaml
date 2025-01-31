@@ -1,6 +1,6 @@
 script:
   test:
-    alias: "Daily Status Brief"
+    alias: "Test Brief"
     sequence:
       - variables:
           weather_entity: weather.forecast_home
@@ -51,13 +51,13 @@ script:
             - If mentioning times, use conversational format ("in about 2 hours" rather than "at 14:30")
 
       # Get weather forecast
-      # - service: weather.get_forecasts
-      #   data:
-      #     type: hourly
-      #   target:
-      #     entity_id: "{{ weather_entity }}"
-      #   response_variable: daily_forecast
-      #
+      - service: weather.get_forecasts
+        data:
+          type: hourly
+        target:
+          entity_id: "{{ weather_entity }}"
+        response_variable: daily_forecast
+
       # # Get calendar events
       # - service: calendar.get_events
       #   data:
