@@ -20,6 +20,19 @@ script:
         data:
           entity_id: "{{ dimming_helper }}"
 
+      - repeat:
+        sequence:
+          - service: light.turn_on
+            data:
+              entity_id: "{{ lamp }}"
+              brightness_setp_pct: "{{ 10 if direction == 'up' else -10 }}"
+              transition: 1
+          - delay:
+            seconds: 1
+        until:
+          - condition: state
+            entity_id: "{{ dimming_helper }}"
+            state: "off"
       # - repeat:
       #     while:
       #       - condition: template
