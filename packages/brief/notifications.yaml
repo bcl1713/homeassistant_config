@@ -112,8 +112,8 @@ script:
             {# Check battery levels #}
             {% for entity in states if entity.attributes.battery_level is defined %}
               {% set raw_level = entity.attributes.battery_level %}
-              {% if raw_level is number or raw_level is string and raw_level matches '^-?[0-9]+(\.[0-9]+)?$' %}
-                {% set level = raw_level | float | round | int %}
+              {% if raw_level | int(-1) >= 0 %}
+                {% set level = raw_level | int %}
                 {% if level <= 20 %}
                   {% set issues.batteries = issues.batteries + [
                     {'device': entity.name,
