@@ -86,23 +86,24 @@ script:
       - variables:
           processed_weather: >
             {% set weather = namespace(alerts=[], conditions=[]) %}
-            {% for forecast in daily_forecast %}
+            {% set prev_condition = None %}
+            {% for forecast in daily_forecast if forecast is mapping %}
               {% if forecast.condition != prev_condition %}
                 {% set weather.conditions = weather.conditions + [
-                  {'time': forecast.datetime,
-                   'condition': forecast.condition,
-                   'temperature': forecast.temperature,
-                   'precipitation_probability': forecast.precipitation_probability}
+                  {'time': forecast.get('datetime', ''),
+                   'condition': forecast.get('condition', ''),
+                   'temperature': forecast.get('temperature', ''),
+                   'precipitation_probability': forecast.get('precipitation_probability', 0)}
                 ] %}
               {% endif %}
-              {% if forecast.weather_alert %}
-                {% set weather.alerts = weather.alerts + [forecast.weather_alert] %}
+              {% if forecast.get('weather_alert') %}
+                {% set weather.alerts = weather.alerts + [forecast.get('weather_alert')] %}
               {% endif %}
-              {% set prev_condition = forecast.condition %}
+              {% set prev_condition = forecast.get('condition', '') %}
             {% endfor %}
             {{ {
-              'alerts': weather.alerts | unique,
-              'conditions': weather.conditions
+              'alerts': weather.alerts | list,
+              'conditions': weather.conditions | list
             } | tojson }}
 
       # Get device issues
