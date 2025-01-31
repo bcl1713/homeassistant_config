@@ -1,0 +1,226 @@
+# Main brief script and helper templates
+
+script:
+  daily_brief:
+    alias: "Daily Status Brief"
+    sequence:
+      - variables:
+          weather_entity: weather.forecast_home
+          calendar_hours: 72
+          # Determine brief type based on context
+          is_detailed: >
+            {% set hour = now().hour %}
+            {% if hour >= 6 and hour < 10 %}
+              true {# Morning detailed brief #}
+            {% elif hour >= 17 and hour < 23 %}
+              true {# Evening detailed brief #}
+            {% else %}
+              false {# Quick brief during the day #}
+            {% endif %}
+          base_prompt: >
+            Instructions for generating a home status brief:
+
+            Family Context:
+            - Family members: Brian (Dad), Hester (Hess, Mom), Towner (TK), and Porter
+            - When a family member's name appears in an event title, treat it as their appointment
+            - "Ashley's" on calendar means Hester is out with friends
+
+            General Guidelines:
+            - Create a conversational, spoken-word appropriate response
+            - Start with an appropriate greeting based on the time (morning/afternoon/evening)
+            - Avoid technical terms and Home Assistant terminology
+            - Don't use emoji or special characters
+            - Round numbers naturally (say "around 3" instead of "2.87")
+
+            {% if is_detailed %}
+            Content Requirements (Detailed Brief):
+            - Analyze weather for next 72 hours - highlight unusual conditions or changes
+            - List all calendar events chronologically up to 72 hours ahead
+            - Report all device issues (batteries, offline devices)
+            - Include status of all pending chores
+            - For morning briefs on weekdays, include current commute time to work
+            - If events have locations, mention them without addresses
+            {% else %}
+            Content Requirements (Quick Brief):
+            - Only mention events in next 4 hours
+            - Only report critical device issues (dead batteries, key offline devices)
+            - Only mention overdue chores
+            - Only include weather that could impact immediate plans
+            {% endif %}
+
+            Time Context:
+            - Current time: {{ now().strftime("%H:%M") }}
+            - If mentioning times, use conversational format ("in about 2 hours" rather than "at 14:30")
+
+      # Get weather forecast
+      - service: weather.get_forecasts
+        data:
+          type: hourly
+        target:
+          entity_id: "{{ weather_entity }}"
+        response_variable: daily_forecast
+
+      # Get calendar events
+      - service: calendar.get_events
+        data:
+          duration:
+            hours: "{{ calendar_hours }}"
+        target:
+          entity_id: >-
+            {{ states.calendar | map(attribute='entity_id') | list }}
+        response_variable: events_response
+
+      # Get commute information
+      - variables:
+          commute_info: >
+            {% if now().weekday() < 5 and now().hour < 10 %}
+              {{ { 
+                'commute_time': states('sensor.travel_time_to_brian_s_work'),
+                'is_workday': true
+              } | tojson }}
+            {% else %}
+              {{ { 'is_workday': false } | tojson }}
+            {% endif %}
+
+      # Process weather data
+      - variables:
+          processed_weather: >
+            {% set weather = namespace(alerts=[], conditions=[]) %}
+            {% for forecast in daily_forecast %}
+              {% if forecast.condition != prev_condition %}
+                {% set weather.conditions = weather.conditions + [
+                  {'time': forecast.datetime,
+                   'condition': forecast.condition,
+                   'temperature': forecast.temperature,
+                   'precipitation_probability': forecast.precipitation_probability}
+                ] %}
+              {% endif %}
+              {% if forecast.weather_alert %}
+                {% set weather.alerts = weather.alerts + [forecast.weather_alert] %}
+              {% endif %}
+              {% set prev_condition = forecast.condition %}
+            {% endfor %}
+            {{ {
+              'alerts': weather.alerts | unique,
+              'conditions': weather.conditions
+            } | tojson }}
+
+      # Get device issues
+      - variables:
+          device_issues: >
+            {% set issues = namespace(batteries=[], offline=[], critical=[]) %}
+
+            {# Check battery levels #}
+            {% for entity in states if entity.attributes.battery_level is defined %}
+              {% set level = entity.attributes.battery_level | int %}
+              {% if level <= 20 %}
+                {% set issues.batteries = issues.batteries + [
+                  {'device': entity.name,
+                   'level': level,
+                   'is_critical': level <= 10}
+                ] %}
+                {% if level <= 10 %}
+                  {% set issues.critical = issues.critical + [
+                    {'type': 'battery',
+                     'device': entity.name,
+                     'details': 'Battery at ' ~ level ~ '%'}
+                  ] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+
+            {# Check offline devices #}
+            {% set critical_devices = ['camera', 'alarm_control_panel', 'lock'] %}
+            {% for entity in states if entity.state == 'unavailable' %}
+              {% if entity.domain in critical_devices %}
+                {% set issues.critical = issues.critical + [
+                  {'type': 'offline',
+                   'device': entity.name,
+                   'details': 'Critical device offline'}
+                ] %}
+              {% endif %}
+              {% set issues.offline = issues.offline + [
+                {'device': entity.name,
+                 'type': entity.domain,
+                 'is_critical': entity.domain in critical_devices}
+              ] %}
+            {% endfor %}
+
+            {# Format final output #}
+            {{ {
+              'batteries': issues.batteries | sort(attribute='level'),
+              'offline': issues.offline,
+              'critical': issues.critical
+            } | tojson }}
+
+      # Process everything with AI
+      - service: conversation.process
+        data:
+          agent_id: conversation.google_generative_ai
+          text: |-
+            Context Data:
+            {
+              "currentTime": "{{ now().strftime("%Y-%m-%d %H:%M") }}",
+              "timeOfDay": "{{ 'morning' if now().hour < 12 else 'afternoon' if now().hour < 17 else 'evening' }}",
+              "isWeekday": {{ now().weekday() < 5 | lower }},
+              "isDetailedBrief": {{ is_detailed | lower }}
+            }
+
+            Weather Information:
+            {{ processed_weather }}
+
+            Calendar Events:
+            {{ events_response | tojson }}
+
+            Commute Information:
+            {{ commute_info }}
+
+            Device Status:
+            {{ device_issues }}
+
+            Chores Status:
+            {{ states('sensor.chores_summary') | replace('\n', ' | ') }}
+
+            {{ base_prompt }}
+        response_variable: agent
+
+      # Send notifications
+      - choose:
+          # Morning notification (Detailed)
+          - conditions:
+              - condition: time
+                after: "06:00:00"
+                before: "10:00:00"
+            sequence:
+              - service: notify.mobile_app_pixel_7_pro
+                data:
+                  title: "Morning Brief"
+                  message: "{{ agent.response.speech.plain.speech }}"
+                  data:
+                    actions:
+                      - action: "PLAY_TTS"
+                        title: "Play on Kitchen Display"
+
+          # Evening notification (Detailed)
+          - conditions:
+              - condition: time
+                after: "17:00:00"
+                before: "23:00:00"
+            sequence:
+              - service: notify.mobile_app_pixel_7_pro
+                data:
+                  title: "Evening Brief"
+                  message: "{{ agent.response.speech.plain.speech }}"
+                  data:
+                    actions:
+                      - action: "PLAY_TTS"
+                        title: "Play on Kitchen Display"
+        default:
+          - service: notify.mobile_app_pixel_7_pro
+            data:
+              title: "Quick Update"
+              message: "{{ agent.response.speech.plain.speech }}"
+              data:
+                actions:
+                  - action: "PLAY_TTS"
+                    title: "Play on Kitchen Display"

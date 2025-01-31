@@ -1,0 +1,78 @@
+# Brief-related automations
+
+automation:
+  - alias: "Morning Brief Trigger"
+    description: "Triggers detailed brief in the morning on weekdays"
+    trigger:
+      - platform: time
+        at: "06:45:00"
+    condition:
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+    action:
+      - service: script.turn_on
+        target:
+          entity_id: script.daily_brief
+
+  - alias: "Evening Brief Trigger"
+    description: "Triggers detailed brief in the evening"
+    trigger:
+      - platform: time
+        at: "17:30:00"
+    action:
+      - service: script.turn_on
+        target:
+          entity_id: script.daily_brief
+
+  - alias: "Calendar Update Brief Trigger"
+    description: "Triggers quick brief when new events are about to start"
+    trigger:
+      - platform: calendar
+        event: start
+        offset: "00:30:00" # 30 minutes before event starts
+    action:
+      - service: script.turn_on
+        target:
+          entity_id: script.daily_brief
+
+  - alias: "Significant Changes Brief Trigger"
+    description: "Triggers quick brief on significant changes"
+    trigger:
+      # Device status changes
+      - platform: event
+        event_type: state_changed
+        event_data:
+          domain: device_tracker
+      # Chore completion
+      - platform: state
+        entity_id:
+          - input_boolean.chore_dishwasher_completed
+          - input_boolean.chore_bathroom_completed
+        to: "on"
+      # Weather alerts (if you have them)
+      - platform: state
+        entity_id: weather.forecast_home
+        attribute: weather_alert
+    action:
+      - service: script.turn_on
+        target:
+          entity_id: script.daily_brief
+
+  - alias: "Handle Brief TTS Action"
+    description: "Plays TTS on kitchen display when notification action is clicked"
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: PLAY_TTS
+    action:
+      - service: tts.google_translate_say
+        target:
+          entity_id: media_player.kitchen_display
+        data:
+          message: "{{ trigger.event.data.message }}"

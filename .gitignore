@@ -6,11 +6,13 @@
 !.gitignore
 !*.md
 !packages
+!packages/*
 !input_boolean
 !automation
 !blueprints
 
 # Make sure these are ignored
+
 .storage
 .cloud
 .google.token
