@@ -86,12 +86,20 @@ script:
             {% set weather = namespace(alerts=[], conditions=[]) %}
             {% set prev_condition = None %}
             {% for forecast in daily_forecast if forecast is mapping %}
-              {% if forecast.condition != prev_condition %}
+              {% if forecast.get('condition', '') != prev_condition %}
+                {% set temp = forecast.get('temperature') %}
+                {% if temp is string %}
+                  {% set temp = temp | float(0) %}
+                {% endif %}
+                {% set prob = forecast.get('precipitation_probability') %}
+                {% if prob is string %}
+                  {% set prob = prob | float(0) %}
+                {% endif %}
                 {% set weather.conditions = weather.conditions + [
                   {'time': forecast.get('datetime', ''),
                    'condition': forecast.get('condition', ''),
-                   'temperature': forecast.get('temperature', ''),
-                   'precipitation_probability': forecast.get('precipitation_probability', 0)}
+                   'temperature': temp,
+                   'precipitation_probability': prob}
                 ] %}
               {% endif %}
               {% if forecast.get('weather_alert') %}
@@ -112,8 +120,8 @@ script:
             {# Check battery levels #}
             {% for entity in states if entity.attributes.battery_level is defined %}
               {% set raw_level = entity.attributes.battery_level %}
-              {% if raw_level | int(-1) >= 0 %}
-                {% set level = raw_level | int %}
+              {% set level = raw_level | float(-1) | int %}
+              {% if level >= 0 %}
                 {% if level <= 20 %}
                   {% set issues.batteries = issues.batteries + [
                     {'device': entity.name,
