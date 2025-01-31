@@ -171,7 +171,6 @@ script:
             {
               "currentTime": "{{ now().strftime("%Y-%m-%d %H:%M") }}",
               "timeOfDay": "{{ 'morning' if now().hour | int < 12 else 'afternoon' if now().hour | int < 17 else 'evening' }}",
-              "isWeekday": {{ (now().weekday() | int) < 5 | lower }},
               "isDetailedBrief": {{ is_detailed | lower }}
             }
 
