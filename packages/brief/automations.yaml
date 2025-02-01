@@ -76,8 +76,10 @@ automation:
         event_data:
           action: PLAY_TTS
     action:
-      - service: tts.cloud_say
+      - service: tts.speak
         target:
-          entity_id: media_player.kitchen_display
+          entity_id: tts.google_en_com
         data:
+          cache: true
+          media_player_entity_id: media_player.kitchen_display
           message: "{{ trigger.event.data.message }}"
