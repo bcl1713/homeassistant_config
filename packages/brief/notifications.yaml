@@ -185,7 +185,7 @@ script:
       - service: logbook.log
         data:
           message: "{{ agent_response }}"
-          title: Message Debug
+          name: Message Debug
       # Extract both versions
       - variables:
           condensed_brief: >
@@ -199,6 +199,16 @@ script:
             {% else %}
               {{ parts[0].strip() }}
             {% endif %}
+
+      - service: logbook.log
+        data:
+          message: "{{ condensed_brief }}"
+          name: Condensed Brief
+
+      - service: logbook.log
+        data:
+          message: "{{ detailed_brief }}"
+          name: Detailed Brief
 
       # Send notification with both action buttons
       - service: notify.mobile_app_pixel_7_pro
