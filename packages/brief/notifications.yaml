@@ -1,3 +1,4 @@
+# notifications.yaml
 script:
   daily_brief:
     alias: "Daily Status Brief"
@@ -5,18 +6,8 @@ script:
       - variables:
           weather_entity: weather.forecast_home
           calendar_hours: 72
-          # Determine brief type based on context
-          is_detailed: >
-            {% set hour = now().hour %}
-            {% if hour >= 6 and hour < 10 %}
-              true {# Morning detailed brief #}
-            {% elif hour >= 17 and hour < 23 %}
-              true {# Evening detailed brief #}
-            {% else %}
-              false {# Quick brief during the day #}
-            {% endif %}
           base_prompt: >
-            Instructions for generating a home status brief:
+            Instructions for generating home status briefs:
 
             Family Context:
             - Family members: Brian (Dad), Hester (Hess, Mom), Towner (TK), and Porter
@@ -24,25 +15,27 @@ script:
             - "Ashley's" on calendar means Hester is out with friends
 
             General Guidelines:
-            - Create a conversational, spoken-word appropriate response
-            - Start with an appropriate greeting based on the time (morning/afternoon/evening)
+            - Create two versions of the brief (condensed and detailed)
+            - Format the detailed version in markdown for email
+            - Make the condensed version conversational and brief
             - Avoid technical terms and Home Assistant terminology
             - Don't use emoji or special characters
             - Round numbers naturally (say "around 3" instead of "2.87")
 
-            {% if is_detailed %}
-            Content Requirements (Detailed Brief):
-            - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - List all calendar events chronologically up to 72 hours ahead, pay careful attention to dates
-            - Report all device issues (batteries, offline devices)
-            - For morning briefs on weekdays, include current commute time to work
-            - If events have locations, mention them without addresses
-            {% else %}
-            Content Requirements (Quick Brief):
+            Condensed Brief Requirements:
             - Only mention events in next 4 hours
             - Only report critical device issues (dead batteries, key offline devices)
             - Only include weather that could impact immediate plans
-            {% endif %}
+            - Brief should be less than 255 characters
+
+            Detailed Brief Requirements:
+            - Use markdown formatting with headers and sections
+            - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
+            - Give a full summary of the weather for the next 24 hours, highs, lows, percipitation, wind conditions and temperature trends.
+            - List all calendar events chronologically up to 72 hours ahead
+            - Report all device issues (batteries, offline devices)
+            - For morning briefs on weekdays, include current commute time to work
+            - If events have locations, mention them without addresses
 
             Time Context:
             - Current time: {{ now().strftime("%H:%M") }}
@@ -154,17 +147,18 @@ script:
               'critical': issues.critical | list
             } | tojson }}
 
-      # Process everything with AI
+      # Process everything with AI - now requesting both versions
       - service: conversation.process
         data:
           agent_id: conversation.google_generative_ai
           text: |-
+            Generate two versions of the brief (condensed and detailed) based on:
+
             Context Data:
             {
               "currentTime": "{{ now().strftime("%Y-%m-%d %H:%M") }}",
               "timeOfDay": "{{ 'morning' if now().hour | int < 12 else 'afternoon' if now().hour | int < 17 else 'evening' }}",
-              "isWeekday": {{ (now().weekday() | int) < 5 }},
-              "isDetailedBrief": {{ is_detailed | lower }}
+              "isWeekday": {{ (now().weekday() | int) < 5 }}
             }
 
             Weather Information:
@@ -180,45 +174,38 @@ script:
             {{ device_issues }}
 
             {{ base_prompt }}
-        response_variable: agent
 
-      # Send notifications
-      - choose:
-          # Morning notification (Detailed)
-          - conditions:
-              - condition: time
-                after: "06:00:00"
-                before: "10:00:00"
-            sequence:
-              - service: notify.mobile_app_pixel_7_pro
-                data:
-                  title: "Morning Brief"
-                  message: "{{ agent.response.speech.plain.speech }}"
-                  data:
-                    actions:
-                      - action: "PLAY_TTS"
-                        title: "Play on Kitchen Display"
+            Please provide output in the following format:
+            ---CONDENSED---
+            [Condensed conversational brief here]
+            ---DETAILED---
+            [Detailed markdown-formatted brief here]
+        response_variable: agent_response
 
-          # Evening notification (Detailed)
-          - conditions:
-              - condition: time
-                after: "17:00:00"
-                before: "23:00:00"
-            sequence:
-              - service: notify.mobile_app_pixel_7_pro
-                data:
-                  title: "Evening Brief"
-                  message: "{{ agent.response.speech.plain.speech }}"
-                  data:
-                    actions:
-                      - action: "PLAY_TTS"
-                        title: "Play on Kitchen Display"
-        default:
-          - service: notify.mobile_app_pixel_7_pro
-            data:
-              title: "Quick Update"
-              message: "{{ agent.response.speech.plain.speech }}"
-              data:
-                actions:
-                  - action: "PLAY_TTS"
-                    title: "Play on Kitchen Display"
+      # Extract both versions
+      - variables:
+          condensed_brief: >
+            {% set parts = agent_response.response.speech.plain.speech.split('---DETAILED---') %}
+            {% set condensed = parts[0].replace('---CONDENSED---', '').strip() %}
+            {{ condensed }}
+          detailed_brief: >
+            {% set parts = agent_response.response.speech.plain.speech.split('---DETAILED---') %}
+            {% if parts|length > 1 %}
+              {{ parts[1].strip() }}
+            {% else %}
+              {{ parts[0].strip() }}
+            {% endif %}
+
+      # Send notification with both action buttons
+      - service: notify.mobile_app_pixel_7_pro
+        data:
+          title: "Home Brief"
+          message: "{{ condensed_brief }}"
+          data:
+            actions:
+              - action: "PLAY_TTS"
+                title: "Play Extended Brief"
+                message: "{{ detailed_brief }}"
+              - action: "EMAIL_BRIEF"
+                title: "Email Full Brief"
+                message: "{{ detailed_brief }}"

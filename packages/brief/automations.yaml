@@ -1,8 +1,7 @@
-# Brief-related automations
-
+# automations.yaml
 automation:
   - alias: "Morning Brief Trigger"
-    description: "Triggers detailed brief in the morning on weekdays"
+    description: "Triggers brief in the morning on weekdays"
     trigger:
       - platform: time
         at: "06:45:00"
@@ -20,7 +19,7 @@ automation:
           entity_id: script.daily_brief
 
   - alias: "Evening Brief Trigger"
-    description: "Triggers detailed brief in the evening"
+    description: "Triggers brief in the evening"
     trigger:
       - platform: time
         at: "17:30:00"
@@ -30,7 +29,7 @@ automation:
           entity_id: script.daily_brief
 
   - alias: "Calendar Update Brief Trigger"
-    description: "Triggers quick brief when new events are about to start"
+    description: "Triggers brief when new events are about to start"
     trigger:
       platform: event
       event_type: calendar_event_start
@@ -46,7 +45,7 @@ automation:
           entity_id: script.daily_brief
 
   - alias: "Significant Changes Brief Trigger"
-    description: "Triggers quick brief on significant changes"
+    description: "Triggers brief on significant changes"
     trigger:
       # Device status changes
       - platform: event
@@ -59,7 +58,7 @@ automation:
           - input_boolean.chore_dishwasher_completed
           - input_boolean.chore_bathroom_completed
         to: "on"
-      # Weather alerts (if you have them)
+      # Weather alerts
       - platform: state
         entity_id: weather.forecast_home
         attribute: weather_alert
@@ -82,4 +81,25 @@ automation:
         data:
           cache: true
           media_player_entity_id: media_player.kitchen_display
-          message: "{{ trigger.event.data.message }}"
+          message: "{{ trigger.event.data.detailed_brief }}"
+
+  - alias: "Handle Brief Email Action"
+    description: "Sends detailed brief via email when requested"
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: EMAIL_BRIEF
+    action:
+      - service: notify.bcl1713_gmail_com
+        data:
+          title: >
+            {% set hour = now().hour %}
+            {% if hour < 12 %}
+              Morning Status Brief
+            {% elif hour < 17 %}
+              Afternoon Status Brief
+            {% else %}
+              Evening Status Brief
+            {% endif %}
+          message: "{{ trigger.event.data.detailed_brief }}"
