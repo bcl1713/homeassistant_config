@@ -103,3 +103,4 @@ automation:
               Evening Status Brief
             {% endif %}
           message: "{{ trigger.event.data.detailed_brief }}"
+          target: "bcl1713@gmail.com"
