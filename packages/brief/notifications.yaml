@@ -182,6 +182,10 @@ script:
             [Detailed markdown-formatted brief here]
         response_variable: agent_response
 
+      - service: logbook.log
+        data:
+          message: "{{ agent_response }}"
+          title: Message Debug
       # Extract both versions
       - variables:
           condensed_brief: >
