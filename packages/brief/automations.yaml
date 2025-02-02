@@ -91,15 +91,19 @@ automation:
         event_data:
           action: EMAIL_BRIEF
     action:
-      - service: notify.bcl1713_gmail_com
+      - service: logbook.log
         data:
-          title: >
-            {% set hour = now().hour %}
-            {% if hour < 12 %}
-              Morning Status Brief
-            {% elif hour < 17 %}
-              Afternoon Status Brief
-            {% else %}
-              Evening Status Brief
-            {% endif %}
-          message: "{{ trigger.event.data.data.detailed_brief }}"
+          title: "Incoming Data"
+          message: "{{ trigger.event.data }}"
+      # - service: notify.bcl1713_gmail_com
+      #   data:
+      #     title: >
+      #       {% set hour = now().hour %}
+      #       {% if hour < 12 %}
+      #         Morning Status Brief
+      #       {% elif hour < 17 %}
+      #         Afternoon Status Brief
+      #       {% else %}
+      #         Evening Status Brief
+      #       {% endif %}
+      #     message: "{{ trigger.event.data.data.detailed_brief }}"
