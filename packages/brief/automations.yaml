@@ -81,7 +81,7 @@ automation:
         data:
           cache: true
           media_player_entity_id: media_player.kitchen_display
-          message: "{{ trigger.event.data.detailed_brief }}"
+          message: "{{ trigger.event.data.data.detailed_brief }}"
 
   - alias: "Handle Brief Email Action"
     description: "Sends detailed brief via email when requested"
@@ -102,5 +102,4 @@ automation:
             {% else %}
               Evening Status Brief
             {% endif %}
-          message: "{{ trigger.event.data.detailed_brief }}"
-          target: "bcl1713@gmail.com"
+          message: "{{ trigger.event.data.data.detailed_brief }}"

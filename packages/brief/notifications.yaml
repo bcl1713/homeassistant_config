@@ -26,12 +26,12 @@ script:
             - Only mention events in next 4 hours
             - Only report critical device issues (dead batteries, key offline devices)
             - Only include weather that could impact immediate plans
-            - Brief should be less than 255 characters
+            - Response should be close to but less than 255 characters
 
             Detailed Brief Requirements:
             - Use markdown formatting with headers and sections
             - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - Give a full summary of the weather for the next 24 hours, highs, lows, percipitation, wind conditions and temperature trends.
+            - Give me a summary of the weather for the next 24 hours including high and low temps, percipitation, wind, and temperature trends through the day
             - List all calendar events chronologically up to 72 hours ahead
             - Report all device issues (batteries, offline devices)
             - For morning briefs on weekdays, include current commute time to work
@@ -182,10 +182,6 @@ script:
             [Detailed markdown-formatted brief here]
         response_variable: agent_response
 
-      - service: logbook.log
-        data:
-          message: "{{ agent_response }}"
-          name: Message Debug
       # Extract both versions
       - variables:
           condensed_brief: >
@@ -200,26 +196,20 @@ script:
               {{ parts[0].strip() }}
             {% endif %}
 
-      - service: logbook.log
-        data:
-          message: "{{ condensed_brief }}"
-          name: Condensed Brief
-
-      - service: logbook.log
-        data:
-          message: "{{ detailed_brief }}"
-          name: Detailed Brief
-
       # Send notification with both action buttons
       - service: notify.mobile_app_pixel_7_pro
         data:
           title: "Home Brief"
           message: "{{ condensed_brief }}"
           data:
+            condensed: "{{ condensed_brief }}"
+            detailed: "{{ detailed_brief }}"
             actions:
               - action: "PLAY_TTS"
                 title: "Play Extended Brief"
-                message: "{{ detailed_brief }}"
+                data:
+                  detailed_brief: "{{ detailed_brief }}"
               - action: "EMAIL_BRIEF"
                 title: "Email Full Brief"
-                message: "{{ detailed_brief }}"
+                data:
+                  detailed_brief: "{{ detailed_brief }}"
