@@ -72,13 +72,23 @@ automation:
         event_data:
           action: PLAY_TTS
     action:
+      - variables:
+          full_brief: >
+            {% set text = "" %}
+            {% for i in range(1, 9) %}
+              {% set part = states('input_text.brief_detailed_' ~ i) %}
+              {% if part != "unknown" and part != "" %}
+                {% set text = text ~ part %}
+              {% endif %}
+            {% endfor %}
+            {{ text }}
       - service: tts.speak
         target:
           entity_id: tts.google_en_com
         data:
           cache: true
           media_player_entity_id: media_player.kitchen_display
-          message: "{{ states('input_text.brief_detailed') }}"
+          message: "{{ full_brief }}"
 
   - alias: "Handle Brief Email Action"
     description: "Sends detailed brief via email when requested"
@@ -88,6 +98,16 @@ automation:
         event_data:
           action: EMAIL_BRIEF
     action:
+      - variables:
+          full_brief: >
+            {% set text = "" %}
+            {% for i in range(1, 9) %}
+              {% set part = states('input_text.brief_detailed_' ~ i) %}
+              {% if part != "unknown" and part != "" %}
+                {% set text = text ~ part %}
+              {% endif %}
+            {% endfor %}
+            {{ text }}
       - service: notify.bcl1713_gmail_com
         data:
           title: >
@@ -99,4 +119,4 @@ automation:
             {% else %}
               Evening Status Brief
             {% endif %}
-          message: "{{ states('input_text.brief_detailed') }}"
+          message: "{{ full_brief }}"
