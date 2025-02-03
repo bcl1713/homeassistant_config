@@ -211,7 +211,7 @@ script:
               target:
                 entity_id: "input_text.brief_detailed_{{ repeat.index }}"
               data:
-                value: "{{ fromjson(detailed_parts)[repeat.index - 1] }}"
+                value: "{{ from_json(detailed_parts)[repeat.index - 1] }}"
 
       # Send notification with both action buttons
       - service: notify.mobile_app_pixel_7_pro
