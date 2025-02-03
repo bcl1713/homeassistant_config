@@ -31,7 +31,7 @@ script:
             Detailed Brief Requirements:
             - Use markdown formatting with headers and sections
             - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - Give me a summary of the weather for the next 24 hours including high and low temps, percipitation, wind, and temperature trends through the day.
+            - Give me a summary of the weather for the next 24 hours tell me the high temperature and low temperature, percipitation, wind, and temperature trends through the day.
             - List all calendar events chronologically up to 72 hours ahead
             - Report all device issues (batteries, offline devices)
             - For morning briefs on weekdays, include current commute time to work
