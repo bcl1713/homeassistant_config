@@ -195,9 +195,6 @@ script:
             {% else %}
               {{ parts[0].strip() }}
             {% endif %}
-          part_length: 250
-          total_parts: "{{ (detailed_brief|length / 250)|round(0, 'ceil')|int }}"
-          total_inputs: 8
 
       - service: mqtt.publish
         data:
@@ -208,30 +205,6 @@ script:
               "detailed_brief": "{{ detailed_brief | replace("\n", "<br>") }}",
               "condensed_brief": "{{ condensed_brief }}"
             }
-
-      # Clear the input helpers
-      - repeat:
-          count: "{{ total_inputs }}"
-          sequence:
-            - service: input_text.set_value
-              target:
-                entity_id: "input_text.brief_detailed_{{ repeat.index }}"
-              data:
-                value: ""
-
-      # Store each part in its own input_text helper
-      - repeat:
-          count: "{{ total_parts }}"
-          sequence:
-            - service: input_text.set_value
-              target:
-                entity_id: "input_text.brief_detailed_{{ repeat.index }}"
-              data:
-                value: >-
-                  {{ detailed_brief[
-                    ((repeat.index - 1) * part_length):
-                    ((repeat.index - 1) * part_length + part_length)
-                  ] }}
 
       # Send notification with both action buttons
       - service: notify.mobile_app_pixel_7_pro

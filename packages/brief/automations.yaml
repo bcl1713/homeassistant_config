@@ -72,23 +72,13 @@ automation:
         event_data:
           action: PLAY_TTS
     action:
-      - variables:
-          full_brief: >
-            {%- set ns = namespace(text=[]) -%}
-            {%- for i in range(1, 9) -%}
-              {%- set part = states('input_text.brief_detailed_' ~ i) | replace('#', '') | replace("*", '') | trim -%}
-              {%- if part not in ['unknown', ''] -%}
-                {%- set ns.text = ns.text + [part] -%}
-              {%- endif -%}
-            {%- endfor -%}
-            {{ ns.text | join('') }}
       - service: tts.speak
         target:
           entity_id: tts.google_en_com
         data:
           cache: true
           media_player_entity_id: media_player.kitchen_display
-          message: "{{ full_brief }}"
+          message: "{{ state_attr('sensor.ai_brief', 'detailed_brief') }}"
 
   - alias: "Handle Brief Email Action"
     description: "Sends detailed brief via email when requested"

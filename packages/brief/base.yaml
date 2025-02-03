@@ -1,29 +1,3 @@
-input_text:
-  brief_detailed_1:
-    name: "Brief Detailed Content Part 1"
-    max: 255
-  brief_detailed_2:
-    name: "Brief Detailed Content Part 2"
-    max: 255
-  brief_detailed_3:
-    name: "Brief Detailed Content Part 3"
-    max: 255
-  brief_detailed_4:
-    name: "Brief Detailed Content Part 4"
-    max: 255
-  brief_detailed_5:
-    name: "Brief Detailed Content Part 5"
-    max: 255
-  brief_detailed_6:
-    name: "Brief Detailed Content Part 6"
-    max: 255
-  brief_detailed_7:
-    name: "Brief Detailed Content Part 7"
-    max: 255
-  brief_detailed_8:
-    name: "Brief Detailed Content Part 8"
-    max: 255
-
 mqtt:
   sensor:
     - name: "AI Brief"
