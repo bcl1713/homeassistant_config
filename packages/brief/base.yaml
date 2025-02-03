@@ -3,4 +3,4 @@
 input_text:
   brief_detailed:
     name: "Detailed Brief Content"
-    mas: 2000
+    max: 2000
