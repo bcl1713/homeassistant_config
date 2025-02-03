@@ -99,7 +99,7 @@ automation:
           action: EMAIL_BRIEF
     action:
       - variables:
-        full_brief: >-
+        full_brief: >
           {%- set text = [] -%}
           {%- for i in range(1, 9) -%}
             {%- set part = states('input_text.brief_detailed_' ~ i) -%}
