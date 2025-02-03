@@ -38,7 +38,7 @@ automation:
       - condition: template
         value_template: "{{ trigger.event.data.offset_reached == false }}"
       - condition: template
-        value_template: "{{ trigger.event.data.offset == 1800 }}" # 30 minutes in seconds
+        value_template: "{{ trigger.event.data.offset == 1800 }}"
     action:
       - service: script.turn_on
         target:
@@ -47,18 +47,15 @@ automation:
   - alias: "Significant Changes Brief Trigger"
     description: "Triggers brief on significant changes"
     trigger:
-      # Device status changes
       - platform: event
         event_type: state_changed
         event_data:
           domain: device_tracker
-      # Chore completion
       - platform: state
         entity_id:
           - input_boolean.chore_dishwasher_completed
           - input_boolean.chore_bathroom_completed
         to: "on"
-      # Weather alerts
       - platform: state
         entity_id: weather.forecast_home
         attribute: weather_alert
@@ -81,7 +78,7 @@ automation:
         data:
           cache: true
           media_player_entity_id: media_player.kitchen_display
-          message: "{{ trigger.event.data.data.detailed_brief }}"
+          message: "{{ states('input_text.brief_detailed') }}"
 
   - alias: "Handle Brief Email Action"
     description: "Sends detailed brief via email when requested"
@@ -91,19 +88,15 @@ automation:
         event_data:
           action: EMAIL_BRIEF
     action:
-      - service: logbook.log
+      - service: notify.bcl1713_gmail_com
         data:
-          title: "Incoming Data"
-          message: "{{ trigger.event.data }}"
-      # - service: notify.bcl1713_gmail_com
-      #   data:
-      #     title: >
-      #       {% set hour = now().hour %}
-      #       {% if hour < 12 %}
-      #         Morning Status Brief
-      #       {% elif hour < 17 %}
-      #         Afternoon Status Brief
-      #       {% else %}
-      #         Evening Status Brief
-      #       {% endif %}
-      #     message: "{{ trigger.event.data.data.detailed_brief }}"
+          title: >
+            {% set hour = now().hour %}
+            {% if hour < 12 %}
+              Morning Status Brief
+            {% elif hour < 17 %}
+              Afternoon Status Brief
+            {% else %}
+              Evening Status Brief
+            {% endif %}
+          message: "{{ states('input_text.brief_detailed') }}"

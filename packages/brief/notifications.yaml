@@ -31,7 +31,7 @@ script:
             Detailed Brief Requirements:
             - Use markdown formatting with headers and sections
             - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - Give me a summary of the weather for the next 24 hours including high and low temps, percipitation, wind, and temperature trends through the day
+            - Give me a summary of the weather for the next 24 hours including high and low temps, percipitation, wind, and temperature trends through the day.
             - List all calendar events chronologically up to 72 hours ahead
             - Report all device issues (batteries, offline devices)
             - For morning briefs on weekdays, include current commute time to work
@@ -196,20 +196,21 @@ script:
               {{ parts[0].strip() }}
             {% endif %}
 
+      # Store the detailed brief
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.brief_detailed
+        data:
+          value: "{{ detailed_brief }}"
+
       # Send notification with both action buttons
       - service: notify.mobile_app_pixel_7_pro
         data:
           title: "Home Brief"
           message: "{{ condensed_brief }}"
           data:
-            condensed: "{{ condensed_brief }}"
-            detailed: "{{ detailed_brief }}"
             actions:
               - action: "PLAY_TTS"
                 title: "Play Extended Brief"
-                data:
-                  detailed_brief: "{{ detailed_brief }}"
               - action: "EMAIL_BRIEF"
                 title: "Email Full Brief"
-                data:
-                  detailed_brief: "{{ detailed_brief }}"
