@@ -110,4 +110,4 @@ automation:
             {% else %}
               Evening Status Brief
             {% endif %}
-          message: "{{ state_attr('sensor.ai_brief', 'detailed_brief' }}"
+          message: "{{ state_attr('sensor.ai_brief', 'detailed_brief') }}"
