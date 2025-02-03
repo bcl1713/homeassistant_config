@@ -198,6 +198,16 @@ script:
           part_length: 250
           total_parts: "{{ (detailed_brief|length / 250)|round(0, 'ceil')|int }}"
 
+      # Clear the input helpers
+      - repeat:
+        count: 8
+        sequence:
+          - service: input_text.set_value
+            target:
+              entity_id: "input_text.brief_detailed_{{ repeat.index }}"
+            data:
+              value: ""
+
       # Store each part in its own input_text helper
       - repeat:
           count: "{{ total_parts }}"
