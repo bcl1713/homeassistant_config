@@ -99,15 +99,15 @@ automation:
           action: EMAIL_BRIEF
     action:
       - variables:
-          full_brief: >
-            {% set text = "" %}
-            {% for i in range(1, 9) %}
-              {% set part = states('input_text.brief_detailed_' ~ i) %}
-              {% if part != "unknown" and part != "" %}
-                {% set text = text ~ part %}
-              {% endif %}
-            {% endfor %}
-            {{ text }}
+        full_brief: >-
+          {%- set text = [] -%}
+          {%- for i in range(1, 9) -%}
+            {%- set part = states('input_text.brief_detailed_' ~ i) -%}
+            {%- if part not in ['unknown', ''] -%}
+              {%- set text = text + [part] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ text | join(' ') }}
       - service: notify.bcl1713_gmail_com
         data:
           target: "bcl1713@gmail.com"
