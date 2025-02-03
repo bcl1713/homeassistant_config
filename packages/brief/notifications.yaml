@@ -195,23 +195,22 @@ script:
             {% else %}
               {{ parts[0].strip() }}
             {% endif %}
-          detailed_parts: >
-            {% set parts = [] %}
-            {% set text = detailed_brief %}
-            {% for i in range(0, (text|length / 250)|round(0, 'ceil')|int) %}
-              {% set parts = parts + [text[i * 250:i * 250 + 250]] %}
-            {% endfor %}
-            {{ parts|tojson }}
+          part_length: 250
+          total_parts: "{{ (detailed_brief|length / 250)|round(0, 'ceil')|int }}"
 
       # Store each part in its own input_text helper
       - repeat:
-          count: "{{ (detailed_brief|length / 250)|round(0, 'ceil')|int }}"
+          count: "{{ total_parts }}"
           sequence:
             - service: input_text.set_value
               target:
                 entity_id: "input_text.brief_detailed_{{ repeat.index }}"
               data:
-                value: "{{ from_json(detailed_parts)[repeat.index - 1] }}"
+                value: >-
+                  {{ detailed_brief[
+                    ((repeat.index - 1) * part_length):
+                    ((repeat.index - 1) * part_length + part_length)
+                  ] }}
 
       # Send notification with both action buttons
       - service: notify.mobile_app_pixel_7_pro
