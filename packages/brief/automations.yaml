@@ -78,7 +78,7 @@ automation:
         data:
           cache: true
           media_player_entity_id: media_player.kitchen_display
-          message: "{{ state_attr('sensor.ai_brief', 'detailed_brief') }}"
+          message: "{{ state_attr('sensor.ai_brief', 'detailed_brief') | replace('*', '') | replace('#', '') }}"
 
   - alias: "Handle Brief Email Action"
     description: "Sends detailed brief via email when requested"
