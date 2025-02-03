@@ -200,7 +200,7 @@ script:
           total_inputs: 8
 
       - service: mqtt.publish
-        data_template:
+        data:
           topic: "home/ai/response"
           payload: >
             {
