@@ -23,3 +23,10 @@ input_text:
   brief_detailed_8:
     name: "Brief Detailed Content Part 8"
     max: 255
+
+sensor:
+  - platform: mqtt
+    name: "AI Brief"
+    state_topic: "home/ai/response"
+    value_template: "{{ value_json.state }}"
+    json_attributes_topic: "home/ai/response"

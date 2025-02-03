@@ -199,6 +199,16 @@ script:
           total_parts: "{{ (detailed_brief|length / 250)|round(0, 'ceil')|int }}"
           total_inputs: 8
 
+      - service: mqtt.publish
+        data_template:
+          topic: "home/ai/response"
+          payload: >
+            {
+              "state": "{{ now().isoformat() }}",
+              "detailed_brief": "{{ detailed_brief }}"
+              "condensed_brief": "{{ condensed_brief }}"
+            }
+
       # Clear the input helpers
       - repeat:
           count: "{{ total_inputs }}"
