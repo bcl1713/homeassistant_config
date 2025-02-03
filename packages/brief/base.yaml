@@ -30,4 +30,3 @@ mqtt:
       state_topic: "home/ai/response"
       value_template: "{{ value_json.state }}"
       json_attributes_topic: "home/ai/response"
-      json_attributes_tempate: "{{ value_json | tojson }}"
