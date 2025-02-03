@@ -98,26 +98,6 @@ automation:
         event_data:
           action: EMAIL_BRIEF
     action:
-      - variables:
-          full_brief: >-
-            {%- set ns = namespace(text=[]) -%}
-            {%- for i in range(1, 9) -%}
-              {%- set part = states('input_text.brief_detailed_' ~ i) | replace('\n', '<br>') | trim -%}
-              {%- if part not in ['unknown', ''] -%}
-                {%- set ns.text = ns.text + [part] -%}
-              {%- endif -%}
-            {%- endfor -%}
-            {{ ns.text | join('') }}
-      - service: system_log.write
-        data:
-          message: "Full: {{ full_brief }}"
-      - service: system_log.write
-        data:
-          message: >
-            Debug values:
-            {% for i in range(1, 9) %}
-            brief_{{ i }}: {{ states('input_text.brief_detailed_' ~ i) }}
-            {% endfor %}
       - service: notify.bcl1713_gmail_com
         data:
           target: "bcl1713@gmail.com"
@@ -130,4 +110,4 @@ automation:
             {% else %}
               Evening Status Brief
             {% endif %}
-          message: "{{ full_brief }}"
+          message: "{{ state_attr('sensor.ai_brief', 'detailed_brief' }}"
