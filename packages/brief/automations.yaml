@@ -109,8 +109,8 @@ automation:
             {% endfor %}
             {{ text }}
       - service: notify.bcl1713_gmail_com
-        target: "bcl1713@gmail.com"
         data:
+          target: "bcl1713@gmail.com"
           title: >
             {% set hour = now().hour %}
             {% if hour < 12 %}
