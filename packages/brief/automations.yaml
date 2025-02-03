@@ -110,7 +110,7 @@ automation:
             {{ text | join(' ') }}
       - service: system_log.write
         data:
-          message: "{{ full_brief }}"
+          message: "Full: {{ full_brief }}"
       - service: system_log.write
         data:
           message: >
