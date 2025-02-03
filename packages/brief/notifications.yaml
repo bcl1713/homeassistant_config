@@ -21,6 +21,7 @@ script:
             - Avoid technical terms and Home Assistant terminology
             - Don't use emoji or special characters
             - Round numbers naturally (say "around 3" instead of "2.87")
+            - Don't use any double quotes (") as it breaks my parser
 
             Condensed Brief Requirements:
             - Only mention events in next 4 hours
