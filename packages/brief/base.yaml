@@ -1,0 +1,6 @@
+mqtt:
+  sensor:
+    - name: "AI Brief"
+      state_topic: "home/ai/response"
+      value_template: "{{ value_json.state }}"
+      json_attributes_topic: "home/ai/response"

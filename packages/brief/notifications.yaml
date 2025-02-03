@@ -1,0 +1,220 @@
+# notifications.yaml
+script:
+  daily_brief:
+    alias: "Daily Status Brief"
+    sequence:
+      - variables:
+          weather_entity: weather.forecast_home
+          calendar_hours: 72
+          base_prompt: >
+            Instructions for generating home status briefs:
+
+            Family Context:
+            - Family members: Brian (Dad), Hester (Hess, Mom), Towner (TK), and Porter
+            - When a family member's name appears in an event title or calendar name, treat it as their appointment
+            - "Ashley's" on calendar means Hester is out with friends
+
+            General Guidelines:
+            - Create two versions of the brief (condensed and detailed)
+            - Format the detailed version in markdown for email
+            - Make the condensed version conversational and brief
+            - Avoid technical terms and Home Assistant terminology
+            - Don't use emoji or special characters
+            - Round numbers naturally (say "around 3" instead of "2.87")
+            - Don't use any double quotes (") as it breaks my parser
+
+            Condensed Brief Requirements:
+            - Only mention events in next 4 hours
+            - Only report critical device issues (dead batteries, key offline devices)
+            - Only include weather that could impact immediate plans
+            - Response should be close to but less than 255 characters
+
+            Detailed Brief Requirements:
+            - Use markdown formatting with headers and sections
+            - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
+            - Give me a summary of the weather for the just the next 24 hours tell me the high temperature and low temperature, percipitation, wind, and temperature trends through the day.
+            - List all calendar events chronologically up to 72 hours ahead pay attention to the time offset. All times should be reported in the same offset as the family calendar entries.
+            - Report all device issues (batteries, offline devices)
+            - For morning briefs on weekdays, include current commute time to work
+            - If events have locations, mention them without addresses
+
+            Time Context:
+            - Current time: {{ now().strftime("%H:%M") }}
+            - If mentioning times, use conversational format ("in about 2 hours" rather than "at 14:30")
+
+      # Get weather forecast
+      - service: weather.get_forecasts
+        data:
+          type: hourly
+        target:
+          entity_id: "{{ weather_entity }}"
+        response_variable: daily_forecast
+
+      # Get calendar events
+      - service: calendar.get_events
+        data:
+          duration:
+            hours: "{{ calendar_hours }}"
+        target:
+          entity_id: >-
+            {{ states.calendar | map(attribute='entity_id') | list }}
+        response_variable: events_response
+
+      # Get commute information
+      - variables:
+          commute_info: >
+            {% if now().weekday() | int < 5 and now().hour | int < 10 %}
+              {{ { 
+                'commute_time': states('sensor.travel_time_to_brian_s_work'),
+                'is_workday': true
+              } | tojson }}
+            {% else %}
+              {{ { 'is_workday': false } | tojson }}
+            {% endif %}
+
+      # Process weather data
+      - variables:
+          processed_weather: >
+            {% set weather = namespace(alerts=[], conditions=[]) %}
+            {% set prev_condition = None %}
+            {% for forecast in daily_forecast if forecast is mapping %}
+              {% if forecast.get('condition', '') != prev_condition %}
+                {% set temp = forecast.get('temperature') %}
+                {% if temp is string %}
+                  {% set temp = temp | float(0) %}
+                {% endif %}
+                {% set prob = forecast.get('precipitation_probability') %}
+                {% if prob is string %}
+                  {% set prob = prob | float(0) %}
+                {% endif %}
+                {% set weather.conditions = weather.conditions + [
+                  {'time': forecast.get('datetime', ''),
+                   'condition': forecast.get('condition', ''),
+                   'temperature': temp,
+                   'precipitation_probability': prob}
+                ] %}
+              {% endif %}
+              {% if forecast.get('weather_alert') %}
+                {% set weather.alerts = weather.alerts + [forecast.get('weather_alert')] %}
+              {% endif %}
+              {% set prev_condition = forecast.get('condition', '') %}
+            {% endfor %}
+            {{ {
+              'alerts': weather.alerts | list,
+              'conditions': weather.conditions | list
+            } | tojson }}
+
+      # Get device issues
+      - variables:
+          device_issues: >
+            {% set issues = namespace(batteries=[], offline=[], critical=[]) %}
+
+            {# Check battery levels #}
+            {% for entity in states if entity.attributes.battery_level is defined %}
+              {% set raw_level = entity.attributes.battery_level %}
+              {% set level = raw_level | float(-1) | int %}
+              {% if level >= 0 %}
+                {% if level <= 20 %}
+                  {% set issues.batteries = issues.batteries + [
+                    {'device': entity.name,
+                     'level': level,
+                     'is_critical': level <= 10}
+                  ] %}
+                  {% if level <= 10 %}
+                    {% set issues.critical = issues.critical + [
+                      {'type': 'battery',
+                       'device': entity.name,
+                       'details': 'Battery at ' ~ level ~ '%'}
+                    ] %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+
+            {# Check offline devices #}
+            {% set critical_devices = ['camera', 'alarm_control_panel', 'lock'] %}
+            {% for entity in states if entity.state == 'unavailable' %}
+              {% if entity.domain in critical_devices %}
+                {% set issues.critical = issues.critical + [
+                  {'type': 'offline',
+                   'device': entity.name,
+                   'details': 'Critical device offline'}
+                ] %}
+              {% endif %}
+            {% endfor %}
+
+            {{ {
+              'batteries': issues.batteries | list,
+              'critical': issues.critical | list
+            } | tojson }}
+
+      # Process everything with AI - now requesting both versions
+      - service: conversation.process
+        data:
+          agent_id: conversation.google_generative_ai
+          text: |-
+            Generate two versions of the brief (condensed and detailed) based on:
+
+            Context Data:
+            {
+              "currentTime": "{{ now().strftime("%Y-%m-%d %H:%M") }}",
+              "timeOfDay": "{{ 'morning' if now().hour | int < 12 else 'afternoon' if now().hour | int < 17 else 'evening' }}",
+              "isWeekday": {{ (now().weekday() | int) < 5 }}
+            }
+
+            Weather Information:
+            {{ processed_weather }}
+
+            Calendar Events:
+            {{ events_response | tojson }}
+
+            Commute Information:
+            {{ commute_info }}
+
+            Device Status:
+            {{ device_issues }}
+
+            {{ base_prompt }}
+
+            Please provide output in the following format:
+            ---CONDENSED---
+            [Condensed conversational brief here]
+            ---DETAILED---
+            [Detailed markdown-formatted brief here]
+        response_variable: agent_response
+
+      # Extract both versions
+      - variables:
+          condensed_brief: >
+            {% set parts = agent_response.response.speech.plain.speech.split('---DETAILED---') %}
+            {% set condensed = parts[0].replace('---CONDENSED---', '').strip() %}
+            {{ condensed }}
+          detailed_brief: >
+            {% set parts = agent_response.response.speech.plain.speech.split('---DETAILED---') %}
+            {% if parts|length > 1 %}
+              {{ parts[1].strip() }}
+            {% else %}
+              {{ parts[0].strip() }}
+            {% endif %}
+
+      - service: mqtt.publish
+        data:
+          topic: "home/ai/response"
+          payload: >
+            {
+              "state": "{{ now().isoformat() }}",
+              "detailed_brief": "{{ detailed_brief | replace("\n", "<br>") }}",
+              "condensed_brief": "{{ condensed_brief }}"
+            }
+
+      # Send notification with both action buttons
+      - service: notify.mobile_app_pixel_7_pro
+        data:
+          title: "Home Brief"
+          message: "{{ condensed_brief }}"
+          data:
+            actions:
+              - action: "PLAY_TTS"
+                title: "Play Extended Brief"
+              - action: "EMAIL_BRIEF"
+                title: "Email Full Brief"
