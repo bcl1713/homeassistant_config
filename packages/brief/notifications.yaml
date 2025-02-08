@@ -64,7 +64,7 @@ script:
 
       # Process weather data
       - variables:
-        processed_weather: { { daily_forecast | tojson } }
+        processed_weather: "{{ daily_forecast | tojson }}"
       # - variables:
       #     processed_weather: >
       #       {% set weather = namespace(alerts=[], conditions=[]) %}
