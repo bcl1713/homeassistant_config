@@ -5,11 +5,11 @@ script:
     sequence:
       - variables:
           weather_entity: weather.forecast_home
-          calendar_hours: 72
           base_prompt: >
             Instructions for generating home status briefs:
 
-            Family Context:
+            Calendar Context:
+            - Check all calendar's you have access to for events in the coming week
             - Family members: Brian (Dad), Hester (Hess, Mom), Towner (TK), and Porter
             - When a family member's name appears in an event title or calendar name, treat it as their appointment
             - "Ashley's" on calendar means Hester is out with friends
@@ -50,16 +50,6 @@ script:
           entity_id: "{{ weather_entity }}"
         response_variable: daily_forecast
 
-      # Get calendar events
-      - service: calendar.get_events
-        data:
-          duration:
-            hours: "{{ calendar_hours }}"
-        target:
-          entity_id: >-
-            {{ states.calendar | map(attribute='entity_id') | list }}
-        response_variable: events_response
-
       # Get commute information
       - variables:
           commute_info: >
@@ -74,42 +64,44 @@ script:
 
       # Process weather data
       - variables:
-          processed_weather: >
-            {% set weather = namespace(alerts=[], conditions=[]) %}
-            {% set prev_condition = None %}
-            {% for forecast in daily_forecast if forecast is mapping %}
-              {% if forecast.get('condition', '') != prev_condition %}
-                {% set temp = forecast.get('temperature') %}
-                {% if temp is string %}
-                  {% set temp = temp | float(0) %}
-                {% endif %}
-                {% set prob = forecast.get('precipitation_probability') %}
-                {% if prob is string %}
-                  {% set prob = prob | float(0) %}
-                {% endif %}
-                {% set weather.conditions = weather.conditions + [
-                  {'time': forecast.get('datetime', ''),
-                   'condition': forecast.get('condition', ''),
-                   'temperature': temp,
-                   'precipitation_probability': prob}
-                ] %}
-              {% endif %}
-              {% if forecast.get('weather_alert') %}
-                {% set weather.alerts = weather.alerts + [forecast.get('weather_alert')] %}
-              {% endif %}
-              {% set prev_condition = forecast.get('condition', '') %}
-            {% endfor %}
-            {{ {
-              'alerts': weather.alerts | list,
-              'conditions': weather.conditions | list
-            } | tojson }}
-
+        processed_weather: { { daily_forecast | tojson } }
+      # - variables:
+      #     processed_weather: >
+      #       {% set weather = namespace(alerts=[], conditions=[]) %}
+      #       {% set prev_condition = None %}
+      #       {% for forecast in daily_forecast if forecast is mapping %}
+      #         {% if forecast.get('condition', '') != prev_condition %}
+      #           {% set temp = forecast.get('temperature') %}
+      #           {% if temp is string %}
+      #             {% set temp = temp | float(0) %}
+      #           {% endif %}
+      #           {% set prob = forecast.get('precipitation_probability') %}
+      #           {% if prob is string %}
+      #             {% set prob = prob | float(0) %}
+      #           {% endif %}
+      #           {% set weather.conditions = weather.conditions + [
+      #             {'time': forecast.get('datetime', ''),
+      #              'condition': forecast.get('condition', ''),
+      #              'temperature': temp,
+      #              'precipitation_probability': prob}
+      #           ] %}
+      #         {% endif %}
+      #         {% if forecast.get('weather_alert') %}
+      #           {% set weather.alerts = weather.alerts + [forecast.get('weather_alert')] %}
+      #         {% endif %}
+      #         {% set prev_condition = forecast.get('condition', '') %}
+      #       {% endfor %}
+      #       {{ {
+      #         'alerts': weather.alerts | list,
+      #         'conditions': weather.conditions | list
+      #       } | tojson }}
+      #
       # Get device issues
       - variables:
           device_issues: >
             {% set issues = namespace(batteries=[], offline=[], critical=[]) %}
 
-            {# Check battery levels #}
+            {# Check battery levels in attributes #}
             {% for entity in states if entity.attributes.battery_level is defined %}
               {% set raw_level = entity.attributes.battery_level %}
               {% set level = raw_level | float(-1) | int %}
@@ -130,6 +122,24 @@ script:
                 {% endif %}
               {% endif %}
             {% endfor %}
+            {# Check battery levels in attributes #}
+            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+              {% if 0 <= entity.state | int <= 30 %}
+                {% set issues.batteries = issues.batteries + [
+                  {'device': entity.name,
+                    'level': entity.state,
+                    'is_critical': entity.state | int <= 10}
+                 ] %}
+                {% if entity.state | int <= 10 %}
+                  {% set issues.critical = issues.critical + [
+                    {'type': 'battery',
+                     'device': entity.name,
+                     'details': 'Battery at ' ~ entity.state ~ '%'}
+                  ] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+
 
             {# Check offline devices #}
             {% set critical_devices = ['camera', 'alarm_control_panel', 'lock'] %}
@@ -164,9 +174,6 @@ script:
 
             Weather Information:
             {{ processed_weather }}
-
-            Calendar Events:
-            {{ events_response | tojson }}
 
             Commute Information:
             {{ commute_info }}
