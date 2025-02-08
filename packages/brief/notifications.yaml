@@ -9,7 +9,6 @@ script:
             Instructions for generating home status briefs:
 
             Calendar Context:
-            - Check all calendar's you have access to for events in the coming week
             - Family members: Brian (Dad), Hester (Hess, Mom), Towner (TK), and Porter
             - When a family member's name appears in an event title or calendar name, treat it as their appointment
             - "Ashley's" on calendar means Hester is out with friends
@@ -50,6 +49,16 @@ script:
           entity_id: "{{ weather_entity }}"
         response_variable: daily_forecast
 
+      # Get calendar events
+      - service: calendar.get_events
+        data:
+          duration:
+            days: 7
+        target:
+          entity_id: >-
+            {{ states.calendar | map(attribute='entity_id') | list }}
+        response_variable: events_response
+
       # Get commute information
       - variables:
           commute_info: >
@@ -65,36 +74,6 @@ script:
       # Process weather data
       - variables:
           processed_weather: "{{ daily_forecast | tojson }}"
-      # - variables:
-      #     processed_weather: >
-      #       {% set weather = namespace(alerts=[], conditions=[]) %}
-      #       {% set prev_condition = None %}
-      #       {% for forecast in daily_forecast if forecast is mapping %}
-      #         {% if forecast.get('condition', '') != prev_condition %}
-      #           {% set temp = forecast.get('temperature') %}
-      #           {% if temp is string %}
-      #             {% set temp = temp | float(0) %}
-      #           {% endif %}
-      #           {% set prob = forecast.get('precipitation_probability') %}
-      #           {% if prob is string %}
-      #             {% set prob = prob | float(0) %}
-      #           {% endif %}
-      #           {% set weather.conditions = weather.conditions + [
-      #             {'time': forecast.get('datetime', ''),
-      #              'condition': forecast.get('condition', ''),
-      #              'temperature': temp,
-      #              'precipitation_probability': prob}
-      #           ] %}
-      #         {% endif %}
-      #         {% if forecast.get('weather_alert') %}
-      #           {% set weather.alerts = weather.alerts + [forecast.get('weather_alert')] %}
-      #         {% endif %}
-      #         {% set prev_condition = forecast.get('condition', '') %}
-      #       {% endfor %}
-      #       {{ {
-      #         'alerts': weather.alerts | list,
-      #         'conditions': weather.conditions | list
-      #       } | tojson }}
       #
       # Get device issues
       - variables:
@@ -174,6 +153,9 @@ script:
 
             Weather Information:
             {{ processed_weather }}
+
+            Calendar Events:
+            {{ events_response | tojson }}
 
             Commute Information:
             {{ commute_info }}
