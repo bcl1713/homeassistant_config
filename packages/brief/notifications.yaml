@@ -53,10 +53,9 @@ script:
       - service: calendar.get_events
         data:
           duration:
-            days: 7
+            hours: 168
         target:
-          entity_id: >-
-            {{ states.calendar | map(attribute='entity_id') | list }}
+          label_id: brief
         response_variable: events_response
 
       # Get commute information
