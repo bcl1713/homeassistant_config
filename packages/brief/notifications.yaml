@@ -15,7 +15,7 @@ script:
 
             General Guidelines:
             - Create two versions of the brief (condensed and detailed)
-            - Format the detailed version in markdown for email
+            - Format the detailed version in markdown for display
             - Make the condensed version conversational and brief
             - Avoid technical terms and Home Assistant terminology
             - Don't use emoji or special characters
@@ -31,8 +31,7 @@ script:
             Detailed Brief Requirements:
             - Use markdown formatting with headers and sections
             - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - Give me a summary of the weather for the just the next 24 hours tell me the high temperature and low temperature, percipitation, wind, and temperature trends through the day.
-            - List all calendar events chronologically up to 72 hours ahead pay attention to the time offset. All times should be reported in the same offset as the family calendar entries.
+            - List all calendar events from all calendars chronologically and conversationally.
             - Report all device issues (batteries, offline devices)
             - For morning briefs on weekdays, include current commute time to work
             - If events have locations, mention them without addresses
@@ -191,7 +190,7 @@ script:
           payload: >
             {
               "state": "{{ now().isoformat() }}",
-              "detailed_brief": "{{ detailed_brief | replace("\n", "<br>") }}",
+              "detailed_brief": "{{ detailed_brief }}",
               "condensed_brief": "{{ condensed_brief }}"
             }
 
