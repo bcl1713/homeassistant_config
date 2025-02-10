@@ -190,7 +190,7 @@ script:
           payload: >
             {
               "state": "{{ now().isoformat() }}",
-              "detailed_brief": "{{ detailed_brief }}",
+              "detailed_brief": "{{ detailed_brief "\n", "\n") }}",
               "condensed_brief": "{{ condensed_brief }}"
             }
 
