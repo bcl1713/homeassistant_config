@@ -51,7 +51,7 @@ script:
       - service: calendar.get_events
         data:
           duration:
-            hours: 72
+            days: 7
         target:
           label_id: brief
         response_variable: events_response
