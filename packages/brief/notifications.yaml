@@ -30,8 +30,7 @@ script:
             - Report all day events on the day they begin, not when they end. Especially BIRTHDAYS!
             - Pay attention to time zone offsets on the calendar events.  
             - Start times are given in either 'yyyy-mm-dd' format for all day events or 'yyyy-mm-ddTHH:MM:SS(offset)"
-            - Offset is either + or - hh:mm.  My home timezone will be the one associated with calendar.family events.
-            - Try to report all times in my local timezone.
+            - Offset is either + or - hh:mm.
             - Report all device issues (batteries, offline devices)
             - For morning briefs on weekdays, include current commute time to work
 
