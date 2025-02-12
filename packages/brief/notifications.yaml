@@ -30,7 +30,7 @@ script:
             Detailed Brief Requirements:
             - Use markdown formatting with headers and sections
             - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - List all calendar events from all calendars chronologically and conversationally.
+            - Analyze calendar events and report them all chronologically and grouped by day.
             - Report all device issues (batteries, offline devices)
             - For morning briefs on weekdays, include current commute time to work
             - If events have locations, mention them without addresses
@@ -51,7 +51,7 @@ script:
       - service: calendar.get_events
         data:
           duration:
-            hours: 168
+            hours: 72
         target:
           label_id: brief
         response_variable: events_response
