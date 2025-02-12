@@ -26,6 +26,7 @@ script:
             - Use markdown formatting with headers and sections
             - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
             - Report all calendar events chornologially grouped by day. Pay attention to their times and dates.  Do not put them on the wrong day.
+            - Pay attention to time zone offsets on the calendar events.  Report all day events on the day they begin, not when they end.
             - Report all device issues (batteries, offline devices)
             - For morning briefs on weekdays, include current commute time to work
             - If events have locations, mention them without addresses
