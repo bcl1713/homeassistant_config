@@ -25,7 +25,7 @@ script:
             Detailed Brief Requirements:
             - Use markdown formatting with headers and sections
             - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - Report calendar events chornologially grouped by day.  Let me know the times and what calendar they come from.
+            - Report all calendar events chornologially grouped by day. Pay attention to their times and dates.  Do not put them on the wrong day.
             - Report all device issues (batteries, offline devices)
             - For morning briefs on weekdays, include current commute time to work
             - If events have locations, mention them without addresses
