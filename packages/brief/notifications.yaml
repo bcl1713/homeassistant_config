@@ -25,9 +25,9 @@ script:
             Detailed Brief Requirements:
             - Use markdown formatting with headers and sections
             - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - Report all calendar events chornologially grouped by day with weekday name included.
+            - Report every calendar event chornologially grouped by day with weekday name included.
+            - DO NOT SKIP ANY EVENTS
             - Report all day events on the day they begin, not when they end. Especially BIRTHDAYS!
-            - Do not skip any calendar events
             - Pay attention to time zone offsets on the calendar events.  
             - Start times are given in either 'yyyy-mm-dd' format for all day events or 'yyyy-mm-ddTHH:MM:SS(offset)"
             - Offset is either + or - hh:mm.  My home timezone will be the one associated with calendar.family events.
