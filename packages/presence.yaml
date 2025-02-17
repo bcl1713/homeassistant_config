@@ -39,7 +39,7 @@ automation:
     action:
       - service: alarm_control_panel.alarm_arm_home
         target:
-        entity_id: alarm_control_panel.home_alarm
+          - entity_id: alarm_control_panel.home_alarm
 
   - alias: "Everyone Left"
     trigger:
