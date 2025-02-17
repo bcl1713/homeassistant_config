@@ -1,0 +1,67 @@
+# packages/security_lights.yaml
+
+automation:
+  - alias: "Security Lighting - Person Detection"
+    description: "Manage outdoor lights based on person detection from any camera"
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.front_drive_person_occupancy
+          - binary_sensor.back_door_person_occupancy
+          - binary_sensor.front_doorbell_person_occupancy
+        to: "on"
+    condition:
+      - condition: numeric_state
+        entity_id: sun.sun
+        attribute: elevation
+        below: 0
+    variables:
+      lights_were_off: >
+        {{ states('light.front_yard_lights') == 'off' and 
+           states('light.back_door_light') == 'off' }}
+    action:
+      - service: light.turn_on
+        target:
+          entity_id:
+            - light.front_yard_lights
+            - light.back_door_light
+      # Also ensure doorbell lights are on
+      - service: select.select_option
+        data:
+          option: "On"
+        target:
+          entity_id: select.front_doorbell_security_light
+      - service: light.turn_on
+        target:
+          entity_id: light.front_doorbell_ring_light
+
+      # Only set up auto-off if lights were previously off
+      - if:
+          - condition: template
+            value_template: "{{ lights_were_off }}"
+        then:
+          - wait_for:
+              - platform: state
+                entity_id:
+                  - binary_sensor.front_drive_person_occupancy
+                  - binary_sensor.back_door_person_occupancy
+                  - binary_sensor.front_doorbell_person_occupancy
+                to: "off"
+                for: "00:10:00"
+          - condition: template
+            value_template: "{{ lights_were_off }}" # Double check lights were originally off
+          - service: light.turn_off
+            target:
+              entity_id:
+                - light.front_yard_lights
+                - light.back_door_light
+          # Turn off doorbell lights too
+          - service: select.select_option
+            data:
+              option: "Off"
+            target:
+              entity_id: select.front_doorbell_security_light
+          - service: light.turn_off
+            target:
+              entity_id: light.front_doorbell_ring_light
+    mode: restart
