@@ -77,6 +77,6 @@
         # Finally turn off kitchen lights and arm system
         - service: light.turn_off
           entity_id: light.downstairs_lights
-        - service: alarm_control_panel.alarm_arm_home
+        - service: alarm_control_panel.alarm_arm_night
           target:
             entity_id: alarm_control_panel.home_alarm
