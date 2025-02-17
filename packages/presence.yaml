@@ -15,6 +15,31 @@ light:
       - light.hallway_corridor
 
 automation:
+  - alias: "Morning Wake Detection"
+    description: "Transitions from night mode to home mode when morning activity is detected"
+    trigger:
+      # Time-based trigger as backup
+      - platform: time
+        at: "08:00:00"
+      # Light switches being turned on
+      - platform: state
+        entity_id:
+          - light.hallway_entry
+          - light.kitchen_counter_lights
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: alarm_control_panel.home_alarm
+        state: "armed_night"
+      # Only trigger between 4am and 10am
+      - condition: time
+        after: "04:00:00"
+        before: "10:00:00"
+    action:
+      - service: alarm_control_panel.alarm_arm_home
+        target:
+          entity_id: alarm_control_panel.home_alarm
+
   - alias: "Everyone Left"
     trigger:
       - platform: numeric_state
@@ -37,7 +62,7 @@ automation:
         entity_id: zone.home
         above: 0
     action:
-      - service: alarm_control_panel.alarm_disarm
+      - service: alarm_control_panel.alarm_arm_home
         target:
           entity_id: alarm_control_panel.home_alarm
 
@@ -66,12 +91,12 @@ automation:
         target:
           entity_id: lock.front_door
 
-  - alias: "Handle Home Alarm Armed Home"
-    description: "Secure house for night or home mode"
+  - alias: "Handle Home Alarm Armed Night"
+    description: "Secure house for night"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.home_alarm
-        to: "armed_home"
+        to: "armed_night"
     action:
       - service: input_boolean.turn_on
         target:
@@ -80,22 +105,33 @@ automation:
         target:
           entity_id: lock.front_door
 
-  - alias: "Handle Home Alarm Disarmed"
-    description: "Welcome actions when system disarmed"
+  - alias: "Handle Home Alarm Armed Home"
+    description: "Welcome actions when system set to armed home"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.home_alarm
-        to: "disarmed"
+        to: "armed_home"
     action:
       - service: lock.unlock
         target:
           entity_id: lock.front_door
-      - service: input_boolean.turn_off
+      - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.camera_notifications
+
+  - alias: "Welcome Home Light Control"
+    description: "Turn on entry lights wehn someone arrives home after dark"
+    trigger:
+      - platform: state
+        entity_id: zone.home
+    condition:
+      - condition: template
+        value_template: >
+          {{ trigger.from_state.state | int < trigger.to_state.state | int }}
       - condition: state
         entity_id: sun.sun
         state: "below_horizon"
+    action:
       - service: light.turn_on
         target:
           entity_id: light.after_dark_entry_lights
