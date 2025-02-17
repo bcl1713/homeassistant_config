@@ -40,14 +40,11 @@ automation:
           - condition: template
             value_template: "{{ lights_were_off }}"
         then:
-          - wait_for:
-              - platform: state
-                entity_id:
-                  - binary_sensor.front_drive_person_occupancy
-                  - binary_sensor.back_door_person_occupancy
-                  - binary_sensor.front_doorbell_person_occupancy
-                to: "off"
-                for: "00:10:00"
+          - wait_template: >
+              {{ states('binary_sensor.front_drive_person_occupancy') == 'off' and 
+                 states('binary_sensor.back_door_person_occupancy') == 'off' and 
+                 states('binary_sensor.front_doorbell_person_occupancy') == 'off' }}
+            timeout: "00:10:00"
           - condition: template
             value_template: "{{ lights_were_off }}" # Double check lights were originally off
           - service: light.turn_off
