@@ -27,19 +27,18 @@ automation:
           - light.hallway_entry
           - light.kitchen_counter_lights
         to: "on"
-      # Phone activity here later
     condition:
       - condition: state
         entity_id: alarm_control_panel.home_alarm
         state: "armed_night"
-      # only trigger between 4am and 9am
+      # Only trigger between 4am and 10am
       - condition: time
         after: "04:00:00"
-        before: "09:00:00"
+        before: "10:00:00"
     action:
       - service: alarm_control_panel.alarm_arm_home
         target:
-          - entity_id: alarm_control_panel.home_alarm
+          entity_id: alarm_control_panel.home_alarm
 
   - alias: "Everyone Left"
     trigger:
