@@ -18,13 +18,13 @@ automation:
     variables:
       lights_were_off: >
         {{ states('light.front_yard_lights') == 'off' and 
-           states('light.back_door_light') == 'off' }}
+           states('light.back_yard') == 'off' }}
     action:
       - service: light.turn_on
         target:
           entity_id:
             - light.front_yard_lights
-            - light.back_door_light
+            - light.back_yard
       # Also ensure doorbell lights are on
       - service: select.select_option
         data:
@@ -51,7 +51,7 @@ automation:
             target:
               entity_id:
                 - light.front_yard_lights
-                - light.back_door_light
+                - light.back_yard
           # Turn off doorbell lights too
           - service: select.select_option
             data:
