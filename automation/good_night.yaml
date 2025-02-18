@@ -22,7 +22,7 @@
         - light.outside_lights
         - remote.living_room_tv
         - remote.master_bedroom_tv
-        - light.holiday_lights
+        #- light.holiday_lights
     - service: media_player.turn_off
       entity_id:
         - media_player.kitchen_display
