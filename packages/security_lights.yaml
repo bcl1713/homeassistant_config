@@ -1,5 +1,13 @@
 # packages/security_lights.yaml
 
+homeassistant:
+  customize:
+    input_boolean.front_lights_auto_off:
+      hidden: true
+    input_boolean.back_lights_auto_off:
+      hidden: true
+    input_boolean.doorbell_lights_auto_off:
+      hidden: true
 input_boolean:
   front_lights_auto_off:
     name: Front Lights Auto Off
