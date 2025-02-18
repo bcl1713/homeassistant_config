@@ -2,8 +2,7 @@ alarm_control_panel:
   - platform: manual
     name: Home Alarm
     code_arm_required: false
-    delay_time: 10
-    trigger_time: 120
+    arming_time: 10
     disarm_after_trigger: false
 
 light:
