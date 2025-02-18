@@ -32,8 +32,3 @@ notify:
     services:
       - service: mobile_app_pixel_6_pro
       - service: mobile_app_pixel_7_pro
-
-alarm_control_panel:
-  - platform: manual
-    name: Home Alarm
-    code_arm_required: false
