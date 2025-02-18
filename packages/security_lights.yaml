@@ -1,5 +1,21 @@
 # packages/security_lights.yaml
 
+input_boolean:
+  front_lights_auto_off:
+    name: Front Lights Auto Off
+    icon: mdi:lightbulb-auto
+    initial: off
+
+  back_lights_auto_off:
+    name: Back Lights Auto Off
+    icon: mdi:lightbulb-auto
+    initial: off
+
+  doorbell_lights_auto_off:
+    name: Doorbell Lights Auto Off
+    icon: mdi:lightbulb-auto
+    initial: off
+
 automation:
   - alias: "Security Lighting - Person Detection"
     description: "Manage outdoor lights based on person detection from any camera"
@@ -15,17 +31,49 @@ automation:
         entity_id: sun.sun
         attribute: elevation
         below: 0
-    variables:
-      lights_were_off: >
-        {{ states('light.front_yard_lights') == 'off' and 
-           states('light.back_yard') == 'off' }}
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: alarm_control_panel.home_alarm
+            state: "disarmed"
     action:
+      # Set auto-off flags for any lights that are currently off
+      - if:
+          - condition: state
+            entity_id: light.front_yard_lights
+            state: "off"
+        then:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.front_lights_auto_off
+      - if:
+          - condition: state
+            entity_id: light.back_door_light
+            state: "off"
+        then:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.back_lights_auto_off
+      - if:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: select.front_doorbell_security_light
+                state: "Off"
+              - condition: state
+                entity_id: light.front_doorbell_ring_light
+                state: "off"
+        then:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.doorbell_lights_auto_off
+
+      # Turn on all lights
       - service: light.turn_on
         target:
           entity_id:
             - light.front_yard_lights
-            - light.back_yard
-      # Also ensure doorbell lights are on
+            - light.back_door_light
       - service: select.select_option
         data:
           option: "On"
@@ -35,24 +83,43 @@ automation:
         target:
           entity_id: light.front_doorbell_ring_light
 
-      # Only set up auto-off if lights were previously off
+      # Handle auto-off
+      - wait_template: >
+          {{ states('binary_sensor.front_drive_person_occupancy') == 'off' and 
+             states('binary_sensor.back_door_person_occupancy') == 'off' and 
+             states('binary_sensor.front_doorbell_person_occupancy') == 'off' }}
+        timeout: "00:10:00"
+
+      # Turn off each light group if it was originally off
       - if:
-          - condition: template
-            value_template: "{{ lights_were_off }}"
+          - condition: state
+            entity_id: input_boolean.front_lights_auto_off
+            state: "on"
         then:
-          - wait_template: >
-              {{ states('binary_sensor.front_drive_person_occupancy') == 'off' and 
-                 states('binary_sensor.back_door_person_occupancy') == 'off' and 
-                 states('binary_sensor.front_doorbell_person_occupancy') == 'off' }}
-            timeout: "00:10:00"
-          - condition: template
-            value_template: "{{ lights_were_off }}" # Double check lights were originally off
           - service: light.turn_off
             target:
-              entity_id:
-                - light.front_yard_lights
-                - light.back_yard
-          # Turn off doorbell lights too
+              entity_id: light.front_yard_lights
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.front_lights_auto_off
+
+      - if:
+          - condition: state
+            entity_id: input_boolean.back_lights_auto_off
+            state: "on"
+        then:
+          - service: light.turn_off
+            target:
+              entity_id: light.back_door_light
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.back_lights_auto_off
+
+      - if:
+          - condition: state
+            entity_id: input_boolean.doorbell_lights_auto_off
+            state: "on"
+        then:
           - service: select.select_option
             data:
               option: "Off"
@@ -61,4 +128,7 @@ automation:
           - service: light.turn_off
             target:
               entity_id: light.front_doorbell_ring_light
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.doorbell_lights_auto_off
     mode: restart
