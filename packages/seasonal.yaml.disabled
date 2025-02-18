@@ -1,3 +1,11 @@
+light:
+  - platform: group
+    name: Holiday Lights
+    entities:
+      - light.front_yard_lights
+      - light.outdoor_plug_light
+      - light.christmas_tree
+
 automation:
   - alias: "Turn on the Holiday Lights at Dusk"
     trigger:
