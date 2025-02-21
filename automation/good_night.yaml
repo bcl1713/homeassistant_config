@@ -28,7 +28,9 @@
         - media_player.kitchen_display
         - media_player.living_room_speaker
         - media_player.music_room_speaker
-
+    - service: alarm_control_panel.alarm_arm_night
+      target:
+        entity_id: alarm_control_panel.home_alarm
     # Check dishwasher state and handle accordingly
     - choose:
         # If dishwasher is running, turn off all lights and arm
