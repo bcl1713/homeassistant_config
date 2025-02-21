@@ -193,7 +193,7 @@ script:
             }
 
       # Send notification with both action buttons
-      - service: notify.mobile_app_pixel_7_pro
+      - service: notify.mobile_app_brian_phone
         data:
           title: "Home Brief"
           message: "{{ condensed_brief }}"

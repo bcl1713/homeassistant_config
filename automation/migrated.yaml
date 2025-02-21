@@ -41,7 +41,7 @@
             message: Battery Low on {{sensors}}
           target:
             device_id: 90d6e89b4df4abd4baf23e600e635a37
-        - action: notify.mobile_app_pixel_7_pro
+        - action: notify.mobile_app_brian_phone
           data:
             message: Battery low on {{sensors}}
       time: 08:00:00
@@ -55,7 +55,7 @@
       to: rainy
   condition: []
   action:
-    - action: notify.mobile_app_pixel_7_pro
+    - action: notify.mobile_app_brian_phone
       metadata: {}
       data:
         message: It's likely going to rain soon.

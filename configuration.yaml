@@ -30,5 +30,5 @@ notify:
   - platform: group
     name: all_mobile_devices
     services:
-      - service: mobile_app_pixel_6_pro
-      - service: mobile_app_pixel_7_pro
+      - service: mobile_app_brian_phone
+      - service: mobile_app_hester_phone
