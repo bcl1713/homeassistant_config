@@ -27,6 +27,9 @@ automation:
           - light.kitchen_counter_lights
         to: "on"
     condition:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
       # Only trigger between 4am and 10am
       - condition: time
         after: "04:00:00"
