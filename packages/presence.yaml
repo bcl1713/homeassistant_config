@@ -60,6 +60,10 @@ automation:
       - platform: numeric_state
         entity_id: zone.home
         above: 0
+    condition:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
     action:
       - service: alarm_control_panel.alarm_arm_home
         target:
