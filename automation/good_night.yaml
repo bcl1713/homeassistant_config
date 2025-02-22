@@ -35,12 +35,9 @@
         - media_player.kitchen_display
         - media_player.living_room_speaker
         - media_player.music_room_speaker
-    - service: alarm_control_panel.alarm_arm_night
-      target:
-        entity_id: alarm_control_panel.home_alarm
     # Check dishwasher state and handle accordingly
     - choose:
-        # If dishwasher is running, turn off all lights and arm
+        # If dishwasher is running, turn off all lights and arm the alarm
         - conditions:
             - condition: state
               entity_id: sensor.dishwasher_state
@@ -48,10 +45,9 @@
           sequence:
             - service: light.turn_off
               entity_id: light.downstairs_lights
-            - service: alarm_control_panel.alarm_arm_home
+            - service: alarm_control_panel.alarm_arm_night
               target:
                 entity_id: alarm_control_panel.home_alarm
-
       # If dishwasher is not running
       default:
         # Send actionable notification
@@ -62,7 +58,6 @@
               actions:
                 - action: "ignore"
                   title: "Ignore"
-
         # Wait for either ignore action or dishwasher to start
         - wait_for_trigger:
             - platform: event
@@ -82,7 +77,6 @@
                   state: "BSH.Common.EnumType.OperationState.Run"
               sequence:
                 - delay: "00:02:00"
-
         # Finally turn off kitchen lights and arm system
         - service: light.turn_off
           entity_id: light.downstairs_lights
