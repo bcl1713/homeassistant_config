@@ -91,12 +91,8 @@ automation:
         target:
           entity_id: light.front_doorbell_ring_light
 
-      # Handle auto-off
-      - wait_template: >
-          {{ states('binary_sensor.front_drive_person_occupancy') == 'off' and 
-             states('binary_sensor.back_door_person_occupancy') == 'off' and 
-             states('binary_sensor.front_doorbell_person_occupancy') == 'off' }}
-        timeout: "00:10:00"
+      # wait 10 minutes
+      - delay: "00:10:00"
 
       # Turn off each light group if it was originally off
       - if:
