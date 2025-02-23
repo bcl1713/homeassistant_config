@@ -198,8 +198,7 @@ script:
           title: "Home Brief"
           message: "{{ condensed_brief }}"
           data:
+            clickAction: "/dashboard-briefing"
             actions:
               - action: "PLAY_TTS"
                 title: "Play Extended Brief"
-              - action: "EMAIL_BRIEF"
-                title: "Email Full Brief"

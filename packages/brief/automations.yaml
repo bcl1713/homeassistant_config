@@ -79,25 +79,3 @@ automation:
           cache: true
           media_player_entity_id: media_player.kitchen_display
           message: "{{ state_attr('sensor.ai_brief', 'detailed_brief') | replace('*', '') | replace('#', '') }}"
-
-  - alias: "Handle Brief Email Action"
-    description: "Sends detailed brief via email when requested"
-    trigger:
-      - platform: event
-        event_type: mobile_app_notification_action
-        event_data:
-          action: EMAIL_BRIEF
-    action:
-      - service: notify.bcl1713_gmail_com
-        data:
-          target: "bcl1713@gmail.com"
-          title: >
-            {% set hour = now().hour %}
-            {% if hour < 12 %}
-              Morning Status Brief
-            {% elif hour < 17 %}
-              Afternoon Status Brief
-            {% else %}
-              Evening Status Brief
-            {% endif %}
-          message: "{{ state_attr('sensor.ai_brief', 'detailed_brief') }}"
