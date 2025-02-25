@@ -35,7 +35,8 @@ automation:
             actions:
               - action: "view_stream"
                 title: "View Stream"
-            critical: true
+            priority: "high"
+            ttl: 0
 
   # Special case for doorbell button press
   - alias: "Doorbell Button Press"
