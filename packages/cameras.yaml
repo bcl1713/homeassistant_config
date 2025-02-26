@@ -49,7 +49,7 @@ automation:
         entity_id: input_boolean.camera_notifications
         state: "on"
     action:
-      - service: notifya.all_mobile_devices
+      - service: notify.all_mobile_devices
         data:
           message: 'A {{trigger.payload_json["after"]["label"]}} was detected.'
           data:
