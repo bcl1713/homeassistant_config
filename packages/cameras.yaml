@@ -51,7 +51,7 @@ automation:
     action:
       - service: notify.all_mobile_devices
         data:
-          message: 'A {{trigger.payload_json["after"]["label"]}} was detected on {{trigger.payload_json["after"]["camera"] | replace("-"," ") | title}}.'
+          message: 'A {{trigger.payload_json["after"]["label"]}} was detected on {{trigger.payload_json["after"]["camera"] | replace("_"," ") | title}}.'
           data:
             image: 'https://home.hblucas.org/api/frigate/notifications/{{trigger.payload_json["after"]["id"]}}/thumbnail.jpg?format=android'
             tag: '{{trigger.payload_json["after"]["id"]}}'
