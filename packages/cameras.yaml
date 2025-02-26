@@ -53,6 +53,7 @@ automation:
         data:
           message: 'A {{trigger.payload_json["after"]["label"]}} was detected on {{trigger.payload_json["after"]["camera"] | replace("_"," ") | title}}.'
           data:
+            url: 'https://home.hblucas.org/api/frigate/notifications/{{trigger.payload_json["after"]["id"]]}}/clip.mp4'
             image: 'https://home.hblucas.org/api/frigate/notifications/{{trigger.payload_json["after"]["id"]}}/thumbnail.jpg?format=android'
             tag: '{{trigger.payload_json["after"]["id"]}}'
             when: '{{trigger.payload_json["after"]["start_time"]|int}}'
