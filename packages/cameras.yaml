@@ -64,9 +64,9 @@ automation:
       - service: notify.all_mobile_devices
         data:
           title: "{{ camera_name }}"
-          url: "{{base_url}}{{id}}/clip.mp4"
           message: "A {{label}} was detected on {{camera_name}}."
           data:
+            url: "{{base_url}}{{id}}/clip.mp4"
             image: "{{base_url}}{{id}}/thumbnail.jpg?format=android"
             tag: "{{id}}"
             when: "{{start_time}}"
