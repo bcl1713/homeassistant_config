@@ -43,20 +43,33 @@ automation:
     description: "Notify tracked objects"
     trigger:
       platform: mqtt
-      topic: frigate/events
+      topic: frigate/reviews
     condition:
       - condition: state
         entity_id: input_boolean.camera_notifications
         state: "on"
     action:
+      - variables:
+          base_url: "https://home.hblucas.org/api/frigate/notifications/"
+          event: "{{ trigger.payload_json }}"
+          detections: "{{ event['after']['data']['detections'] }}"
+          review_id: "{{event['after']['id']}}"
+          id: "{{ detections[0] }}"
+          objects: "{{ event['after']['data']['objects'] }}"
+          sub_labels: "{{ event['after']['data']['sub_labels'] }}"
+          label: "{{ objects | list | join(', ') | title }}"
+          camera: "{{ event['after']['camera'] }}"
+          camera_name: "{{ camera | replace('_', ' ') | title}}"
+          start_time: "{{event['after']['start_time'] | int"
       - service: notify.all_mobile_devices
         data:
-          message: 'A {{trigger.payload_json["after"]["label"]}} was detected on {{trigger.payload_json["after"]["camera"] | replace("_"," ") | title}}.'
+          title: "{{ camera_name }}"
+          url: "{{base_url}}{{id}}/clip.mp4"
+          message: "A {{label}} was detected on {{camera_name}}."
           data:
-            url: 'https://home.hblucas.org/api/frigate/notifications/{{trigger.payload_json["after"]["id"]}}/clip.mp4'
-            image: 'https://home.hblucas.org/api/frigate/notifications/{{trigger.payload_json["after"]["id"]}}/thumbnail.jpg?format=android'
-            tag: '{{trigger.payload_json["after"]["id"]}}'
-            when: '{{trigger.payload_json["after"]["start_time"]|int}}'
+            image: "{{base_url}}{{id}}/thumbnail.jpg?format=android"
+            tag: "{{id}}"
+            when: "{{start_time}}"
   # Special case for doorbell button press
   - alias: "Doorbell Button Press"
     trigger:
