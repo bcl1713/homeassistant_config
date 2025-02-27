@@ -136,7 +136,7 @@ script:
       # Process everything with AI - now requesting both versions
       - service: conversation.process
         data:
-          agent_id: conversation.google_generative_ai
+          agent_id: conversation.chatgpt
           text: |-
             Generate two versions of the brief (condensed and detailed) based on:
 
