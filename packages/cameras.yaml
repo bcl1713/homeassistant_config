@@ -60,7 +60,7 @@ automation:
           label: "{{ objects | list | join(', ') | title }}"
           camera: "{{ event['after']['camera'] }}"
           camera_name: "{{ camera | replace('_', ' ') | title}}"
-          start_time: "{{event['after']['start_time'] | int"
+          start_time: "{{ event['after']['start_time'] | int }}"
       - service: notify.all_mobile_devices
         data:
           title: "{{ camera_name }}"
