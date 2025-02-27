@@ -70,6 +70,8 @@ automation:
             image: "{{base_url}}{{id}}/thumbnail.jpg?format=android"
             tag: "{{id}}"
             when: "{{start_time}}"
+            priority: "high"
+            ttl: 0
       - service: logbook.log
         data:
           name: "{{ camera_name }}"
