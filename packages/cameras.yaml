@@ -66,7 +66,7 @@ automation:
           title: "{{ camera_name }}"
           message: "A {{label}} was detected on {{camera_name}}."
           data:
-            url: "{{base_url}}{{id}}/{{camera}}/clip.mp4"
+            clickAction: "{{base_url}}{{id}}/{{camera}}/clip.mp4"
             image: "{{base_url}}{{id}}/thumbnail.jpg?format=android"
             tag: "{{id}}"
             when: "{{start_time}}"
