@@ -1,0 +1,7 @@
+input number:
+  - home_target_heat:
+    name: Target Heating Temperature - Home
+    initial: 70
+    min: 64
+    max: 74
+    step: 0.5
