@@ -136,3 +136,14 @@ automation:
             target:
               entity_id: input_boolean.doorbell_lights_auto_off
     mode: restart
+
+  - alias: "Turn on the Front Yard Lights at Dusk"
+    trigger:
+      - platform: state
+        entity_id: sun.sun
+        to: "below_horizon"
+    action:
+      - service: light.turn_on
+        target:
+          entity_id: light.front_yard_lights
+    mode: single
