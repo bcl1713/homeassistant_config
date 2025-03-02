@@ -25,10 +25,3 @@ google_assistant:
 
 # Custom Configs Below
 recorder: !include recorder.yaml
-
-notify:
-  - platform: group
-    name: all_mobile_devices
-    services:
-      - service: mobile_app_brian_phone
-      - service: mobile_app_hester_phone
