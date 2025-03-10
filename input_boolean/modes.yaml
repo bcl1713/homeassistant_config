@@ -7,7 +7,11 @@ good_night:
   name: Good Night
   initial: off
 
-camera_notifications:
-  name: Camera Notifications
+camera_notifications_indoor:
+  name: Indoor Camera Notifications
+  icon: mdi:camera
+  initial: off
+camera_notifications_outdoor:
+  name: Outdoor Camera Notifications
   icon: mdi:camera
   initial: off

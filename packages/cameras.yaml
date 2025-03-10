@@ -1,43 +1,5 @@
 # packages/cameras.yaml
 automation:
-  # - id: "camera_notifications"
-  #   alias: "Universal Camera Person Detection"
-  #   description: "Unified notifications for all cameras detecting people"
-  #   trigger:
-  #     - platform: state
-  #       entity_id:
-  #         - binary_sensor.front_drive_person_occupancy
-  #         - binary_sensor.back_door_person_occupancy
-  #         - binary_sensor.front_doorbell_person_occupancy
-  #       to: "on"
-  #   condition:
-  #     - condition: state
-  #       entity_id: input_boolean.camera_notifications
-  #       state: "on"
-  #   action:
-  #     - variables:
-  #         camera_map:
-  #           binary_sensor.front_drive_person_occupancy:
-  #             camera: camera.front_drive
-  #             name: "Front Drive"
-  #           binary_sensor.back_door_person_occupancy:
-  #             camera: camera.back_door
-  #             name: "Back Door"
-  #           binary_sensor.front_doorbell_person_occupancy:
-  #             camera: camera.front_doorbell
-  #             name: "Front Doorbell"
-  #     - service: notify.all_mobile_devices
-  #       data:
-  #         message: "Person detected at {{ camera_map[trigger.entity_id].name }}"
-  #         data:
-  #           url: >-
-  #             https://home.hblucas.org/api/camera_proxy_stream/{{ camera_map[trigger.entity_id].camera }}?token={{state_attr(camera_map[trigger.entity_id].camera, 'access_token')}}
-  #           actions:
-  #             - action: "view_stream"
-  #               title: "View Stream"
-  #           priority: "high"
-  #           ttl: 0
-
   - id: "camera_notifications_new"
     alias: "Universal Camera Notification"
     description: "Notify tracked objects"
@@ -45,9 +7,16 @@ automation:
       platform: mqtt
       topic: frigate/reviews
     condition:
-      - condition: state
-        entity_id: input_boolean.camera_notifications
-        state: "on"
+      - condition: template
+        value_template: >
+          {% set camera = trigger.payload_json['after']['camera'] %}
+          {% if camera in ['living_room_camera'] %}
+            {{ is_state('input_boolean.camera_notifications_indoor', 'on') }}
+          {% elif camera in ['front_drive', 'back_door', 'front_doorbell'] %}
+            {{ is_state('input_boolean.camera_notifications_outdoor', 'on') }}
+          {% else %}
+            true
+          {% endif %}
     action:
       - variables:
           base_url: "https://home.hblucas.org/api/frigate/notifications/"
