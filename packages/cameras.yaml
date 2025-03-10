@@ -10,12 +10,10 @@ automation:
       - condition: template
         value_template: >
           {% set camera = trigger.payload_json['after']['camera'] %}
-          {% if camera in ['living_room_camera'] %}
+          {% if camera in ['living_room'] %}
             {{ is_state('input_boolean.camera_notifications_indoor', 'on') }}
           {% elif camera in ['front_drive', 'back_door', 'front_doorbell'] %}
             {{ is_state('input_boolean.camera_notifications_outdoor', 'on') }}
-          {% else %}
-            true
           {% endif %}
     action:
       - variables:
