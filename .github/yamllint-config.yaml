@@ -1,0 +1,23 @@
+# .github/yamllint-config.yaml
+---
+extends: default
+
+rules:
+  line-length:
+    max: 120
+    level: warning
+  truthy:
+    allowed-values: ['true', 'false', 'on', 'off', 'yes', 'no']
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+  comments:
+    min-spaces-from-content: 1
+  document-start:
+    present: false
+
+ignore: |
+  .git/
+  .github/
+  .vscode/
+  SERVICE_ACCOUNT.json
