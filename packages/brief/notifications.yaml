@@ -1,42 +1,54 @@
 # notifications.yaml
 script:
   daily_brief:
-    alias: "Daily Status Brief"
+    alias: "Enhanced Daily Status Brief"
+    description: "Generates contextual status brief with essential information"
     sequence:
       - variables:
           weather_entity: weather.forecast_home
+          is_morning: "{{ now().hour < 12 }}"
+          is_afternoon: "{{ now().hour >= 12 and now().hour < 17 }}"
+          is_evening: "{{ now().hour >= 17 }}"
+          is_weekday: "{{ now().weekday() < 5 }}"
           base_prompt: >
             Instructions for generating home status briefs:
 
             General Guidelines:
-            - Create two versions of the brief (condensed and detailed)
-            - Format the detailed version in markdown for display
-            - Make the condensed version conversational and brief
+            - Create a concise, conversational brief
             - Avoid technical terms and Home Assistant terminology
             - Don't use emoji or special characters
             - Round numbers naturally (say "around 3" instead of "2.87")
+            - Adapt tone and content based on time of day
+            - Response should be close to but less than 255 characters
 
-            Condensed Brief Requirements:
+            Content Requirements:
             - Only mention events in next 4 hours
             - Only report critical device issues (dead batteries, key offline devices)
             - Only include weather that could impact immediate plans
-            - Response should be close to but less than 255 characters
-
-            Detailed Brief Requirements:
-            - Use markdown formatting with headers and sections
-            - Analyze weather for next 72 hours - highlight unusual conditions or overall trends
-            - Report every calendar event chornologially grouped by day with weekday name included.
-            - DO NOT SKIP ANY EVENTS
-            - Report all day events on the day they begin, not when they end. Especially BIRTHDAYS!
-            - Pay attention to time zone offsets on the calendar events.
-            - Start times are given in either 'yyyy-mm-dd' format for all day events or 'yyyy-mm-ddTHH:MM:SS(offset)"
-            - Offset is either + or - hh:mm.
-            - Report all device issues (batteries, offline devices)
-            - For morning briefs on weekdays, include current commute time to work
+            - Include any overdue chores that need attention
 
             Time Context:
             - Current time: {{ now().strftime("%H:%M") }}
+            - Time of day: {{ 'morning' if is_morning else 'afternoon' if is_afternoon else 'evening' }}
+            - {{ 'Weekday' if is_weekday else 'Weekend' }}
             - If mentioning times, use conversational format ("in about 2 hours" rather than "at 14:30")
+
+            Time-Specific Additions:
+            {% if is_morning and is_weekday %}
+            - Include current commute time to work
+            - Prioritize today's activities and meetings
+            - Mention any required chores that need attention today
+            {% elif is_morning and not is_weekday %}
+            - Focus on weekend activities and plans
+            - Highlight any overdue chores
+            {% elif is_afternoon %}
+            - Summarize remaining events for today
+            - Mention any chores that need to be completed before evening
+            {% else %}
+            - Focus on tomorrow's early events
+            - Summarize completion status of today's chores
+            - Mention preparation needed for tomorrow
+            {% endif %}
 
       # Get weather forecast
       - service: weather.get_forecasts
@@ -58,7 +70,7 @@ script:
       # Get commute information
       - variables:
           commute_info: >
-            {% if now().weekday() | int < 5 and now().hour | int < 10 %}
+            {% if is_weekday and is_morning %}
               {{ {
                 'commute_time': states('sensor.travel_time_to_brian_s_work'),
                 'is_workday': true
@@ -70,54 +82,87 @@ script:
       # Process weather data
       - variables:
           processed_weather: "{{ daily_forecast | tojson }}"
-      #
+      
+      # Get chores status
+      - variables:
+          chores_status: >
+            {% set chores = namespace(items=[]) %}
+            
+            {# Dishwasher duty #}
+            {% if is_state_attr('input_select.chore_dishwasher_assignee', 'name', 'Dishwasher Duty') %}
+              {% set assignee = states('input_select.chore_dishwasher_assignee') %}
+              {% set completed = is_state('input_boolean.chore_dishwasher_completed', 'on') %}
+              {% set chores.items = chores.items + [
+                {
+                  'name': 'Dishwasher',
+                  'assignee': assignee,
+                  'completed': completed,
+                  'due_today': true
+                }
+              ] %}
+            {% endif %}
+            
+            {# Bathroom duty - only on weekends #}
+            {% if is_state('binary_sensor.is_weekend', 'on') and 
+                  is_state_attr('input_select.chore_bathroom_assignee', 'name', 'Bathroom Duty') %}
+              {% set assignee = states('input_select.chore_bathroom_assignee') %}
+              {% set completed = is_state('input_boolean.chore_bathroom_completed', 'on') %}
+              {% set chores.items = chores.items + [
+                {
+                  'name': 'Bathroom Cleaning',
+                  'assignee': assignee,
+                  'completed': completed,
+                  'due_today': true
+                }
+              ] %}
+            {% endif %}
+            
+            {# Add summary data #}
+            {% set total = chores.items | length %}
+            {% set completed = chores.items | selectattr('completed', 'eq', true) | list | length %}
+            {% set overdue = chores.items | selectattr('completed', 'eq', false) | 
+                             selectattr('due_today', 'eq', true) | list | length %}
+            
+            {{ {
+                'items': chores.items,
+                'summary': {
+                  'total': total,
+                  'completed': completed,
+                  'overdue': overdue
+                }
+            } | tojson }}
+      
       # Get device issues
       - variables:
           device_issues: >
-            {% set issues = namespace(batteries=[], offline=[], critical=[]) %}
+            {% set issues = namespace(critical=[]) %}
 
             {# Check battery levels in attributes #}
             {% for entity in states if entity.attributes.battery_level is defined %}
               {% set raw_level = entity.attributes.battery_level %}
               {% set level = raw_level | float(-1) | int %}
-              {% if level >= 0 %}
-                {% if level <= 20 %}
-                  {% set issues.batteries = issues.batteries + [
-                    {'device': entity.name,
-                     'level': level,
-                     'is_critical': level <= 10}
-                  ] %}
-                  {% if level <= 10 %}
-                    {% set issues.critical = issues.critical + [
-                      {'type': 'battery',
-                       'device': entity.name,
-                       'details': 'Battery at ' ~ level ~ '%'}
-                    ] %}
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            {# Check battery levels in attributes #}
-            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
-              {% if 0 <= entity.state | int <= 30 %}
-                {% set issues.batteries = issues.batteries + [
-                  {'device': entity.name,
-                    'level': entity.state,
-                    'is_critical': entity.state | int <= 10}
-                 ] %}
-                {% if entity.state | int <= 10 %}
-                  {% set issues.critical = issues.critical + [
-                    {'type': 'battery',
-                     'device': entity.name,
-                     'details': 'Battery at ' ~ entity.state ~ '%'}
-                  ] %}
-                {% endif %}
+              {% if level >= 0 and level <= 10 %}
+                {% set issues.critical = issues.critical + [
+                  {'type': 'battery',
+                   'device': entity.name,
+                   'details': 'Battery at ' ~ level ~ '%'}
+                ] %}
               {% endif %}
             {% endfor %}
 
+            {# Check battery sensors #}
+            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+              {% if 0 <= entity.state | int <= 10 %}
+                {% set issues.critical = issues.critical + [
+                  {'type': 'battery',
+                   'device': entity.name,
+                   'details': 'Battery at ' ~ entity.state ~ '%'}
+                ] %}
+              {% endif %}
+            {% endfor %}
 
             {# Check offline devices #}
-            {% set critical_devices = ['camera', 'alarm_control_panel', 'lock'] %}
+            {% set critical_devices = ['camera', 'alarm_control_panel', 'lock', 'binary_sensor'] %}
             {% for entity in states if entity.state == 'unavailable' %}
               {% if entity.domain in critical_devices %}
                 {% set issues.critical = issues.critical + [
@@ -129,25 +174,22 @@ script:
             {% endfor %}
 
             {{ {
-              'batteries': issues.batteries | list,
-              'critical': issues.critical | list
+              'critical': issues.critical | list,
+              'critical_count': issues.critical | length
             } | tojson }}
 
-      # Process everything with AI - now requesting both versions
+      # Process everything with AI
       - service: conversation.process
         data:
           agent_id: conversation.chatgpt
           text: |-
-            Generate two versions of the brief (condensed and detailed) based on:
+            Generate a concise home status brief based on:
 
             Context Data:
             {
               "currentTime": "{{ now().strftime("%Y-%m-%d %H:%M") }}",
-              "timeOfDay": "{{
-                'morning' if now().hour |
-                int < 12 else 'afternoon' if now().hour |
-                int < 17 else 'evening' }}",
-              "isWeekday": {{ (now().weekday() | int) < 5 }}
+              "timeOfDay": "{{ 'morning' if is_morning else 'afternoon' if is_afternoon else 'evening' }}",
+              "isWeekday": {{ is_weekday }}
             }
 
             Weather Information:
@@ -159,49 +201,78 @@ script:
             Commute Information:
             {{ commute_info }}
 
+            Chores Status:
+            {{ chores_status }}
+
             Device Status:
             {{ device_issues }}
 
             {{ base_prompt }}
-
-            Please provide output in the following format:
-            ---CONDENSED---
-            [Condensed conversational brief here]
-            ---DETAILED---
-            [Detailed markdown-formatted brief here]
         response_variable: agent_response
 
-      # Extract both versions
+      # Extract the brief text
       - variables:
-          condensed_brief: >
-            {% set parts = agent_response.response.speech.plain.speech.split('---DETAILED---') %}
-            {% set condensed = parts[0].replace('---CONDENSED---', '').strip() %}
-            {{ condensed }}
-          detailed_brief: >
-            {% set parts = agent_response.response.speech.plain.speech.split('---DETAILED---') %}
-            {% if parts|length > 1 %}
-              {{ parts[1].strip() }}
-            {% else %}
-              {{ parts[0].strip() }}
-            {% endif %}
+          condensed_brief: "{{ agent_response.response.speech.plain.speech }}"
 
+      # Publish to MQTT for other integrations to use
       - service: mqtt.publish
         data:
           topic: "home/ai/response"
           payload: >
             {
               "state": "{{ now().isoformat() }}",
-              "detailed_brief": {{ detailed_brief | tojson }},
-              "condensed_brief": {{ condensed_brief | tojson }}
+              "condensed_brief": {{ condensed_brief | tojson }},
+              "context": {
+                "time_of_day": "{{ 'morning' if is_morning else 'afternoon' if is_afternoon else 'evening' }}",
+                "is_weekday": {{ is_weekday }},
+                "chores_overdue": {{ chores_status | fromjson | default({}) | json_path('$.summary.overdue') | default(0) }},
+                "critical_issues": {{ device_issues | fromjson | default({}) | json_path('$.critical_count') | default(0) }}
+              }
             }
 
-      # Send notification with both action buttons
-      - service: notify.mobile_app_brian_phone
-        data:
-          title: "Home Brief"
-          message: "{{ condensed_brief }}"
-          data:
-            clickAction: "/dashboard-briefing"
-            actions:
-              - action: "PLAY_TTS"
-                title: "Play Extended Brief"
+      # Enhanced delivery based on context
+      - choose:
+          # For critical issues, send with higher priority
+          - conditions:
+              - condition: template
+                value_template: >
+                  {% set device_data = device_issues | fromjson %}
+                  {{ device_data.critical_count | default(0) > 0 }}
+            sequence:
+              - service: notify.all_mobile_devices
+                data:
+                  title: "Home Brief (Issues Detected)"
+                  message: "{{ condensed_brief }}"
+                  data:
+                    ttl: 0
+                    priority: high
+                    clickAction: "/dashboard-briefing"
+        
+        # Default notification
+        default:
+          - service: notify.all_mobile_devices
+            data:
+              title: "Home Brief"
+              message: "{{ condensed_brief }}"
+              data:
+                clickAction: "/dashboard-briefing"
+
+      # If during morning or evening, also play on speakers
+      - if:
+          - condition: or
+            conditions:
+              - condition: template
+                value_template: "{{ is_morning and now().hour >= 7 }}"
+              - condition: template
+                value_template: "{{ is_evening and now().hour < 20 }}"
+          - condition: state
+            entity_id: media_player.kitchen_display
+            state: 'on'
+        then:
+          - service: tts.speak
+            target:
+              entity_id: tts.google_en_com
+            data:
+              cache: true
+              media_player_entity_id: media_player.kitchen_display
+              message: "{{ condensed_brief }}"
