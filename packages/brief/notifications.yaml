@@ -219,14 +219,14 @@ script:
       - service: mqtt.publish
         data:
           topic: "home/ai/response"
-          payload: >
+          payload: >-
             {
               "state": "{{ now().isoformat() }}",
               "condensed_brief": {{ condensed_brief | tojson }},
               "context": {
                 "time_of_day": "{{ 'morning' if is_morning else 'afternoon' if is_afternoon else 'evening' }}",
                 "is_weekday": {{ is_weekday }},
-                "chores_overdue": {{ chores_status | fromjson | default({}) | json_path('$.summary.overdue') | default(0) }},
+                "chores_overdue": {{ chores_status | fromjson | default({}) | default({}) | json_path('$.summary.overdue') | default(0) }},
                 "critical_issues": {{ device_issues | fromjson | default({}) | json_path('$.critical_count') | default(0) }}
               }
             }
