@@ -1,0 +1,70 @@
+name: Validate Home Assistant Configuration
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.yaml'
+      - '.github/workflows/validate.yaml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.yaml'
+      - '.github/workflows/validate.yaml'
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install Home Assistant CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install homeassistant
+
+      - name: Validate configuration
+        run: |
+          hass --script check_config --config .
+
+      - name: Validate YAML syntax
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .
+          config_file: .github/yamllint-config.yaml
+          strict: false
+
+      - name: Create success comment on PR
+        if: github.event_name == 'pull_request' && success()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: '✅ Home Assistant configuration validation passed!'
+            })
+
+      - name: Create failure comment on PR
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: '❌ Home Assistant configuration validation failed. Please check the workflow logs for details.'
+            })

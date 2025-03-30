@@ -2,6 +2,8 @@
 *
 
 # Uningore the following
+!.github
+!.github/*
 !*.yaml
 !.gitignore
 !*.md
