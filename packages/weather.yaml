@@ -66,7 +66,26 @@ automation:
           entity_id: weather.forecast_home
         response_variable: daily_forecast
       
-      # Update the last updated timestamp
+      # Publish forecast data to MQTT topics
+      - service: mqtt.publish
+        data:
+          topic: "home/weather/hourly_forecast"
+          payload: >
+            {% if hourly_forecast is defined %}
+              {{ hourly_forecast | tojson }}
+            {% else %}
+              {"forecast": []}
+            {% endif %}
+          
+      - service: mqtt.publish
+        data:
+          topic: "home/weather/daily_forecast"
+          payload: >
+            {% if daily_forecast is defined %}
+              {{ daily_forecast | tojson }}
+            {% else %}
+              {"forecast": []}
+            {% endif %}
       - service: input_datetime.set_datetime
         target:
           entity_id: input_datetime.weather_last_updated
@@ -80,7 +99,18 @@ input_datetime:
     has_date: true
     has_time: true
 
-# Template sensors for accessing forecast data
+# MQTT sensors for storing forecast data
+mqtt:
+  sensor:
+    - name: "Weather Hourly Forecast"
+      state_topic: "home/weather/hourly_forecast"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/weather/hourly_forecast"
+      
+    - name: "Weather Daily Forecast"
+      state_topic: "home/weather/daily_forecast"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/weather/daily_forecast"
 template:
   - sensor:
       - name: "Weather Last Updated"
@@ -90,28 +120,28 @@ template:
       - name: "Condition forecast next hour"
         unique_id: condition_forecast_next_hour
         state: >
-          {% set forecast = state_attr('weather.forecast_home', 'forecast') %}
-          {% if forecast and forecast|length > 0 %}
+          {% set forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
+          {% if forecast is not none and forecast | length > 0 %}
             {{ forecast[0].condition }}
           {% else %}
-            {{ states('weather.forecast_home').condition }}
+            {{ states('weather.forecast_home') }}
           {% endif %}
           
       - name: "Condition forecast today"
         unique_id: condition_forecast_today
         state: >
-          {% set forecast = state_attr('weather.forecast_home', 'forecast') %}
-          {% if forecast and forecast|length > 0 %}
+          {% set forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
+          {% if forecast is not none and forecast | length > 0 %}
             {{ forecast[0].condition }}
           {% else %}
-            {{ states('weather.forecast_home').condition }}
+            {{ states('weather.forecast_home') }}
           {% endif %}
           
       - name: "Precipitation forecast next hour"
         unique_id: precipitation_forecast_next_hour
         state: >
-          {% set forecast = state_attr('weather.forecast_home', 'forecast') %}
-          {% if forecast and forecast|length > 0 and forecast[0].precipitation is defined %}
+          {% set forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
+          {% if forecast is not none and forecast | length > 0 and forecast[0].precipitation is defined %}
             {{ forecast[0].precipitation }}
           {% else %}
             0
@@ -121,8 +151,8 @@ template:
       - name: "Temperature forecast high today"
         unique_id: temperature_forecast_high_today
         state: >
-          {% set forecast = state_attr('weather.forecast_home', 'forecast') %}
-          {% if forecast and forecast|length > 0 and forecast[0].temperature is defined %}
+          {% set forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
+          {% if forecast is not none and forecast | length > 0 and forecast[0].temperature is defined %}
             {{ forecast[0].temperature }}
           {% else %}
             {{ states('weather.forecast_home').temperature }}
