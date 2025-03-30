@@ -1,10 +1,10 @@
 # Home Assistant Configuration
 
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.3.4-blue?style=flat-square&logo=home-assistant)
-![License](https://img.shields.io/github/license/bcl1713/homeassistant-config?style=flat-square)
-![GitHub last commit](https://img.shields.io/github/last-commit/bcl1713/homeassistant-config?style=flat-square)
-![GitHub stars](https://img.shields.io/github/stars/bcl1713/homeassistant-config?style=flat-square)
-![GitHub issues](https://img.shields.io/github/issues/bcl1713/homeassistant-config?style=flat-square)
+![License](https://img.shields.io/github/license/bcl1713/homeassistant_config?style=flat-square)
+![GitHub last commit](https://img.shields.io/github/last-commit/bcl1713/homeassistant_config?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/bcl1713/homeassistant_config?style=flat-square)
+![GitHub issues](https://img.shields.io/github/issues/bcl1713/homeassistant_config?style=flat-square)
 
 This repository contains my personal Home Assistant configuration, providing automated control and monitoring of my smart home.
 
