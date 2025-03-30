@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out configuration from GitHub
-        uses: actions/checkout
+        uses: actions/checkout@v3
         
       - name: Prepare test environment
         run: |
@@ -28,7 +28,7 @@ jobs:
           mkdir -p .storage
       
       - name: Run Home Assistant Configuration Check
-        uses: frenck/action-home-assistant
+        uses: frenck/action-home-assistant@v1.4.1
         with:
           version: stable
         continue-on-error: true  # Continue even if there are expected errors
