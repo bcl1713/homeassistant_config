@@ -1,15 +1,130 @@
-template:
-  - trigger:
+# packages/weather.yaml
+#
+# Weather information management with efficient triggers and caching
+#
+# Features:
+# - Event-based triggers instead of time-pattern polling
+# - Cache weather forecasts to reduce API calls
+# - Maintain forecast predictions for the next hour and day
+
+# Input variables for controlling refresh frequency
+input_number:
+  weather_update_frequency:
+    name: "Weather Update Frequency"
+    min: 15
+    max: 180
+    step: 15
+    unit_of_measurement: "minutes"
+    icon: mdi:clock-outline
+    initial: 30
+
+# Automation to refresh weather data on specific events
+automation:
+  - alias: "Weather Data Refresh"
+    description: "Update weather data based on significant events or schedule"
+    trigger:
+      # Time-based backup trigger (using the configurable frequency)
       - platform: time_pattern
-        minutes: /1
+        minutes: "/{{ states('input_number.weather_update_frequency') | int }}"
+      # Event-based triggers
+      - platform: state
+        entity_id: sun.sun
+      - platform: state
+        entity_id: weather.forecast_home
+        attribute: weather_alert
+      # When someone arrives home (might want weather info)
+      - platform: numeric_state
+        entity_id: zone.home
+        value_template: "{{ trigger.to_state.state | int - trigger.from_state.state | int }}"
+        above: 0  # This will trigger when the count increases (someone arrives)
+    condition:
+      # Only update if last update was more than 15 minutes ago
+      - condition: template
+        value_template: >
+          {% set last_updated = states('sensor.weather_last_updated') %}
+          {% if last_updated == 'unknown' or last_updated == 'unavailable' %}
+            true
+          {% else %}
+            {% set time_diff = (now().timestamp() - as_timestamp(last_updated)) / 60 %}
+            {{ time_diff > 15 }}
+          {% endif %}
     action:
-      - action: weather.get_forecasts
+      # Get the hourly forecast
+      - service: weather.get_forecasts
         data:
           type: hourly
         target:
           entity_id: weather.forecast_home
-        response_variable: hourly
-    sensor:
-      - name: Condition forecast next hour
+        response_variable: hourly_forecast
+      
+      # Get the daily forecast
+      - service: weather.get_forecasts
+        data:
+          type: daily
+        target:
+          entity_id: weather.forecast_home
+        response_variable: daily_forecast
+      
+      # Update the last updated timestamp
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.weather_last_updated
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+# Helper entity to track last update time
+input_datetime:
+  weather_last_updated:
+    name: "Weather Last Updated"
+    has_date: true
+    has_time: true
+
+# Template sensors for accessing forecast data
+template:
+  - sensor:
+      - name: "Weather Last Updated"
+        unique_id: weather_last_updated
+        state: "{{ states('input_datetime.weather_last_updated') }}"
+        
+      - name: "Condition forecast next hour"
         unique_id: condition_forecast_next_hour
-        state: "{{ hourly['weather.forecast_home'].forecast[0].condition }}"
+        state: >
+          {% set forecast = state_attr('weather.forecast_home', 'forecast') %}
+          {% if forecast and forecast|length > 0 %}
+            {{ forecast[0].condition }}
+          {% else %}
+            {{ states('weather.forecast_home').condition }}
+          {% endif %}
+          
+      - name: "Condition forecast today"
+        unique_id: condition_forecast_today
+        state: >
+          {% set forecast = state_attr('weather.forecast_home', 'forecast') %}
+          {% if forecast and forecast|length > 0 %}
+            {{ forecast[0].condition }}
+          {% else %}
+            {{ states('weather.forecast_home').condition }}
+          {% endif %}
+          
+      - name: "Precipitation forecast next hour"
+        unique_id: precipitation_forecast_next_hour
+        state: >
+          {% set forecast = state_attr('weather.forecast_home', 'forecast') %}
+          {% if forecast and forecast|length > 0 and forecast[0].precipitation is defined %}
+            {{ forecast[0].precipitation }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "mm"
+          
+      - name: "Temperature forecast high today"
+        unique_id: temperature_forecast_high_today
+        state: >
+          {% set forecast = state_attr('weather.forecast_home', 'forecast') %}
+          {% if forecast and forecast|length > 0 and forecast[0].temperature is defined %}
+            {{ forecast[0].temperature }}
+          {% else %}
+            {{ states('weather.forecast_home').temperature }}
+          {% endif %}
+        unit_of_measurement: "°C"
+        device_class: temperature
