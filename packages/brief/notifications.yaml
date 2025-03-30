@@ -84,100 +84,57 @@ script:
       - variables:
           processed_weather: "{{ daily_forecast | tojson }}"
       
-      # Get chores status
+      # Process chores status directly
       - variables:
+          dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') }}"
+          dishwasher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
+          bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
+          bathroom_completed: "{{ is_state('input_boolean.chore_bathroom_completed', 'on') }}"
+          is_weekend: "{{ is_state('binary_sensor.is_weekend', 'on') }}"
+          
+          # Simplified chores status without complex parsing
           chores_status: >
-            {% set chores = namespace(items=[]) %}
-            
-            {# Dishwasher duty #}
-            {% if is_state_attr('input_select.chore_dishwasher_assignee', 'name', 'Dishwasher Duty') %}
-              {% set assignee = states('input_select.chore_dishwasher_assignee') %}
-              {% set completed = is_state('input_boolean.chore_dishwasher_completed', 'on') %}
-              {% set chores.items = chores.items + [
-                {
-                  'name': 'Dishwasher',
-                  'assignee': assignee,
-                  'completed': completed,
-                  'due_today': true
-                }
-              ] %}
-            {% endif %}
-            
-            {# Bathroom duty - only on weekends #}
-            {% if is_state('binary_sensor.is_weekend', 'on') and 
-                  is_state_attr('input_select.chore_bathroom_assignee', 'name', 'Bathroom Duty') %}
-              {% set assignee = states('input_select.chore_bathroom_assignee') %}
-              {% set completed = is_state('input_boolean.chore_bathroom_completed', 'on') %}
-              {% set chores.items = chores.items + [
-                {
-                  'name': 'Bathroom Cleaning',
-                  'assignee': assignee,
-                  'completed': completed,
-                  'due_today': true
-                }
-              ] %}
-            {% endif %}
-            
-            {# Add summary data #}
-            {% set total = chores.items | length %}
-            {% set completed = chores.items | selectattr('completed', 'eq', true) | list | length %}
-            {% set overdue = chores.items | selectattr('completed', 'eq', false) | 
-                             selectattr('due_today', 'eq', true) | list | length %}
-            
             {{ {
-                'items': chores.items,
-                'summary': {
-                  'total': total,
-                  'completed': completed,
-                  'overdue': overdue
-                }
+              'dishwasher': {
+                'assignee': dishwasher_assignee,
+                'completed': dishwasher_completed == 'true'
+              },
+              'bathroom': {
+                'assignee': bathroom_assignee,
+                'completed': bathroom_completed == 'true',
+                'active': is_weekend == 'true'
+              }
             } | tojson }}
       
-      # Get device issues
+      # Count critical device issues directly
       - variables:
-          device_issues: >
-            {% set issues = namespace(critical=[]) %}
-
-            {# Check battery levels in attributes #}
+          critical_battery_count: >
+            {% set count = 0 %}
             {% for entity in states if entity.attributes.battery_level is defined %}
-              {% set raw_level = entity.attributes.battery_level %}
-              {% set level = raw_level | float(-1) | int %}
+              {% set level = entity.attributes.battery_level | float(-1) | int %}
               {% if level >= 0 and level <= 10 %}
-                {% set issues.critical = issues.critical + [
-                  {'type': 'battery',
-                   'device': entity.name,
-                   'details': 'Battery at ' ~ level ~ '%'}
-                ] %}
+                {% set count = count + 1 %}
               {% endif %}
             {% endfor %}
-
-            {# Check battery sensors #}
             {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
               {% if 0 <= entity.state | int <= 10 %}
-                {% set issues.critical = issues.critical + [
-                  {'type': 'battery',
-                   'device': entity.name,
-                   'details': 'Battery at ' ~ entity.state ~ '%'}
-                ] %}
+                {% set count = count + 1 %}
               {% endif %}
             {% endfor %}
-
-            {# Check offline devices #}
-            {% set critical_devices = ['camera', 'alarm_control_panel', 'lock', 'binary_sensor'] %}
+            {{ count }}
+            
+          critical_offline_count: >
+            {% set count = 0 %}
+            {% set critical_domains = ['camera', 'alarm_control_panel', 'lock', 'binary_sensor'] %}
             {% for entity in states if entity.state == 'unavailable' %}
-              {% if entity.domain in critical_devices %}
-                {% set issues.critical = issues.critical + [
-                  {'type': 'offline',
-                   'device': entity.name,
-                   'details': 'Critical device offline'}
-                ] %}
+              {% if entity.domain in critical_domains %}
+                {% set count = count + 1 %}
               {% endif %}
             {% endfor %}
-
-            {{ {
-              'critical': issues.critical | list,
-              'critical_count': issues.critical | length
-            } | tojson }}
+            {{ count }}
+            
+          has_critical_issues: >
+            {{ (critical_battery_count | int) + (critical_offline_count | int) > 0 }}
 
       # Process everything with AI
       - service: conversation.process
@@ -205,8 +162,11 @@ script:
             Chores Status:
             {{ chores_status }}
 
-            Device Status:
-            {{ device_issues }}
+            Device Issues:
+            {
+              "critical_battery_count": {{ critical_battery_count }},
+              "critical_offline_count": {{ critical_offline_count }}
+            }
 
             {{ base_prompt }}
         response_variable: agent_response
@@ -230,9 +190,7 @@ script:
           # For critical issues, send with higher priority
           - conditions:
               - condition: template
-                value_template: >
-                  {% set device_data = device_issues | fromjson %}
-                  {{ device_data.critical_count | default(0) > 0 }}
+                value_template: "{{ has_critical_issues }}"
             sequence:
               - service: notify.all_mobile_devices
                 data:
