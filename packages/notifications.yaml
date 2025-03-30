@@ -1,0 +1,33 @@
+# packages/notifications.yaml
+#
+# Home Assistant Notifications Package
+# Features:
+# - Bus detection notifications on school days
+# - Other notification automations
+#
+# To use: Place this file in your /config/packages/ directory
+
+automation:
+  - id: "1713818857301"
+    alias: Bus Detected On School Days
+    description: "Notify when the school bus is detected on school mornings"
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.front_drive_bus_occupancy
+        from: "off"
+        to: "on"
+    condition:
+      - condition: time
+        after: 07:35:00
+        before: 07:59:00
+    action:
+      - metadata: {}
+        data:
+          cache: true
+          media_player_entity_id: media_player.all_speakers
+          message: Bus detected.
+        target:
+          entity_id: tts.google_en_com
+        action: tts.speak
+    mode: single
