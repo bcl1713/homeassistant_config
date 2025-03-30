@@ -23,9 +23,9 @@ automation:
   - alias: "Weather Data Refresh"
     description: "Update weather data based on significant events or schedule"
     trigger:
-      # Time-based backup trigger (using the configurable frequency)
+      # Time-based backup trigger (fixed at 15 minutes)
       - platform: time_pattern
-        minutes: "/{{ states('input_number.weather_update_frequency') | int }}"
+        minutes: "/15"
       # Event-based triggers
       - platform: state
         entity_id: sun.sun
@@ -38,15 +38,16 @@ automation:
         value_template: "{{ trigger.to_state.state | int - trigger.from_state.state | int }}"
         above: 0  # This will trigger when the count increases (someone arrives)
     condition:
-      # Only update if last update was more than 15 minutes ago
+      # Only update if enough time has passed according to the user setting
       - condition: template
         value_template: >
           {% set last_updated = states('sensor.weather_last_updated') %}
+          {% set min_interval = states('input_number.weather_update_frequency') | int %}
           {% if last_updated == 'unknown' or last_updated == 'unavailable' %}
             true
           {% else %}
             {% set time_diff = (now().timestamp() - as_timestamp(last_updated)) / 60 %}
-            {{ time_diff > 15 }}
+            {{ time_diff > min_interval }}
           {% endif %}
     action:
       # Get the hourly forecast
