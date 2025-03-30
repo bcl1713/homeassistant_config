@@ -53,7 +53,7 @@
         - service: notify.all_mobile_devices
           data:
             message: >
-              Dishwasher is not running. 
+              Dishwasher is not running.
               Kitchen lights will stay on until dishwasher starts or you ignore
               this alert.
             data:
