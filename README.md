@@ -1,6 +1,6 @@
 # Home Assistant Configuration
 
-![Home Assistant Logo](https://brands.home-assistant.io/_/home_assistant/logo.png)
+![Home Assistant Logo](https://github.com/home-assistant/assets/raw/master/logo/logo.png)
 
 This repository contains my personal Home Assistant configuration, providing automated control and monitoring of my smart home.
 
