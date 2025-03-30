@@ -216,26 +216,14 @@ script:
           condensed_brief: "{{ agent_response.response.speech.plain.speech }}"
 
       # Publish to MQTT for other integrations to use
-      - variables:
-          # Parse JSON strings to objects first
-          chores_json: "{{ chores_status | fromjson | default({}) }}"
-          device_json: "{{ device_issues | fromjson | default({}) }}"
-          # Create the payload using the parsed objects
-          mqtt_payload: >-
-            {
-              "state": "{{ now().isoformat() }}",
-              "condensed_brief": {{ condensed_brief | tojson }},
-              "context": {
-                "time_of_day": "{{ 'morning' if is_morning else 'afternoon' if is_afternoon else 'evening' }}",
-                "is_weekday": {{ is_weekday }},
-                "chores_overdue": {{ chores_json.summary.overdue | default(0) }},
-                "critical_issues": {{ device_json.critical_count | default(0) }}
-              }
-            }
       - service: mqtt.publish
         data:
           topic: "home/ai/response"
-          payload: "{{ mqtt_payload }}"
+          payload: >-
+            {
+              "state": "{{ now().isoformat() }}",
+              "condensed_brief": {{ condensed_brief | tojson }}
+            }
 
       # Enhanced delivery based on context
       - choose:
