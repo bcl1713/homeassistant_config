@@ -29,7 +29,6 @@
         - light.outside_lights
         - remote.living_room_tv
         - remote.master_bedroom_tv
-        #- light.holiday_lights
     - service: media_player.turn_off
       entity_id:
         - media_player.kitchen_display
@@ -53,7 +52,10 @@
         # Send actionable notification
         - service: notify.all_mobile_devices
           data:
-            message: "Dishwasher is not running. Kitchen lights will stay on until dishwasher starts or you ignore this alert."
+            message: >
+              Dishwasher is not running. 
+              Kitchen lights will stay on until dishwasher starts or you ignore
+              this alert.
             data:
               actions:
                 - action: "ignore"

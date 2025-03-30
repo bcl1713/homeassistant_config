@@ -28,7 +28,7 @@ script:
             - Report every calendar event chornologially grouped by day with weekday name included.
             - DO NOT SKIP ANY EVENTS
             - Report all day events on the day they begin, not when they end. Especially BIRTHDAYS!
-            - Pay attention to time zone offsets on the calendar events.  
+            - Pay attention to time zone offsets on the calendar events.
             - Start times are given in either 'yyyy-mm-dd' format for all day events or 'yyyy-mm-ddTHH:MM:SS(offset)"
             - Offset is either + or - hh:mm.
             - Report all device issues (batteries, offline devices)
@@ -59,7 +59,7 @@ script:
       - variables:
           commute_info: >
             {% if now().weekday() | int < 5 and now().hour | int < 10 %}
-              {{ { 
+              {{ {
                 'commute_time': states('sensor.travel_time_to_brian_s_work'),
                 'is_workday': true
               } | tojson }}
@@ -143,7 +143,10 @@ script:
             Context Data:
             {
               "currentTime": "{{ now().strftime("%Y-%m-%d %H:%M") }}",
-              "timeOfDay": "{{ 'morning' if now().hour | int < 12 else 'afternoon' if now().hour | int < 17 else 'evening' }}",
+              "timeOfDay": "{{
+                'morning' if now().hour |
+                int < 12 else 'afternoon' if now().hour |
+                int < 17 else 'evening' }}",
               "isWeekday": {{ (now().weekday() | int) < 5 }}
             }
 
