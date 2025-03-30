@@ -73,6 +73,8 @@ automation:
             priority: "high"
             ttl: 0
             critical: true
+            # Add clickAction to redirect to camera view
+            clickAction: "/lovelace/cameras?entity_id=camera.front_doorbell"
       
       # Step 4: Log the event
       - service: logbook.log
