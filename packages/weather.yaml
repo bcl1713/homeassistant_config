@@ -18,8 +18,21 @@ input_number:
     icon: mdi:clock-outline
     initial: 30
 
-# Automation to refresh weather data on specific events
 automation:
+  - alias: Notify me if it is going to rain soon.
+    description: "Send notification when rain is forecasted in the next hour"
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.condition_forecast_next_hour
+        to: rainy
+    condition: []
+    action:
+      - action: notify.mobile_app_brian_phone
+        metadata: {}
+        data:
+          message: It's likely going to rain soon.
+    mode: single
   - alias: "Weather Data Refresh"
     description: "Update weather data based on significant events or schedule"
     trigger:
