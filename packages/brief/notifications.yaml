@@ -35,7 +35,7 @@ script:
 
             Time-Specific Additions:
             {% if is_morning and is_weekday %}
-            - Include current commute time to work
+            - Include current commute times for both Brian and Hester
             - Prioritize today's activities and meetings
             - Mention any required chores that need attention today
             {% elif is_morning and not is_weekday %}
@@ -72,7 +72,8 @@ script:
           commute_info: >
             {% if is_weekday and is_morning %}
               {{ {
-                'commute_time': states('sensor.travel_time_to_brian_s_work'),
+                'brian_commute_time': states('sensor.travel_time_to_brian_s_work'),
+                'hester_commute_time': states('sensor.travel_time_to_hester_s_work'),
                 'is_workday': true
               } | tojson }}
             {% else %}
