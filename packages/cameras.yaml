@@ -63,7 +63,7 @@ automation:
           seconds: 1
       
       # Step 3: Send notification to only your phone with the camera image
-      - service: notify.mobile_app_brian_phone
+      - service: notify.all_mobile_devices
         data:
           message: "Doorbell pressed"
           data:
