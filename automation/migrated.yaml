@@ -21,30 +21,6 @@
         entity_id: tts.google_en_com
       action: tts.speak
   mode: single
-- id: "1724376507293"
-  alias: Low battery level detection & notification for all battery sensors
-  description: ""
-  use_blueprint:
-    path: sbyx/low-battery-level-detection-notification-for-all-battery-sensors.yaml
-    input:
-      threshold: 20
-      exclude:
-        entity_id: []
-        device_id:
-          - 8be77dc2dee6a60fb692f353fc93fe02
-          - 4c8007e7032b078b730b67a468dd5e1b
-          - 8cb3bce4e5b26f4978b2d715130fe5b9
-      actions:
-        - action: notify.send_message
-          metadata: {}
-          data:
-            message: Battery Low on {{sensors}}
-          target:
-            device_id: 90d6e89b4df4abd4baf23e600e635a37
-        - action: notify.mobile_app_brian_phone
-          data:
-            message: Battery low on {{sensors}}
-      time: 08:00:00
 - id: "1724451860125"
   alias: Notify me if it is going to rain soon.
   description: ""
