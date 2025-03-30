@@ -1,24 +1,45 @@
-# Ignore Everything
-*
-
-# Uningore the following
-!.github
-!.github/*
-!*.yaml
-!.gitignore
-!*.md
-!packages
-!packages/*
-!input_boolean
-!automation
-!blueprints
-
-# Make sure these are ignored
-
-.storage
-.cloud
-.google.token
-ip_bans.yaml
-secrets.yaml
-known_devices.yaml
+# Home Assistant sensitive files
 SERVICE_ACCOUNT.json
+*.log
+*.db
+*.db-shm
+*.db-wal
+
+# Home Assistant storage files
+.storage/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

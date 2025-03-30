@@ -21,3 +21,6 @@ ignore: |
   .github/
   .vscode/
   SERVICE_ACCOUNT.json
+  .storage/
+  themes/
+  blueprints/

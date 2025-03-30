@@ -15,26 +15,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate:
-    name: Validate Configuration
+  yaml_lint:
+    name: YAML Linting
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-          
-      - name: Install Home Assistant CLI
-        run: |
-          python -m pip install --upgrade pip
-          pip install homeassistant
-
-      - name: Validate configuration
-        run: |
-          hass --script check_config --config .
 
       - name: Validate YAML syntax
         uses: ibiqlik/action-yamllint@v3
@@ -43,8 +29,45 @@ jobs:
           config_file: .github/yamllint-config.yaml
           strict: false
 
+  ha_config_check:
+    name: Home Assistant Config Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Prepare environment
+        run: |
+          mkdir -p secrets
+          # Create dummy files for secrets referenced in config
+          echo '{"type": "service_account", "project_id": "dummy-project-id"}' > SERVICE_ACCOUNT.json
+          
+          # Create dummy secrets.yaml if used in your configuration
+          echo 'dummy_secret: dummy_value' > secrets.yaml
+
+      - name: Run Home Assistant Config Check
+        uses: frenck/action-home-assistant@v1
+        with:
+          secrets: secrets.yaml
+          version: "stable"
+
+  notify_results:
+    name: Notify Results
+    needs: [yaml_lint, ha_config_check]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - name: Check outcome
+        id: check
+        run: |
+          if [[ "${{ needs.yaml_lint.result }}" == "success" && "${{ needs.ha_config_check.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create success comment on PR
-        if: github.event_name == 'pull_request' && success()
+        if: steps.check.outputs.status == 'success'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -57,7 +80,7 @@ jobs:
             })
 
       - name: Create failure comment on PR
-        if: github.event_name == 'pull_request' && failure()
+        if: steps.check.outputs.status == 'failure'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
