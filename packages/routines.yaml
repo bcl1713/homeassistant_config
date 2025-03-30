@@ -1,0 +1,173 @@
+# packages/routines.yaml
+#
+# Common household routines packaged as scripts for direct calling
+#
+# Features:
+# - Good Night routine for shutting down the house
+# - Easily triggered via remote controls or voice commands
+
+script:
+  good_night:
+    alias: "Good Night Routine"
+    description: "Shuts down the house for the night, adjusts lighting, and secures the home"
+    mode: restart
+    sequence:
+      # Set up variables we'll need
+      - variables:
+          is_guest_mode: "{{ is_state('input_boolean.guest_mode', 'on') }}"
+          dishwasher_state: "{{ states('sensor.dishwasher_state') }}"
+          is_dishwasher_available: >
+            {{ not is_state('sensor.dishwasher_state', 'unavailable') and 
+               not is_state('sensor.dishwasher_state', 'unknown') }}
+          is_dishwasher_running: >
+            {{ is_dishwasher_available and 
+               states('sensor.dishwasher_state') == "BSH.Common.EnumType.OperationState.Run" }}
+
+      # Always: Turn on bedside lamps to 50% with a nice transition
+      - service: light.turn_on
+        entity_id:
+          - light.brian_s_table_lamp
+          - light.hester_s_table_lamp
+        data:
+          brightness_pct: 50
+          transition: 3
+          
+      # Always: Turn off outside lights
+      - service: light.turn_off
+        entity_id:
+          - light.front_yard_lights
+          - light.back_yard
+          
+      # If Guest Mode is OFF: Turn off media players that are not in bedrooms
+      - if:
+          - condition: template
+            value_template: "{{ not is_guest_mode }}"
+        then:
+          - service: media_player.turn_off
+            entity_id:
+              - media_player.kitchen_display
+              - media_player.living_room_speaker
+              - media_player.music_room_speaker
+          - service: remote.turn_off
+            entity_id:
+              - remote.living_room_tv
+              
+      # Main logic branch for dishwasher state
+      - choose:
+          # If dishwasher is running
+          - conditions:
+              - condition: template
+                value_template: "{{ is_dishwasher_running }}"
+            sequence:
+              # If Guest Mode is OFF: Turn off indoor lights
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_guest_mode }}"
+                then:
+                  - service: light.turn_off
+                    entity_id: light.downstairs_lights
+              # Always: Arm the alarm system for night mode
+              - service: alarm_control_panel.alarm_arm_night
+                entity_id: alarm_control_panel.home_alarm
+                
+          # If dishwasher state is unavailable
+          - conditions:
+              - condition: template
+                value_template: "{{ not is_dishwasher_available }}"
+            sequence:
+              # Notify about sensor issue
+              - service: notify.all_mobile_devices
+                data:
+                  message: >
+                    Couldn't determine dishwasher state - sensor unavailable.
+                    Continue with Good Night routine?
+                  data:
+                    actions:
+                      - action: "continue"
+                        title: "Continue"
+                      - action: "cancel"
+                        title: "Cancel"
+              # Wait for user response
+              - wait_for_trigger:
+                  - platform: event
+                    event_type: mobile_app_notification_action
+                    event_data:
+                      action: continue
+                  - platform: event
+                    event_type: mobile_app_notification_action
+                    event_data:
+                      action: cancel
+                continue_on_timeout: true
+                timeout: "00:02:00"
+                
+              # If canceled, stop here
+              - if:
+                  - condition: template
+                    value_template: >
+                      {{ wait.trigger is defined and 
+                         wait.trigger.event.data.action == 'cancel' }}
+                then:
+                  - stop: "Good Night routine canceled by user"
+                  
+              # If continued or timeout
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_guest_mode }}"
+                then:
+                  - service: light.turn_off
+                    entity_id: light.downstairs_lights
+              # Always: Arm the alarm system
+              - service: alarm_control_panel.alarm_arm_night
+                entity_id: alarm_control_panel.home_alarm
+                
+        # Default: Dishwasher is available but not running
+        default:
+          # Notify and wait for action or dishwasher to start
+          - service: notify.all_mobile_devices
+            data:
+              message: >
+                Dishwasher is not running.
+                Kitchen lights will stay on until dishwasher starts or you continue.
+              data:
+                actions:
+                  - action: "continue_anyway"
+                    title: "Continue Anyway"
+          
+          # Log the waiting state
+          - service: logbook.log
+            data:
+              name: "Good Night Routine"
+              message: "Waiting for dishwasher to start or user action"
+              
+          # Wait for either user action or dishwasher to start
+          - wait_for_trigger:
+              - platform: event
+                event_type: mobile_app_notification_action
+                event_data:
+                  action: continue_anyway
+              - platform: state
+                entity_id: sensor.dishwasher_state
+                to: "BSH.Common.EnumType.OperationState.Run"
+            continue_on_timeout: true
+            timeout: "00:05:00"
+
+          # If dishwasher started, wait 2 minutes
+          - if:
+              - condition: template
+                value_template: >
+                  {{ wait.trigger is defined and 
+                     wait.trigger.platform == 'state' }}
+            then:
+              - delay: "00:02:00"
+              
+          # If Guest Mode is OFF: Turn off indoor lights
+          - if:
+              - condition: template
+                value_template: "{{ not is_guest_mode }}"
+            then:
+              - service: light.turn_off
+                entity_id: light.downstairs_lights
+                
+          # Always: Arm the alarm system for night mode
+          - service: alarm_control_panel.alarm_arm_night
+            entity_id: alarm_control_panel.home_alarm

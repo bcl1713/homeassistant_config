@@ -42,9 +42,7 @@ automation:
       input:
         remote_device: 7208c07c752cc38fd6b147f38261f829
         scene_001_press:
-          - service: input_boolean.turn_on
-            data:
-              entity_id: input_boolean.good_night
+          - service: script.good_night
         scene_004_press:
           - service: light.turn_on
             data:
@@ -93,9 +91,7 @@ automation:
       input:
         remote_device: b9e908c896f44c782113acbaf0985571
         scene_001_press:
-          - service: input_boolean.turn_on
-            data:
-              entity_id: input_boolean.good_night
+          - service: script.good_night
         scene_003_press:
           - service: light.turn_on
             data:
