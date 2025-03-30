@@ -3,10 +3,6 @@ guest_mode:
   icon: mdi:account-alert
   initial: off
 
-good_night:
-  name: Good Night
-  initial: off
-
 camera_notifications_indoor:
   name: Indoor Camera Notifications
   icon: mdi:camera
