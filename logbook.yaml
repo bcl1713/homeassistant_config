@@ -9,9 +9,13 @@ exclude:
     - zone
     - event
     - switch
+    - calendar
+    - conversation
   entity_globs:
     - sensor.pixel*
-    - sensor.towner*
+    - sensor.towner_phone*
+    - sensor.hester_phone*
+    - sensor.
     - sensor.condition*
     - sensor.homeconnect*
     - sensor.backup*
@@ -22,6 +26,7 @@ exclude:
     - button.ratgdo*
     - sensor.ratgdo*
     - button.*identify
+    - sensor.*last_seen
 include:
   entities:
     - switch.hallway_lamp
