@@ -8,6 +8,7 @@ exclude:
     - image
     - zone
     - event
+    - switch
   entity_globs:
     - sensor.pixel*
     - sensor.towner*
@@ -17,4 +18,13 @@ exclude:
     - sensor.*direction_of_travel
     - sensor.weather*
     - input_datetime.*last_updated*
-    - *.ratgdo*
+    - binary_sensor.ratgdo*
+    - button.ratgdo*
+    - sensor.ratgdo*
+    - button.*identify
+include:
+  entities:
+    - switch.hallway_lamp
+    - switch.work_bench
+    - switch.pi_hole
+
