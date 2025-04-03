@@ -3,13 +3,3 @@ purge_keep_days: 30 # Only keep last 30 days of history
 commit_interval: 30 # Commit to database every 30 seconds
 auto_purge: true # Automatically purge old data
 
-logbook:
-  exclude:
-    domains:
-      - media_player
-      - binary_sensor
-      - scene
-      - weather
-    entity_globs:
-      - sensor.pixel*
-      - sensor.condition*

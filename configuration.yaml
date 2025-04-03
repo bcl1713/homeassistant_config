@@ -31,3 +31,13 @@ notify:
     services:
       - service: mobile_app_brian_phone
       - service: mobile_app_hester_phone
+logbook:
+  exclude:
+    domains:
+      - media_player
+      - binary_sensor
+      - scene
+      - weather
+    entity_globs:
+      - sensor.pixel*
+      - sensor.condition*
