@@ -12,6 +12,5 @@ exclude:
   entity_globs:
     - sensor.pixel*
     - sensor.condition*
-    - *weather*
 
 
