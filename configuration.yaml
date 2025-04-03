@@ -38,6 +38,11 @@ logbook:
       - binary_sensor
       - scene
       - weather
+      - number
     entity_globs:
       - sensor.pixel*
       - sensor.condition*
+      - sensor.homeconnect*
+      - sensor.backup*
+      - sensor.*direction_of_travel
+      - sensor.weather*
