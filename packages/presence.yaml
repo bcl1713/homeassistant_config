@@ -51,6 +51,9 @@ automation:
         entity_id: input_boolean.guest_mode
         state: "off"
     action:
+      - service: alarm_control_panel.alarm_arm_away
+        target:
+          entity_id: alarm_control_panel.home_alarm
       - service: homeassistant.turn_off
         target:
           entity_id:
@@ -62,9 +65,6 @@ automation:
       - service: light.turn_off
         target:
           entity_id: all
-      - service: alarm_control_panel.alarm_arm_away
-        target:
-          entity_id: alarm_control_panel.home_alarm
 
   - alias: "Someone Came Home"
     trigger:
