@@ -39,10 +39,6 @@ automation:
             when: "{{start_time}}"
             priority: "high"
             ttl: 0
-      - service: logbook.log
-        data:
-          name: "{{ camera_name }}"
-          message: "{{ event }} and video url is {{base_url}}{{id}}/{{camera}}/clip.mp4"
           
   # Special case for doorbell button press
   - alias: "Doorbell Button Press"
