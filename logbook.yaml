@@ -1,0 +1,18 @@
+exclude:
+  domains:
+    - media_player
+    - binary_sensor
+    - scene
+    - weather
+    - number
+    - image
+    - zone
+  entity_globs:
+    - sensor.pixel*
+    - sensor.towner*
+    - sensor.condition*
+    - sensor.homeconnect*
+    - sensor.backup*
+    - sensor.*direction_of_travel
+    - sensor.weather*
+    - input_datetime.*last_updated*
