@@ -13,5 +13,3 @@ logbook:
     entity_globs:
       - sensor.pixel*
       - sensor.condition*
-
-
