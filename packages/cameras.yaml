@@ -28,6 +28,7 @@ automation:
           camera: "{{ event['after']['camera'] }}"
           camera_name: "{{ camera | replace('_', ' ') | title}}"
           start_time: "{{ event['after']['start_time'] | int }}"
+          notification_tag: "frigate_{{id}}"
       - service: notify.all_mobile_devices
         data:
           title: "{{ camera_name }}"
@@ -35,10 +36,11 @@ automation:
           data:
             clickAction: "{{base_url}}{{id}}/{{camera}}/clip.mp4"
             image: "{{base_url}}{{id}}/thumbnail.jpg?format=android"
-            tag: "{{id}}"
+            tag: "{{notification_tag}}"
             when: "{{start_time}}"
             priority: "high"
             ttl: 0
+            alert_once: true
           
   # Special case for doorbell button press
   - alias: "Doorbell Button Press"
