@@ -19,8 +19,9 @@ input_number:
     initial: 30
 
 automation:
-  - alias: Notify me if it is going to rain soon.
-    description: "Send notification when rain is forecasted in the next hour"
+  - alias: "notification_rain_forecast"
+    id: "notification_rain_forecast"
+    description: "Rain forecast notification"
     trigger:
       - platform: state
         entity_id:
@@ -33,8 +34,9 @@ automation:
         data:
           message: It's likely going to rain soon.
     mode: single
-  - alias: "Weather Data Refresh"
-    description: "Update weather data based on significant events or schedule"
+  - alias: "weather_data_refresh"
+    id: "weather_data_refresh"
+    description: "Update weather data"
     trigger:
       # Time-based backup trigger (fixed at 15 minutes)
       - platform: time_pattern

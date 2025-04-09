@@ -8,9 +8,9 @@
 # To use: Place this file in your /config/packages/ directory
 
 automation:
-  - id: "1713818857301"
-    alias: Bus Detected On School Days
-    description: "Notify when the school bus is detected on school mornings"
+  - id: "notification_bus_detection"
+    alias: "notification_bus_detection"
+    description: "Notify when school bus is detected"
     trigger:
       - platform: state
         entity_id:

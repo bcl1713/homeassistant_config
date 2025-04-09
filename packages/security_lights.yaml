@@ -25,8 +25,9 @@ input_boolean:
     initial: off
 
 automation:
-  - alias: "Security Lighting - Person Detection"
-    description: "Manage outdoor lights based on person detection from any camera"
+  - alias: "security_lighting_person_detection"
+    id: "security_lighting_person_detection"
+    description: "Manage lights based on detection"
     trigger:
       - platform: state
         entity_id:
@@ -137,7 +138,9 @@ automation:
               entity_id: input_boolean.doorbell_lights_auto_off
     mode: restart
 
-  - alias: "Turn on the Front Yard Lights at Dusk"
+  - alias: "light_front_yard_at_dusk"
+    id: "light_front_yard_at_dusk"
+    description: "Dusk lighting automation"
     trigger:
       - platform: state
         entity_id: sun.sun

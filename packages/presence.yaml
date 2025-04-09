@@ -14,8 +14,9 @@ light:
       - light.hallway_corridor
 
 automation:
-  - alias: "Morning Wake Detection"
-    description: "Transitions from night mode to home mode when morning activity is detected"
+  - alias: "mode_morning_wake_detection"
+    id: "mode_morning_wake_detection"
+    description: "Transition ot home mode in morning"
     trigger:
       # Time-based trigger as backup
       - platform: time
@@ -39,7 +40,9 @@ automation:
         target:
           entity_id: alarm_control_panel.home_alarm
 
-  - alias: "Everyone Left"
+  - alias: "presence_everyone_left"
+    id: "presence_everyone_left"
+    description: "Handle when everyone has left home"
     trigger:
       - platform: numeric_state
         entity_id: zone.home
@@ -66,7 +69,9 @@ automation:
         target:
           entity_id: all
 
-  - alias: "Someone Came Home"
+  - alias: "presence_someone_returned"
+    id: "presence_someone_returned"
+    description: "Handle when someone returns home"
     trigger:
       - platform: numeric_state
         entity_id: zone.home
@@ -88,8 +93,9 @@ automation:
         target:
           entity_id: alarm_control_panel.home_alarm
 
-  - alias: "Handle Home Alarm Armed Away"
-    description: "Secure house when alarm is armed away"
+  - alias: "alarm_handle_armed_away"
+    id: "alarm_handle_armed_away"
+    description: "Actions when alarm is armed away"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.home_alarm
@@ -104,8 +110,9 @@ automation:
         target:
           entity_id: lock.front_door
 
-  - alias: "Handle Home Alarm Armed Night"
-    description: "Secure house for night, respecting guest privacy"
+  - alias: "alarm_handle_armed_night"
+    id: "alarm_handle_armed_night"
+    description: "Actions when alarm is armed night"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.home_alarm
@@ -130,8 +137,9 @@ automation:
         target:
           entity_id: lock.front_door
 
-  - alias: "Handle Home Alarm Armed Home"
-    description: "Welcome actions when system set to armed home"
+  - alias: "alarm_handle_armed_home"
+    id: "alarm_handle_armed_home"
+    description: "Actions when alarm is armed home"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.home_alarm
@@ -144,8 +152,9 @@ automation:
         target:
           entity_id: input_boolean.camera_notifications_indoor
 
-  - alias: "Welcome Home Light Control"
-    description: "Turn on entry lights wehn someone arrives home after dark"
+  - alias: "light_welcome_home"
+    id: "light_welcome_home"
+    description: "Turn on entry lights on return"
     trigger:
       - platform: state
         entity_id: zone.home

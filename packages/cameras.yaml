@@ -1,7 +1,7 @@
 # packages/cameras.yaml
 automation:
-  - id: "camera_notifications_new"
-    alias: "Universal Camera Notification"
+  - id: "camera_notification_universal"
+    alias: "camera_notification_universal"
     description: "Notify tracked objects"
     trigger:
       platform: mqtt
@@ -43,7 +43,9 @@ automation:
             alert_once: true
           
   # Special case for doorbell button press
-  - alias: "Doorbell Button Press"
+  - alias: "doorbell_button_press_notification"
+    id: "doorbell_button_press_notification"
+    description: "Notify on doorbell press"
     trigger:
       - platform: state
         entity_id: binary_sensor.front_doorbell_button_pressed
