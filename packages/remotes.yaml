@@ -34,9 +34,9 @@ script:
                 seconds: "{{ transition_time / 1000 }}"
 
 automation:
-  - id: brian_remote
+  - id: "blueprint_brian_remote"
     mode: restart
-    alias: "Brian's Remote Control"
+    alias: "blueprint_brian_remote"
     use_blueprint:
       path: zwave_remote.yaml
       input:
@@ -83,9 +83,9 @@ automation:
             data:
               entity_id: input_boolean.brian_lamp_dimming
 
-  - id: hester_remote
+  - id: "blueprint_hester_remote"
     mode: restart
-    alias: "Hester's Remote Control"
+    alias: "blueprint_hester_remote"
     use_blueprint:
       path: zwave_remote.yaml
       input:
