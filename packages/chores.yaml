@@ -63,14 +63,14 @@ automation:
 
   - alias: "chore_reset_weekly"
     id: "chore_reset_weekly"
-    description: "Reset weekly chores on Monday"
+    description: "Reset weekly chores on Friday"
     trigger:
       - platform: time
-        at: "00:00:00"
+        at: "00:00:01"
     condition:
       - condition: time
         weekday:
-          - mon
+          - fri
       - condition: state
         entity_id: input_boolean.chore_bathroom_completed
         state: "on"

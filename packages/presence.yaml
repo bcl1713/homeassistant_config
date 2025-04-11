@@ -29,7 +29,7 @@ automation:
         to: "on"
     condition:
       - condition: state
-        entity_id: input_boolean.guest_mode
+        entity_id: input_boolean.mode_guest
         state: "off"
       # Only trigger between 4am and 10am
       - condition: time
@@ -51,7 +51,7 @@ automation:
           minutes: 1
     condition:
       - condition: state
-        entity_id: input_boolean.guest_mode
+        entity_id: input_boolean.mode_guest
         state: "off"
     action:
       - service: alarm_control_panel.alarm_arm_away
@@ -104,8 +104,8 @@ automation:
       - service: input_boolean.turn_on
         target:
           entity_id:
-            - input_boolean.camera_notifications_indoor
-            - input_boolean.camera_notifications_outdoor
+            - input_boolean.notification_camera_indoor
+            - input_boolean.notification_camera_outdoor
       - service: lock.lock
         target:
           entity_id: lock.front_door
@@ -121,17 +121,17 @@ automation:
       # Always turn on outdoor camera notifications
       - service: input_boolean.turn_on
         target:
-          entity_id: input_boolean.camera_notifications_outdoor
+          entity_id: input_boolean.notification_camera_outdoor
       # Only turn on indoor camera notifications if guest mode is OFF
       - choose:
           - conditions:
               - condition: state
-                entity_id: input_boolean.guest_mode
+                entity_id: input_boolean.mode_guest
                 state: "off"
             sequence:
               - service: input_boolean.turn_on
                 target:
-                  entity_id: input_boolean.camera_notifications_indoor
+                  entity_id: input_boolean.notification_camera_indoor
       # Always lock the front door
       - service: lock.lock
         target:
@@ -147,10 +147,10 @@ automation:
     action:
       - service: input_boolean.turn_on
         target:
-          entity_id: input_boolean.camera_notifications_outdoor
+          entity_id: input_boolean.notification_camera_outdoor
       - service: input_boolean.turn_off
         target:
-          entity_id: input_boolean.camera_notifications_indoor
+          entity_id: input_boolean.notification_camera_indoor
 
   - alias: "light_welcome_home"
     id: "light_welcome_home"

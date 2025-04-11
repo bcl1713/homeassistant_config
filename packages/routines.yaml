@@ -14,7 +14,7 @@ script:
     sequence:
       # Set up variables we'll need
       - variables:
-          is_guest_mode: "{{ is_state('input_boolean.guest_mode', 'on') }}"
+          is_mode_guest: "{{ is_state('input_boolean.mode_guest', 'on') }}"
           dishwasher_state: "{{ states('sensor.dishwasher_state') }}"
           is_dishwasher_available: >
             {{ not is_state('sensor.dishwasher_state', 'unavailable') and 
@@ -41,7 +41,7 @@ script:
       # If Guest Mode is OFF: Turn off media players that are not in bedrooms
       - if:
           - condition: template
-            value_template: "{{ not is_guest_mode }}"
+            value_template: "{{ not is_mode_guest }}"
         then:
           - service: media_player.turn_off
             entity_id:
@@ -62,7 +62,7 @@ script:
               # If Guest Mode is OFF: Turn off indoor lights
               - if:
                   - condition: template
-                    value_template: "{{ not is_guest_mode }}"
+                    value_template: "{{ not is_mode_guest }}"
                 then:
                   - service: light.turn_off
                     entity_id: light.downstairs_lights
@@ -112,7 +112,7 @@ script:
               # If continued or timeout
               - if:
                   - condition: template
-                    value_template: "{{ not is_guest_mode }}"
+                    value_template: "{{ not is_mode_guest }}"
                 then:
                   - service: light.turn_off
                     entity_id: light.downstairs_lights
@@ -163,7 +163,7 @@ script:
           # If Guest Mode is OFF: Turn off indoor lights
           - if:
               - condition: template
-                value_template: "{{ not is_guest_mode }}"
+                value_template: "{{ not is_mode_guest }}"
             then:
               - service: light.turn_off
                 entity_id: light.downstairs_lights

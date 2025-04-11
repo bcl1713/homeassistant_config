@@ -1,9 +1,9 @@
 # packages/remotes.yaml
 input_boolean:
-  brian_lamp_dimming:
+  dimming_lamp_brian:
     name: "Brian's Lamp Dimming Active"
     initial: false
-  hester_lamp_dimming:
+  dimming_lamp_hester:
     name: "Hester's Lamp Dimming Active"
     initial: false
 
@@ -52,11 +52,11 @@ automation:
             data:
               lamp: light.brian_s_table_lamp
               direction: up
-              dimming_helper: input_boolean.brian_lamp_dimming
+              dimming_helper: input_boolean.dimming_lamp_brian
         scene_004_released:
           - service: input_boolean.turn_off
             data:
-              entity_id: input_boolean.brian_lamp_dimming
+              entity_id: input_boolean.dimming_lamp_brian
         scene_004_double:
           - service: light.turn_on
             data:
@@ -77,11 +77,11 @@ automation:
             data:
               lamp: light.brian_s_table_lamp
               direction: down
-              dimming_helper: input_boolean.brian_lamp_dimming
+              dimming_helper: input_boolean.dimming_lamp_brian
         scene_003_released:
           - service: input_boolean.turn_off
             data:
-              entity_id: input_boolean.brian_lamp_dimming
+              entity_id: input_boolean.dimming_lamp_brian
 
   - id: "blueprint_hester_remote"
     mode: restart
@@ -101,11 +101,11 @@ automation:
             data:
               lamp: light.hester_s_table_lamp
               direction: up
-              dimming_helper: input_boolean.hester_lamp_dimming
+              dimming_helper: input_boolean.dimming_lamp_hester
         scene_003_released:
           - service: input_boolean.turn_off
             data:
-              entity_id: input_boolean.hester_lamp_dimming
+              entity_id: input_boolean.dimming_lamp_hester
         scene_004_press:
           - service: light.turn_off
             data:
@@ -121,8 +121,8 @@ automation:
             data:
               lamp: light.hester_s_table_lamp
               direction: down
-              dimming_helper: input_boolean.hester_lamp_dimming
+              dimming_helper: input_boolean.dimming_lamp_hester
         scene_004_released:
           - service: input_boolean.turn_off
             data:
-              entity_id: input_boolean.hester_lamp_dimming
+              entity_id: input_boolean.dimming_lamp_hester

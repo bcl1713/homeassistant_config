@@ -25,7 +25,6 @@ script:
             - Only mention events in next 4 hours
             - Only report critical device issues (dead batteries, key offline devices)
             - Only include weather that could impact immediate plans
-            - Include any overdue chores that need attention
 
             Time Context:
             - Current time: {{ now().strftime("%H:%M") }}
@@ -37,16 +36,16 @@ script:
             {% if is_morning and is_weekday %}
             - Include current commute times for both Brian and Hester
             - Prioritize today's activities and meetings
-            - Mention any required chores that need attention today
+            - Mention any required chores that are not completed yet today
             {% elif is_morning and not is_weekday %}
             - Focus on weekend activities and plans
-            - Highlight any overdue chores
+            - Highlight any chores that are not completed
             {% elif is_afternoon %}
             - Summarize remaining events for today
-            - Mention any chores that need to be completed before evening
+            - Mention any chores that are not completed
             {% else %}
             - Focus on tomorrow's early events
-            - Summarize completion status of today's chores
+            - Mention any chores not marked complete
             - Mention preparation needed for tomorrow
             {% endif %}
 
