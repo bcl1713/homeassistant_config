@@ -70,7 +70,7 @@ automation:
     condition:
       - condition: time
         weekday:
-          - fri
+          - sat
       - condition: state
         entity_id: input_boolean.chore_bathroom_completed
         state: "on"
