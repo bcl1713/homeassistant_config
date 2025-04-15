@@ -5,31 +5,31 @@ light:
     name: Hallway Lamp
     entity_id: switch.hallway_lamp
   - platform: switch
-    name: Outdoor Plug Light
+    name: Outdoor Plugin
     entity_id: switch.outdoor_plug
   - platform: switch
-    name: Christmas Tree
+    name: Seasonal Christmas Tree
     entity_id: switch.christmas_tree
 
   # Functional groups
   - platform: group
     name: Entry Lights
     entities:
-      - light.front_yard_lights
+      - light.outdoor_front_yard
       - light.hallway_entry
       - light.hallway_corridor
-      - light.front_doorbell_ring_light
+      - light.doorbell_front_ring
 
   - platform: group
     name: Downstairs Lights
     entities:
-      - light.dining_room_table_light
+      - light.dining_room_table
       - light.hallway_corridor
       - light.hallway_entry
-      - light.living_room_center
-      - light.living_room_left
-      - light.living_room_right
-      - light.kitchen_bar_lights
-      - light.kitchen_counter_lights
-      - light.kitchen_fan
+      - light.living_room_ceiling_center
+      - light.living_room_ceiling_left
+      - light.living_room_ceiling_right
+      - light.kitchen_bar
+      - light.kitchen_counter
+      - light.kitchen_ceiling_fan
       - light.hallway_lamp

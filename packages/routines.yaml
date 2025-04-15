@@ -26,8 +26,8 @@ script:
       # Always: Turn on bedside lamps to 50% with a nice transition
       - service: light.turn_on
         entity_id:
-          - light.brian_s_table_lamp
-          - light.hester_s_table_lamp
+          - light.bedroom_table_lamp_brian
+          - light.bedroom_table_lamp_hester
         data:
           brightness_pct: 50
           transition: 3
@@ -35,8 +35,8 @@ script:
       # Always: Turn off outside lights
       - service: light.turn_off
         entity_id:
-          - light.front_yard_lights
-          - light.back_yard
+          - light.outdoor_front_yard
+          - light.outdoor_back_yard
           
       # If Guest Mode is OFF: Turn off media players that are not in bedrooms
       - if:
@@ -65,7 +65,7 @@ script:
                     value_template: "{{ not is_mode_guest }}"
                 then:
                   - service: light.turn_off
-                    entity_id: light.downstairs_lights
+                    entity_id: light.group_downstairs
               # Always: Arm the alarm system for night mode
               - service: alarm_control_panel.alarm_arm_night
                 entity_id: alarm_control_panel.home_alarm
@@ -115,7 +115,7 @@ script:
                     value_template: "{{ not is_mode_guest }}"
                 then:
                   - service: light.turn_off
-                    entity_id: light.downstairs_lights
+                    entity_id: light.group_downstairs
               # Always: Arm the alarm system
               - service: alarm_control_panel.alarm_arm_night
                 entity_id: alarm_control_panel.home_alarm
@@ -166,7 +166,7 @@ script:
                 value_template: "{{ not is_mode_guest }}"
             then:
               - service: light.turn_off
-                entity_id: light.downstairs_lights
+                entity_id: light.group_downstairs
                 
           # Always: Arm the alarm system for night mode
           - service: alarm_control_panel.alarm_arm_night

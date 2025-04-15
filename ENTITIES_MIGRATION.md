@@ -47,7 +47,7 @@ This document provides a comprehensive mapping between current entity IDs and th
 | light.kitchen_bar_lights        | light.kitchen_bar                | Kitchen Bar Lights         |
 | light.kitchen_counter_lights    | light.kitchen_counter            | Kitchen Counter Lights     |
 | light.dining_room_table_light   | light.dining_room_table          | Dining Room Table Light    |
-| light.back_yard                 | light.outdoor_backyard           | Back Yard Light            |
+| light.back_yard                 | light.outdoor_back_yard           | Back Yard Light            |
 | light.front_yard_lights         | light.outdoor_front_yard         | Front Yard Lights          |
 | light.outdoor_plug_light        | light.outdoor_plugin             | Outdoor Plugin Light       |
 | light.christmas_tree            | light.seasonal_christmas_tree    | Christmas Tree             |

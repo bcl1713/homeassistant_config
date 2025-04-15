@@ -49,7 +49,7 @@ automation:
       # Set auto-off flags for any lights that are currently off
       - if:
           - condition: state
-            entity_id: light.front_yard_lights
+            entity_id: light.outdoor_front_yard
             state: "off"
         then:
           - service: input_boolean.turn_on
@@ -57,7 +57,7 @@ automation:
               entity_id: input_boolean.auto_off_lights_front
       - if:
           - condition: state
-            entity_id: light.back_yard
+            entity_id: light.outdoor_back_yard
             state: "off"
         then:
           - service: input_boolean.turn_on
@@ -70,7 +70,7 @@ automation:
                 entity_id: select.front_doorbell_security_light
                 state: "Off"
               - condition: state
-                entity_id: light.front_doorbell_ring_light
+                entity_id: light.doorbell_front_ring
                 state: "off"
         then:
           - service: input_boolean.turn_on
@@ -81,8 +81,8 @@ automation:
       - service: light.turn_on
         target:
           entity_id:
-            - light.front_yard_lights
-            - light.back_yard
+            - light.outdoor_front_yard
+            - light.outdoor_back_yard
       - service: select.select_option
         data:
           option: "On"
@@ -90,7 +90,7 @@ automation:
           entity_id: select.front_doorbell_security_light
       - service: light.turn_on
         target:
-          entity_id: light.front_doorbell_ring_light
+          entity_id: light.doorbell_front_ring
 
       # wait 10 minutes
       - delay: "00:10:00"
@@ -103,7 +103,7 @@ automation:
         then:
           - service: light.turn_off
             target:
-              entity_id: light.front_yard_lights
+              entity_id: light.outdoor_front_yard
           - service: input_boolean.turn_off
             target:
               entity_id: input_boolean.auto_off_lights_front
@@ -115,7 +115,7 @@ automation:
         then:
           - service: light.turn_off
             target:
-              entity_id: light.back_yard
+              entity_id: light.outdoor_back_yard
           - service: input_boolean.turn_off
             target:
               entity_id: input_boolean.auto_off_lights_back
@@ -132,7 +132,7 @@ automation:
               entity_id: select.front_doorbell_security_light
           - service: light.turn_off
             target:
-              entity_id: light.front_doorbell_ring_light
+              entity_id: light.doorbell_front_ring
           - service: input_boolean.turn_off
             target:
               entity_id: input_boolean.auto_off_lights_doorbell
@@ -148,5 +148,5 @@ automation:
     action:
       - service: light.turn_on
         target:
-          entity_id: light.front_yard_lights
+          entity_id: light.outdoor_front_yard
     mode: single
