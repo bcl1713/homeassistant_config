@@ -114,7 +114,7 @@ automation:
           - service: light.turn_off
             data:
               entity_id:
-                - light.betroom_table_lamp_brian
+                - light.bedroom_table_lamp_brian
                 - light.bedroom_table_lamp_hester
         scene_004_held:
           - service: script.lamp_dim_sequence

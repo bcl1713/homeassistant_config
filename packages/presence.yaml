@@ -7,7 +7,7 @@ alarm_control_panel:
 
 light:
   - platform: group
-    name: After Dark Entry Lights
+    name: group_entry_after_dark
     entities:
       - light.outdoor_front_yard
       - light.hallway_entry
