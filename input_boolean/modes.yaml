@@ -1,13 +1,13 @@
-guest_mode:
+mode_guest:
   name: Guest Mode
   icon: mdi:account-alert
   initial: off
 
-camera_notifications_indoor:
+notification_camera_indoor:
   name: Indoor Camera Notifications
   icon: mdi:camera
   initial: off
-camera_notifications_outdoor:
+notification_camera_outdoor:
   name: Outdoor Camera Notifications
   icon: mdi:camera
   initial: off

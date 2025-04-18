@@ -1,9 +1,9 @@
 # packages/remotes.yaml
 input_boolean:
-  brian_lamp_dimming:
+  dimming_lamp_brian:
     name: "Brian's Lamp Dimming Active"
     initial: false
-  hester_lamp_dimming:
+  dimming_lamp_hester:
     name: "Hester's Lamp Dimming Active"
     initial: false
 
@@ -34,9 +34,9 @@ script:
                 seconds: "{{ transition_time / 1000 }}"
 
 automation:
-  - id: brian_remote
+  - id: "blueprint_brian_remote"
     mode: restart
-    alias: "Brian's Remote Control"
+    alias: "blueprint_brian_remote"
     use_blueprint:
       path: zwave_remote.yaml
       input:
@@ -46,46 +46,46 @@ automation:
         scene_004_press:
           - service: light.turn_on
             data:
-              entity_id: light.brian_s_table_lamp
+              entity_id: light.bedroom_table_lamp_brian
         scene_004_held:
           - service: script.lamp_dim_sequence
             data:
-              lamp: light.brian_s_table_lamp
+              lamp: light.bedroom_table_lamp_brian
               direction: up
-              dimming_helper: input_boolean.brian_lamp_dimming
+              dimming_helper: input_boolean.dimming_lamp_brian
         scene_004_released:
           - service: input_boolean.turn_off
             data:
-              entity_id: input_boolean.brian_lamp_dimming
+              entity_id: input_boolean.dimming_lamp_brian
         scene_004_double:
           - service: light.turn_on
             data:
-              entity_id: light.brian_s_table_lamp
+              entity_id: light.bedroom_table_lamp_brian
               brightness_pct: 100
         scene_003_press:
           - service: light.turn_off
             data:
-              entity_id: light.brian_s_table_lamp
+              entity_id: light.bedroom_table_lamp_brian
         scene_003_double:
           - service: light.turn_off
             data:
               entity_id:
-                - light.brian_s_table_lamp
-                - light.hester_s_table_lamp
+                - light.bedroom_table_lamp_brian
+                - light.bedroom_table_lamp_hester
         scene_003_held:
           - service: script.lamp_dim_sequence
             data:
-              lamp: light.brian_s_table_lamp
+              lamp: light.bedroom_table_lamp_brian
               direction: down
-              dimming_helper: input_boolean.brian_lamp_dimming
+              dimming_helper: input_boolean.dimming_lamp_brian
         scene_003_released:
           - service: input_boolean.turn_off
             data:
-              entity_id: input_boolean.brian_lamp_dimming
+              entity_id: input_boolean.dimming_lamp_brian
 
-  - id: hester_remote
+  - id: "blueprint_hester_remote"
     mode: restart
-    alias: "Hester's Remote Control"
+    alias: "blueprint_hester_remote"
     use_blueprint:
       path: zwave_remote.yaml
       input:
@@ -95,34 +95,34 @@ automation:
         scene_003_press:
           - service: light.turn_on
             data:
-              entity_id: light.hester_s_table_lamp
+              entity_id: light.bedroom_table_lamp_hester
         scene_003_held:
           - service: script.lamp_dim_sequence
             data:
-              lamp: light.hester_s_table_lamp
+              lamp: light.bedroom_table_lamp_hester
               direction: up
-              dimming_helper: input_boolean.hester_lamp_dimming
+              dimming_helper: input_boolean.dimming_lamp_hester
         scene_003_released:
           - service: input_boolean.turn_off
             data:
-              entity_id: input_boolean.hester_lamp_dimming
+              entity_id: input_boolean.dimming_lamp_hester
         scene_004_press:
           - service: light.turn_off
             data:
-              entity_id: light.hester_s_table_lamp
+              entity_id: light.bedroom_table_lamp_hester
         scene_004_double:
           - service: light.turn_off
             data:
               entity_id:
-                - light.brian_s_table_lamp
-                - light.hester_s_table_lamp
+                - light.bedroom_table_lamp_brian
+                - light.bedroom_table_lamp_hester
         scene_004_held:
           - service: script.lamp_dim_sequence
             data:
-              lamp: light.hester_s_table_lamp
+              lamp: light.bedroom_table_lamp_hester
               direction: down
-              dimming_helper: input_boolean.hester_lamp_dimming
+              dimming_helper: input_boolean.dimming_lamp_hester
         scene_004_released:
           - service: input_boolean.turn_off
             data:
-              entity_id: input_boolean.hester_lamp_dimming
+              entity_id: input_boolean.dimming_lamp_hester

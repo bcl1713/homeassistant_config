@@ -1,7 +1,7 @@
 # packages/cameras.yaml
 automation:
-  - id: "camera_notifications_new"
-    alias: "Universal Camera Notification"
+  - id: "camera_notification_universal"
+    alias: "camera_notification_universal"
     description: "Notify tracked objects"
     trigger:
       platform: mqtt
@@ -11,9 +11,9 @@ automation:
         value_template: >
           {% set camera = trigger.payload_json['after']['camera'] %}
           {% if camera in ['living_room'] %}
-            {{ is_state('input_boolean.camera_notifications_indoor', 'on') }}
+            {{ is_state('input_boolean.notification_camera_indoor', 'on') }}
           {% elif camera in ['front_drive', 'back_door', 'front_doorbell'] %}
-            {{ is_state('input_boolean.camera_notifications_outdoor', 'on') }}
+            {{ is_state('input_boolean.notification_camera_outdoor', 'on') }}
           {% endif %}
     action:
       - variables:
@@ -43,10 +43,12 @@ automation:
             alert_once: true
           
   # Special case for doorbell button press
-  - alias: "Doorbell Button Press"
+  - alias: "doorbell_button_press_notification"
+    id: "doorbell_button_press_notification"
+    description: "Notify on doorbell press"
     trigger:
       - platform: state
-        entity_id: binary_sensor.front_doorbell_button_pressed
+        entity_id: binary_sensor.doorbell_front_button_pressed
         to: "on"
     action:
       # Step 1: Take a snapshot from the doorbell camera

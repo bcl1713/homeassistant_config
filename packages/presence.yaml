@@ -7,15 +7,16 @@ alarm_control_panel:
 
 light:
   - platform: group
-    name: After Dark Entry Lights
+    name: group_entry_after_dark
     entities:
-      - light.front_yard_lights
+      - light.outdoor_front_yard
       - light.hallway_entry
       - light.hallway_corridor
 
 automation:
-  - alias: "Morning Wake Detection"
-    description: "Transitions from night mode to home mode when morning activity is detected"
+  - alias: "mode_morning_wake_detection"
+    id: "mode_morning_wake_detection"
+    description: "Transition ot home mode in morning"
     trigger:
       # Time-based trigger as backup
       - platform: time
@@ -24,11 +25,11 @@ automation:
       - platform: state
         entity_id:
           - light.hallway_entry
-          - light.kitchen_counter_lights
+          - light.kitchen_counter
         to: "on"
     condition:
       - condition: state
-        entity_id: input_boolean.guest_mode
+        entity_id: input_boolean.mode_guest
         state: "off"
       # Only trigger between 4am and 10am
       - condition: time
@@ -39,7 +40,9 @@ automation:
         target:
           entity_id: alarm_control_panel.home_alarm
 
-  - alias: "Everyone Left"
+  - alias: "presence_everyone_left"
+    id: "presence_everyone_left"
+    description: "Handle when everyone has left home"
     trigger:
       - platform: numeric_state
         entity_id: zone.home
@@ -48,7 +51,7 @@ automation:
           minutes: 1
     condition:
       - condition: state
-        entity_id: input_boolean.guest_mode
+        entity_id: input_boolean.mode_guest
         state: "off"
     action:
       - service: alarm_control_panel.alarm_arm_away
@@ -57,16 +60,18 @@ automation:
       - service: homeassistant.turn_off
         target:
           entity_id:
-            - remote.living_room_tv
-            - remote.master_bedroom_tv
-            - media_player.kitchen_display
-            - media_player.living_room_speaker
-            - media_player.music_room_speaker
+            - remote.tv_living_room
+            - remote.tv_master_bedroom
+            - media_player.display_kitchen
+            - media_player.speaker_living_room
+            - media_player.speaker_music_room
       - service: light.turn_off
         target:
           entity_id: all
 
-  - alias: "Someone Came Home"
+  - alias: "presence_someone_returned"
+    id: "presence_someone_returned"
+    description: "Handle when someone returns home"
     trigger:
       - platform: numeric_state
         entity_id: zone.home
@@ -88,8 +93,9 @@ automation:
         target:
           entity_id: alarm_control_panel.home_alarm
 
-  - alias: "Handle Home Alarm Armed Away"
-    description: "Secure house when alarm is armed away"
+  - alias: "alarm_handle_armed_away"
+    id: "alarm_handle_armed_away"
+    description: "Actions when alarm is armed away"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.home_alarm
@@ -98,14 +104,15 @@ automation:
       - service: input_boolean.turn_on
         target:
           entity_id:
-            - input_boolean.camera_notifications_indoor
-            - input_boolean.camera_notifications_outdoor
+            - input_boolean.notification_camera_indoor
+            - input_boolean.notification_camera_outdoor
       - service: lock.lock
         target:
           entity_id: lock.front_door
 
-  - alias: "Handle Home Alarm Armed Night"
-    description: "Secure house for night, respecting guest privacy"
+  - alias: "alarm_handle_armed_night"
+    id: "alarm_handle_armed_night"
+    description: "Actions when alarm is armed night"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.home_alarm
@@ -114,24 +121,25 @@ automation:
       # Always turn on outdoor camera notifications
       - service: input_boolean.turn_on
         target:
-          entity_id: input_boolean.camera_notifications_outdoor
+          entity_id: input_boolean.notification_camera_outdoor
       # Only turn on indoor camera notifications if guest mode is OFF
       - choose:
           - conditions:
               - condition: state
-                entity_id: input_boolean.guest_mode
+                entity_id: input_boolean.mode_guest
                 state: "off"
             sequence:
               - service: input_boolean.turn_on
                 target:
-                  entity_id: input_boolean.camera_notifications_indoor
+                  entity_id: input_boolean.notification_camera_indoor
       # Always lock the front door
       - service: lock.lock
         target:
           entity_id: lock.front_door
 
-  - alias: "Handle Home Alarm Armed Home"
-    description: "Welcome actions when system set to armed home"
+  - alias: "alarm_handle_armed_home"
+    id: "alarm_handle_armed_home"
+    description: "Actions when alarm is armed home"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.home_alarm
@@ -139,13 +147,14 @@ automation:
     action:
       - service: input_boolean.turn_on
         target:
-          entity_id: input_boolean.camera_notifications_outdoor
+          entity_id: input_boolean.notification_camera_outdoor
       - service: input_boolean.turn_off
         target:
-          entity_id: input_boolean.camera_notifications_indoor
+          entity_id: input_boolean.notification_camera_indoor
 
-  - alias: "Welcome Home Light Control"
-    description: "Turn on entry lights wehn someone arrives home after dark"
+  - alias: "light_welcome_home"
+    id: "light_welcome_home"
+    description: "Turn on entry lights on return"
     trigger:
       - platform: state
         entity_id: zone.home
@@ -159,4 +168,4 @@ automation:
     action:
       - service: light.turn_on
         target:
-          entity_id: light.after_dark_entry_lights
+          entity_id: light.group_entry_after_dark

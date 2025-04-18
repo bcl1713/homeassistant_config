@@ -43,8 +43,9 @@ input_boolean:
     icon: *icon_completed
 
 automation:
-  - alias: "Reset Daily Chores"
-    description: "Resets daily chores at midnight if they were completed"
+  - alias: "chore_reset_daily"
+    id: "chore_reset_daily"
+    description: "Reset daily chores at midnight"
     trigger:
       - platform: time
         at: "00:00:00"
@@ -60,15 +61,16 @@ automation:
         target:
           entity_id: input_select.chore_dishwasher_assignee
 
-  - alias: "Reset Weekly Chores"
-    description: "Resets weekly chores on Monday if they were completed"
+  - alias: "chore_reset_weekly"
+    id: "chore_reset_weekly"
+    description: "Reset weekly chores on Friday"
     trigger:
       - platform: time
-        at: "00:00:00"
+        at: "00:00:01"
     condition:
       - condition: time
         weekday:
-          - mon
+          - sat
       - condition: state
         entity_id: input_boolean.chore_bathroom_completed
         state: "on"
@@ -83,7 +85,7 @@ automation:
 template:
   - binary_sensor:
       - name: "Is Weekend"
-        unique_id: is_weekend
+        unique_id: time_is_weekend
         state: >
           {{ now().weekday() in [5,6] }}
 
@@ -105,7 +107,7 @@ template:
           ) }}
 
           {# Weekend chores #}
-          {% if is_state('binary_sensor.is_weekend', 'on') %}
+          {% if is_state('binary_sensor.time_is_weekend', 'on') %}
             {{ format_chore(
                 states('input_select.chore_bathroom_assignee'),
                 'clean the bathroom',
@@ -117,12 +119,12 @@ script:
     sequence:
       - action: media_player.turn_off
         target:
-          entity_id: media_player.kitchen_display
+          entity_id: media_player.display_kitchen
       - action: cast.show_lovelace_view
         data:
           dashboard_path: dashboard-chore
           view_path: "0"
-          entity_id: media_player.kitchen_display
+          entity_id: media_player.display_kitchen
 # # Lovelace dashboard configuration
 # # Add this to your dashboard configuration
 # lovelace:
