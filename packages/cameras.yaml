@@ -48,7 +48,7 @@ automation:
     description: "Notify on doorbell press"
     trigger:
       - platform: state
-        entity_id: binary_sensor.front_doorbell_button_pressed
+        entity_id: binary_sensor.doorbell_front_button_pressed
         to: "on"
     action:
       # Step 1: Take a snapshot from the doorbell camera
