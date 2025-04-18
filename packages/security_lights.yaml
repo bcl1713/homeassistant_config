@@ -31,9 +31,9 @@ automation:
     trigger:
       - platform: state
         entity_id:
-          - binary_sensor.front_drive_person_occupancy
-          - binary_sensor.back_door_person_occupancy
-          - binary_sensor.front_doorbell_person_occupancy
+          - binary_sensor.camera_front_drive_person_occupancy
+          - binary_sensor.camera_back_yard_person_occupancy
+          - binary_sensor.camera_doorbell_front_person_occupancy
         to: "on"
     condition:
       - condition: numeric_state

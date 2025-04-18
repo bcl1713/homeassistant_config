@@ -85,7 +85,7 @@ automation:
 template:
   - binary_sensor:
       - name: "Is Weekend"
-        unique_id: is_weekend
+        unique_id: time_is_weekend
         state: >
           {{ now().weekday() in [5,6] }}
 
@@ -107,7 +107,7 @@ template:
           ) }}
 
           {# Weekend chores #}
-          {% if is_state('binary_sensor.is_weekend', 'on') %}
+          {% if is_state('binary_sensor.time_is_weekend', 'on') %}
             {{ format_chore(
                 states('input_select.chore_bathroom_assignee'),
                 'clean the bathroom',
@@ -119,12 +119,12 @@ script:
     sequence:
       - action: media_player.turn_off
         target:
-          entity_id: media_player.kitchen_display
+          entity_id: media_player.display_kitchen
       - action: cast.show_lovelace_view
         data:
           dashboard_path: dashboard-chore
           view_path: "0"
-          entity_id: media_player.kitchen_display
+          entity_id: media_player.display_kitchen
 # # Lovelace dashboard configuration
 # # Add this to your dashboard configuration
 # lovelace:

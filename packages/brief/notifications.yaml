@@ -89,7 +89,7 @@ script:
           dishwasher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
           bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
           bathroom_completed: "{{ is_state('input_boolean.chore_bathroom_completed', 'on') }}"
-          is_weekend: "{{ is_state('binary_sensor.is_weekend', 'on') }}"
+          time_is_weekend: "{{ is_state('binary_sensor.time_is_weekend', 'on') }}"
           
           # Simplified chores status without complex parsing
           chores_status: >
@@ -101,7 +101,7 @@ script:
               'bathroom': {
                 'assignee': bathroom_assignee,
                 'completed': bathroom_completed == 'true',
-                'active': is_weekend == 'true'
+                'active': time_is_weekend == 'true'
               }
             } | tojson }}
       
@@ -218,7 +218,7 @@ script:
               - condition: template
                 value_template: "{{ is_evening and now().hour < 20 }}"
           - condition: state
-            entity_id: media_player.kitchen_display
+            entity_id: media_player.display_kitchen
             state: 'on'
         then:
           - service: tts.speak
@@ -226,5 +226,5 @@ script:
               entity_id: tts.google_en_com
             data:
               cache: true
-              media_player_entity_id: media_player.kitchen_display
+              media_player_entity_id: media_player.display_kitchen
               message: "{{ condensed_brief }}"

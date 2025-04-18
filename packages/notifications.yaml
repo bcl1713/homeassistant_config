@@ -14,7 +14,7 @@ automation:
     trigger:
       - platform: state
         entity_id:
-          - binary_sensor.front_drive_bus_occupancy
+          - binary_sensor.camera_front_drive_bus_occupancy
         from: "off"
         to: "on"
     condition:
@@ -25,7 +25,7 @@ automation:
       - metadata: {}
         data:
           cache: true
-          media_player_entity_id: media_player.all_speakers
+          media_player_entity_id: media_player.group_all_speakers
           message: Bus detected.
         target:
           entity_id: tts.google_en_com
