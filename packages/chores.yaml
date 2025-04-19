@@ -84,7 +84,7 @@ automation:
 
 template:
   - binary_sensor:
-      - name: "Is Weekend"
+      - name: "time_is_weekend"
         unique_id: time_is_weekend
         state: >
           {{ now().weekday() in [5,6] }}
