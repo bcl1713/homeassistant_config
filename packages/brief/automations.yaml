@@ -5,7 +5,7 @@ automation:
     description: "Trigger brief in the morning"
     trigger:
       - platform: time
-        at: "06:45:00"
+        at: "06:30:00"
     condition:
       - condition: time
         weekday:
@@ -25,44 +25,6 @@ automation:
     trigger:
       - platform: time
         at: "17:30:00"
-    action:
-      - service: script.turn_on
-        target:
-          entity_id: script.daily_brief
-
-  - alias: "notification_brief_calendar"
-    id: "notification_brief_calendar"
-    description: "Trigger brief on calendar events"
-    trigger:
-      platform: event
-      event_type: calendar_event_start
-      event_data: {}
-    condition:
-      - condition: template
-        value_template: "{{ trigger.event.data.offset_reached == false }}"
-      - condition: template
-        value_template: "{{ trigger.event.data.offset == 1800 }}"
-    action:
-      - service: script.turn_on
-        target:
-          entity_id: script.daily_brief
-
-  - alias: "notification_brief_significant_changes"
-    id: "notification_brief_significant_changes"
-    description: "Trigger brief on significant changes"
-    trigger:
-      - platform: event
-        event_type: state_changed
-        event_data:
-          domain: device_tracker
-      - platform: state
-        entity_id:
-          - input_boolean.chore_dishwasher_completed
-          - input_boolean.chore_bathroom_completed
-        to: "on"
-      - platform: state
-        entity_id: weather.forecast_home
-        attribute: weather_alert
     action:
       - service: script.turn_on
         target:
