@@ -96,12 +96,12 @@ script:
             {{ {
               'dishwasher': {
                 'assignee': dishwasher_assignee,
-                'completed': dishwasher_completed == 'true'
+                'completed': dishwasher_completed
               },
               'bathroom': {
                 'assignee': bathroom_assignee,
-                'completed': bathroom_completed == 'true',
-                'active': time_is_weekend == 'true'
+                'completed': bathroom_completed,
+                'active': time_is_weekend
               }
             } | tojson }}
       
