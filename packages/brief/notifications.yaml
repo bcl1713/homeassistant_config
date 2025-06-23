@@ -22,15 +22,8 @@ script:
             - Response should be close to but less than 255 characters
 
             Content Requirements:
-            - Only mention events in next 4 hours
-            - Only report critical device issues (dead batteries, key offline devices)
+            - Report critical device issues (dead batteries, key offline devices)
             - Only include weather that could impact immediate plans
-
-            Time Context:
-            - Current time: {{ now().strftime("%H:%M") }}
-            - Time of day: {{ 'morning' if is_morning else 'afternoon' if is_afternoon else 'evening' }}
-            - {{ 'Weekday' if is_weekday else 'Weekend' }}
-            - If mentioning times, use conversational format ("in about 2 hours" rather than "at 14:30")
 
             Time-Specific Additions:
             {% if is_morning and is_weekday %}
