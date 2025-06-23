@@ -25,7 +25,13 @@ script:
             - Report critical device issues (dead batteries, key offline devices)
             - Only include weather that could impact immediate plans
 
+            When interpreting calendar events:
+            - For all-day events, use the START date to determine when the event occurs
+            - If start date matches today's date, it's happening TODAY
+            - Ignore the end date for determining which day an event occurs
+
             Time-Specific Additions:
+            - No need to tell me if it is a weekday or the time of day.  That is for your reference.
             {% if is_morning and is_weekday %}
             - Include current commute times for both Brian and Hester
             - Prioritize today's activities and meetings
@@ -201,23 +207,3 @@ script:
               message: "{{ condensed_brief }}"
               data:
                 clickAction: "/dashboard-briefing"
-
-      # If during morning or evening, also play on speakers
-      - if:
-          - condition: or
-            conditions:
-              - condition: template
-                value_template: "{{ is_morning and now().hour >= 7 }}"
-              - condition: template
-                value_template: "{{ is_evening and now().hour < 20 }}"
-          - condition: state
-            entity_id: media_player.display_kitchen
-            state: 'on'
-        then:
-          - service: tts.speak
-            target:
-              entity_id: tts.google_en_com
-            data:
-              cache: true
-              media_player_entity_id: media_player.display_kitchen
-              message: "{{ condensed_brief }}"
