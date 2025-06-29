@@ -65,7 +65,7 @@ script:
                     value_template: "{{ not is_mode_guest }}"
                 then:
                   - service: light.turn_off
-                    entity_id: light.group_downstairs
+                    entity_id: light.downstairs_lights
               # Always: Arm the alarm system for night mode
               - service: alarm_control_panel.alarm_arm_night
                 entity_id: alarm_control_panel.home_alarm
@@ -115,7 +115,7 @@ script:
                     value_template: "{{ not is_mode_guest }}"
                 then:
                   - service: light.turn_off
-                    entity_id: light.group_downstairs
+                    entity_id: light.downstairs_lights
               # Always: Arm the alarm system
               - service: alarm_control_panel.alarm_arm_night
                 entity_id: alarm_control_panel.home_alarm
@@ -166,7 +166,7 @@ script:
                 value_template: "{{ not is_mode_guest }}"
             then:
               - service: light.turn_off
-                entity_id: light.group_downstairs
+                entity_id: light.downstairs_lights
                 
           # Always: Arm the alarm system for night mode
           - service: alarm_control_panel.alarm_arm_night
