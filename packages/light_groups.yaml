@@ -14,6 +14,7 @@ light:
   # Functional groups
   - platform: group
     name: group_entry
+    unique_id: group_entry
     entities:
       - light.outdoor_front_yard
       - light.hallway_entry
@@ -22,6 +23,7 @@ light:
 
   - platform: group
     name: group_downstairs
+    unique_id: group_downstairs
     entities:
       - light.dining_room_table
       - light.hallway_corridor
