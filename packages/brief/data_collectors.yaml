@@ -12,7 +12,7 @@ script:
       dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') }}"
       dishwaher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
       bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
-      bathroom_completed: "{{ is_state(input_boolean.chore_bathroom_completed', 'on') }}"
+      bathroom_completed: "{{ is_state('input_boolean.chore_bathroom_completed', 'on') }}"
     sequence:
       - variables:
           chores_data:
