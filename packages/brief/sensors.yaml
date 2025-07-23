@@ -1,0 +1,95 @@
+# packages/brief/sensors.yaml
+#
+# MQTT Sensors for Modular Briefing System
+# Stores collected data from different modules
+
+mqtt:
+  sensor:
+    # Existing AI Brief sensor
+    - name: "AI Brief"
+      state_topic: "home/ai/response"
+      value_template: "{{ value_json.state }}"
+      json_attributes_topic: "home/ai/response"
+    
+    # Data collection sensors
+    - name: "Brief Data Chores"
+      state_topic: "home/brief/data/chores"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/chores"
+    
+    - name: "Brief Data Appliances"
+      state_topic: "home/brief/data/appliances" 
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/appliances"
+    
+    - name: "Brief Data Calendar"
+      state_topic: "home/brief/data/calendar"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/calendar"
+    
+    - name: "Brief Data Meals"
+      state_topic: "home/brief/data/meals"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/meals"
+    
+    - name: "Brief Data Devices"
+      state_topic: "home/brief/data/devices"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/devices"
+    
+    - name: "Brief Data Commute"
+      state_topic: "home/brief/data/commute"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/commute"
+    
+    # Built prompt sensor
+    - name: "Brief Prompt"
+      state_topic: "home/brief/prompt"
+      value_template: "{{ value_json.prompt | length }}"
+      json_attributes_topic: "home/brief/prompt"
+
+template:
+  sensor:
+    # Convenience sensors for accessing data
+    - name: "Brief Context Summary"
+      unique_id: brief_context_summary
+      state: >
+        {% set prompt_data = states('sensor.brief_prompt') %}
+        {% if prompt_data not in ['unknown', 'unavailable'] %}
+          {% set context = state_attr('sensor.brief_prompt', 'context') %}
+          {% if context %}
+            {{ context.get('is_morning', false) | title }} | 
+            {{ 'Weekday' if context.get('is_weekday', false) else 'Weekend' }} |
+            {{ 'Issues' if context.get('has_critical_issues', false) else 'Normal' }}
+          {% else %}
+            Ready
+          {% endif %}
+        {% else %}
+          Not Ready
+        {% endif %}
+      attributes:
+        last_generated: >
+          {{ state_attr('sensor.brief_prompt', 'timestamp') }}
+        prompt_length: >
+          {{ states('sensor.brief_prompt') }}
+        data_sources: >
+          {% set sources = [] %}
+          {% if states('sensor.brief_data_chores') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['chores'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_appliances') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['appliances'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_calendar') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['calendar'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_meals') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['meals'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_devices') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['devices'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_commute') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['commute'] %}
+          {% endif %}
+          {{ sources | join(', ') }}

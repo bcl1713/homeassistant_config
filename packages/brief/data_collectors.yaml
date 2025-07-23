@@ -1,0 +1,32 @@
+# packages/brief/data_collectors.yaml
+#
+# Data Collectors for Modular Briefing System
+# Each collector focuses on gathering specific types of information
+
+script:
+  brief_collect_chores:
+    alias: "Collect Chores information"
+    description: "Gathers current chore status with context-aware filtering"
+    variables:
+      is_weekend: "{{ is_state('binary_sensor.time_is_weekend', 'on') }}"
+      dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') }}"
+      dishwaher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
+      bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
+      bathroom_completed: "{{ is_state(input_boolean.chore_bathroom_completed', 'on') }}"
+    sequence:
+      - variables:
+          chores_data:
+            daily:
+              dishwasher:
+                assignee: "{{ dishwasher_assignee }}"
+                completed: "{{ dishwaher_completed }}"
+                relevant: true
+            weekend:
+              bathroom:
+                assignee: "{{ bathroom_assignee }}"
+                completed: "{{ bathroom_completed }}"
+                relevant: "{{ is_weekend }}"
+      = service: mqtt.publish
+        data:
+          topic: "home/brief/data/chores"
+          payload: "{{ chores_data | tojson }}"
