@@ -52,3 +52,41 @@ script:
           topic: "home/brief/data/appliances"
           payload: "{{ appliance_data | tojson }}"
 
+  brief_collect_calendar:
+    alias: "Collect Calendar Information"
+    description: "Gathers relevant calendar events"
+    sequence:
+      # Get calendar events for next 3 days
+      - service: calendar.get_events
+        data:
+          duration:
+            days: 3
+        target:
+          label_id: brief
+        response_variable: raw_events
+      
+      - variables:
+          now_date: "{{ now().date() }}"
+          today: "{{ now().date() }}"
+          processed_events: >
+            {% set events = [] %}
+            {% for calendar, event_list in raw_events.items() %}
+              {% for event in event_list.events %}
+                {% set event_date = event.start.date() if event.start.date else event.start.date() %}
+                {# Include if today or within next 4 hours #}
+                {% if event_date == today or (event.start <= now() + timedelta(hours=4)) %}
+                  {% set events = events + [{
+                    'summary': event.summary,
+                    'start': event.start.isoformat(),
+                    'date': event_date.isoformat(),
+                    'is_today': event_date == today
+                  }] %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+            {{ events }}
+      
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/data/calendar"
+          payload: "{{ {'events': processed_events} | tojson }}"
