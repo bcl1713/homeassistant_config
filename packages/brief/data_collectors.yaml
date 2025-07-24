@@ -30,3 +30,25 @@ script:
         data:
           topic: "home/brief/data/chores"
           payload: "{{ chores_data | tojson }}"
+
+  brief_collect_appliances:
+    alias: "Collect Appliance Status"
+    description: "Gathers appliance information with intelligent filtering"
+    variables:
+      dishwasher_state: "{{ states('sensor.dishwasher_operation_state') }}"
+      needs_salt: "{{ is_state('sensor.dishwasher_salt_nearly_empty', 'present') }}"
+      needs_rinse_aid: " {{is_state('sensor.dishwasher_rinse_aid_nearly_empty', 'present') }}"
+    sequence:
+      - variables:
+          appliance_data:
+            dishwasher:
+              state: "{{ dishwasher_state }}"
+              maintenance:
+                needs_salt: "{{ needs_salt }}"
+                needs_rinse_aid: "{{ needs_rinse_aid }}"
+                relevant: "{{ needs_salt or needs_rinse_aid }}"
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/data/appliances"
+          payload: "{{ appliance_data | tojson }}"
+
