@@ -90,7 +90,7 @@ script:
                 }] %}
               {% endfor %}
             {% endfor %}
-            {{ raw_events }}
+            {{ raw_events.items }}
       
       - service: mqtt.publish
         data:
