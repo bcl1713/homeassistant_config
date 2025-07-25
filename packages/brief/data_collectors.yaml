@@ -71,7 +71,8 @@ script:
             {% set events = [] %}
             {% for calendar, event_list in raw_events.items() %}
               {% for event in event_list.events %}
-                {{ calendar.split('.')[1] + " " + event.summary }}
+                {% set calendar = calendar.split('.')[1] | replace('_', ' ') | title %}
+                {{ calendar + " " + event.summary }}
                 {% if 'T' in event.start %}
                   {# Timed event - has time component #}
                   {% set event_datetime = strptime(event.start.split('T')[0] + 'T' + event.start.split('T')[1].split('-')[0].split('+')[0], '%Y-%m-%dT%H:%M:%S') %}
