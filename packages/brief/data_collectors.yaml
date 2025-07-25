@@ -70,8 +70,8 @@ script:
           processed_events: >
             {% set events = [] %}
             {% for event_list in raw_events.items() %}
+              {{ event_list }}
               {% for event in event_list.events %}
-                {{ event.start }}
                 {% if 'T' in event.start %}
                   {# Timed event - has time component #}
                   {% set event_datetime = strptime(event.start.split('T')[0] + 'T' + event.start.split('T')[1].split('-')[0].split('+')[0], '%Y-%m-%dT%H:%M:%S') %}
