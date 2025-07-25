@@ -76,13 +76,13 @@ script:
                   {# Timed event - has time component #}
                   {% set event_datetime = strptime(event.start.split('T')[0] + 'T' + event.start.split('T')[1].split('-')[0].split('+')[0], '%Y-%m-%dT%H:%M:%S') %}
                   {% set event_date = event_datetime.date() %}
-                  {{ calendar + " " + event_date|string }}
                 {% else %}
                   {# All-day event - just date #}
                   {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
                   {% set event_datetime = none %}
                 {% endif %}
                 {% set events = events + [{
+                  'calendar': calendar
                   'summary': event.summary,
                   'start': event.start,
                   'date': event_date.isoformat(),
@@ -92,6 +92,7 @@ script:
                 }] %}
               {% endfor %}
             {% endfor %}
+            {{ processed_events }}
       
       - service: mqtt.publish
         data:
