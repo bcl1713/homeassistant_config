@@ -73,9 +73,9 @@ script:
               {% for event in event_list.events %}
                 {% set calendar = calendar.split('.')[1] | replace('_', ' ') | title %}
                 {% if 'T' in event.start %}
-                  {{ 'timed event' }}
                   {# Timed event - has time component #}
                   {% set event_datetime = strptime(event.start.split('T')[0] + 'T' + event.start.split('T')[1].split('-')[0].split('+')[0], '%Y-%m-%dT%H:%M:%S') %}
+                  {{ calendar + " " + event_datetime }}
                   {% set event_date = event_datetime.date() %}
                 {% else %}
                   {# All-day event - just date #}
