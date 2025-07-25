@@ -92,7 +92,7 @@ script:
                 }] %}
               {% endfor %}
             {% endfor %}
-            {{ processed_events }}
+            {{ events }}
       
       - service: mqtt.publish
         data:
