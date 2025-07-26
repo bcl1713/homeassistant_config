@@ -82,7 +82,6 @@ script:
                   {% set event_datetime = none %}
                 {% endif %}
                 {% set ns.items = ns.items + [{
-                  'calendar': calendar,
                   'summary': event.summary,
                   'start': event.start,
                   'date': event_date.isoformat(),
