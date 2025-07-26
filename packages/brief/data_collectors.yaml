@@ -81,6 +81,7 @@ script:
                   {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
                   {% set event_datetime = none %}
                 {% endif %}
+                {{ calendar, event.summary, event.start }}
                 {% set events = events + [{
                   'calendar': calendar,
                   'summary': event.summary,
