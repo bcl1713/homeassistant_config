@@ -26,6 +26,11 @@ mqtt:
       state_topic: "home/brief/data/calendar"
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/brief/data/calendar"
+
+    - name: "Brief Data Garbage"
+      state_topic: "home/brief/data/garbage"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "/home/brief/data/garbage"
     
     - name: "Brief Data Meals"
       state_topic: "home/brief/data/meals"
@@ -82,6 +87,9 @@ template:
           {% endif %}
           {% if states('sensor.brief_data_calendar') not in ['unknown', 'unavailable'] %}
             {% set sources = sources + ['calendar'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_garbage') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['garbage'] %}
           {% endif %}
           {% if states('sensor.brief_data_meals') not in ['unknown', 'unavailable'] %}
             {% set sources = sources + ['meals'] %}
