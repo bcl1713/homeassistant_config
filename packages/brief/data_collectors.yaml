@@ -81,7 +81,6 @@ script:
                   {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
                   {% set event_datetime = none %}
                 {% endif %}
-                {{ calendar, event.summary, event.start }}
                 {% set events = events + [{
                   'calendar': calendar,
                   'summary': event.summary,
@@ -91,6 +90,7 @@ script:
                   'is_timed': event_datetime is not none,
                   'formatted_time': event_datetime.strftime('%H:%M') if event_datetime else 'All day'
                 }] %}
+                {{ events }}
               {% endfor %}
             {% endfor %}
             {{ events }}
