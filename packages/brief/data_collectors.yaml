@@ -98,3 +98,58 @@ script:
         data:
           topic: "home/brief/data/calendar"
           payload: "{{ {'events': processed_events} | tojson }}"
+
+  brief_collect_garbage:
+    alias: "Collect Garbage Schedule"
+    description: "Reminds to take ou the trash the night before garbage day"
+    sequence:
+      # Get calendar events for next 3 days
+      - service: calendar.get_events
+        data:
+          duration:
+            days: 3
+        target:
+          label_id: trash_calendar
+        response_variable: raw_events
+      
+      - variables:
+          today: "{{ now().date() }}"
+          tomorrow: "{{ (now() + timedelta(days=1)).date() }}"
+          is_evening: "{{ now().hour >= 17 }}"
+          garbage_tomorrow: >
+            {% set ns = namespace(garbage_events=[]) %}
+            {% for calendar, event_list in raw_events.items() %}
+              {% for event in event_list.events %}
+                {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
+                {% if event_date == tomorrow %}
+                  {% set ns.garbage_events = ns.garbage_events + [{
+                    'summary': event.summary,
+                    'date': event_date.isoformat(),
+                    'type': 'garbage_and_recycling' if 'recycling' in event.summary.lower() else 'garbage_only'
+                  }] %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+            {{ ns.garbage_events }}
+          garbage_data:
+            has_pickup_tomorrow: "{{ garbage_tomorrow | length > 0 }}"
+            pickup_events: "{{ garbage_tomorrow }}"
+            relevant: >
+              {% set has_pickup = garbage_tomorrow | lenght > 0 %}
+              {% set time_to_remind = is_evening or now().hour >= 20 %}
+              {{ has_pickup and time_to_remind }}
+            reminder_message: >
+              {% if garbage_tomorrow | length > 0 %}
+                {% set event = garbage_tomorrow[0] %}
+                {% if event.type == 'garbage_and_recycling' %}
+                  Remember to take out garbage and recycling tonight
+                {% else %}
+                  Remember to take out garbage tonight
+                {% endif %}
+              {% else %}
+                ""
+              {% endif %}
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/data/garbage"
+          payload: "{{ garbage_data | tojson }}"
