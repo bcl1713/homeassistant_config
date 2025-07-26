@@ -68,7 +68,7 @@ script:
       - variables:
           today: "{{ now().date() }}"
           processed_events: >
-            {% set events = [] %}
+            {% set ns = namespace(items=[]) %}
             {% for calendar, event_list in raw_events.items() %}
               {% for event in event_list.events %}
                 {% set calendar = calendar.split('.')[1] | replace('_', ' ') | title %}
@@ -81,7 +81,7 @@ script:
                   {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
                   {% set event_datetime = none %}
                 {% endif %}
-                {% set events = events + [{
+                {% set ns.items = ns.items + [{
                   'calendar': calendar,
                   'summary': event.summary,
                   'start': event.start,
@@ -91,7 +91,7 @@ script:
                   'formatted_time': event_datetime.strftime('%H:%M') if event_datetime else 'All day'
                 }] %}
               {% endfor %}
-              {{ events }}
+              {{ ns.items }}
             {% endfor %}
 
       - service: mqtt.publish
