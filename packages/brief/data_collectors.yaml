@@ -90,10 +90,9 @@ script:
                   'is_timed': event_datetime is not none,
                   'formatted_time': event_datetime.strftime('%H:%M') if event_datetime else 'All day'
                 }] %}
-                {{ events }}
               {% endfor %}
+              {{ events }}
             {% endfor %}
-            {{ events }}
 
       - service: mqtt.publish
         data:
