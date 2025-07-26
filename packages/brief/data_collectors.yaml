@@ -82,7 +82,7 @@ script:
                   {% set event_datetime = none %}
                 {% endif %}
                 {% set events = events + [{
-                  'calendar': calendar
+                  'calendar': calendar,
                   'summary': event.summary,
                   'start': event.start,
                   'date': event_date.isoformat(),
@@ -92,8 +92,7 @@ script:
                 }] %}
               {% endfor %}
             {% endfor %}
-            {{ events }}
-      
+
       - service: mqtt.publish
         data:
           topic: "home/brief/data/calendar"
