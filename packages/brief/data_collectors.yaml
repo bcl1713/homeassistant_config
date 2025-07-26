@@ -135,7 +135,7 @@ script:
             has_pickup_tomorrow: "{{ garbage_tomorrow | length > 0 }}"
             pickup_events: "{{ garbage_tomorrow }}"
             relevant: >
-              {% set has_pickup = garbage_tomorrow | lenght > 0 %}
+              {% set has_pickup = garbage_tomorrow | length > 0 %}
               {% set time_to_remind = is_evening or now().hour >= 20 %}
               {{ has_pickup and time_to_remind }}
             reminder_message: >
