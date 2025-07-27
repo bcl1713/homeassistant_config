@@ -30,7 +30,7 @@ mqtt:
     - name: "Brief Data Garbage"
       state_topic: "home/brief/data/garbage"
       value_template: "{{ now().isoformat() }}"
-      json_attributes_topic: "/home/brief/data/garbage"
+      json_attributes_topic: "home/brief/data/garbage"
     
     - name: "Brief Data Meals"
       state_topic: "home/brief/data/meals"
