@@ -114,14 +114,13 @@ script:
       
       - variables:
           today: "{{ now().date() }}"
-          tomorrow: "{{ (now() + timedelta(days=1)).date() }}"
+          tomorrow: "{{ (now() + timedelta(days=1)).date() | string }}"
           is_evening: "{{ now().hour >= 17 }}"
           garbage_tomorrow: >
             {% set ns = namespace(garbage_events=[]) %}
             {% for calendar, event_list in raw_events.items() %}
               {% for event in event_list.events %}
-                {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
-                {{ 'event date == tomorrow ' + event_date|string == tomorrow }}
+                {% set event_date = strptime(event.start, '%Y-%m-%d').date() | string %}
                 {% if event_date == tomorrow %}
                   {% set ns.garbage_events = ns.garbage_events + [{
                     'summary': event.summary,
