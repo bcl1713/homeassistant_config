@@ -153,3 +153,59 @@ script:
         data:
           topic: "home/brief/data/garbage"
           payload: "{{ garbage_data | tojson }}"
+
+  brief_collect_meals:
+    alias: "Collect Meal Planning"
+    description: "Gathers today and tomorrow's meal plans when available"
+    sequence:
+      # Get today's meals
+      - service: calendar.get_events
+        data:
+          start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ now().replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+        target:
+          entity_id: 
+            - calendar.mealie_breakfast
+            - calendar.mealie_lunch  
+            - calendar.mealie_dinner
+        response_variable: today_meals
+      
+      # Get tomorrow's meals
+      - service: calendar.get_events
+        data:
+          start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+        target:
+          entity_id: 
+            - calendar.mealie_breakfast
+            - calendar.mealie_lunch  
+            - calendar.mealie_dinner
+        response_variable: tomorrow_meals
+      
+      - variables:
+          meal_data:
+            today: >
+              {% set ns = namespace(meals={}) %}
+              {% for calendar, event_list in today_meals.items() %}
+                {% set meal_type = calendar.split('_')[-1] %}
+                {% if event_list.events %}
+                  {% set ns.meals = dict(ns.meals, **{meal_type: event_list.events[0].summary}) %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.meals }}
+            tomorrow: >
+              {% set ns = namespace(meals={}) %}
+              {% for calendar, event_list in tomorrow_meals.items() %}
+                {% set meal_type = calendar.split('_')[-1] %}
+                {% if event_list.events %}
+                  {% set ns.meals = dict(ns.meals, **{meal_type: event_list.events[0].summary}) %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.meals }}
+            has_today: "{{ today_meals.values() | map(attribute='events') | map('length') | sum > 0 }}"
+            has_tomorrow: "{{ tomorrow_meals.values() | map(attribute='events') | map('length') | sum > 0 }}"
+      
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/data/meals"
+          payload: "{{ meal_data | tojson }}"
