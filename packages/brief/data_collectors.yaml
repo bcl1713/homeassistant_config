@@ -121,7 +121,7 @@ script:
             {% for calendar, event_list in raw_events.items() %}
               {% for event in event_list.events %}
                 {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
-                {{ 'event date ' + event_date|string }}
+                {{ 'event date == tomorrow ' + event_date == tomorrow }}
                 {% if event_date == tomorrow %}
                   {% set ns.garbage_events = ns.garbage_events + [{
                     'summary': event.summary,
