@@ -209,3 +209,59 @@ script:
         data:
           topic: "home/brief/data/meals"
           payload: "{{ meal_data | tojson }}"
+
+  brief_collect_devices:
+    alias: "Collect Device Status"
+    description: "Gathers critical device issues with intelligent filtering"
+    variables:
+      battery_threshold: 15
+      critical_domains: ['camera', 'alarm_control_panel', 'lock', 'binary_sensor']
+    sequence:
+      - variables:
+          critical_batteries: >
+            {% set ns = namespace(batteries=[]) %}
+            {% for entity in states if entity.attributes.battery_level is defined %}
+              {% set level = entity.attributes.battery_level | float(-1) | int %}
+              {% if level >= 0 and level <= battery_threshold %}
+                {% set ns.batteries = ns.batteries + [{
+                  'entity_id': entity.entity_id,
+                  'name': entity.name or entity.entity_id,
+                  'level': level
+                }] %}
+              {% endif %}
+            {% endfor %}
+            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+              {% if 0 <= entity.state | int <= battery_threshold %}
+                {% set ns.batteries = ns.batteries + [{
+                  'entity_id': entity.entity_id,
+                  'name': entity.name or entity.entity_id,
+                  'level': entity.state | int
+                }] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.batteries }}
+          
+          offline_devices: >
+            {% set ns = namespace(devices=[]) %}
+            {% for entity in states if entity.state == 'unavailable' %}
+              {% if entity.domain in critical_domains %}
+                {% set ns.devices = ns.devices + [{
+                  'entity_id': entity.entity_id,
+                  'name': entity.name or entity.entity_id,
+                  'domain': entity.domain
+                }] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.devices }}
+          
+          device_data:
+            critical_batteries: "{{ critical_batteries }}"
+            offline_devices: "{{ offline_devices }}"
+            has_issues: "{{ (critical_batteries | length) + (offline_devices | length) > 0 }}"
+            battery_count: "{{ critical_batteries | length }}"
+            offline_count: "{{ offline_devices | length }}"
+      
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/data/devices"
+          payload: "{{ device_data | tojson }}"
