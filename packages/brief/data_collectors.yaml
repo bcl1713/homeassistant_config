@@ -265,3 +265,21 @@ script:
         data:
           topic: "home/brief/data/devices"
           payload: "{{ device_data | tojson }}"
+
+  brief_collect_commute:
+    alias: "Collect Commute Information"
+    description: "Gathers commute data when relevant"
+    variables:
+      is_weekday: "{{ now().weekday() < 5 }}"
+      is_morning: "{{ now().hour < 12 }}"
+    sequence:
+      - variables:
+          commute_data:
+            relevant: "{{ is_weekday and is_morning }}"
+            brian_time: "{{ states('sensor.travel_time_to_brian_s_work') if is_weekday and is_morning else 'N/A' }}"
+            hester_time: "{{ states('sensor.travel_time_to_hester_s_work') if is_weekday and is_morning else 'N/A' }}"
+      
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/data/commute"
+          payload: "{{ commute_data | tojson }}"
