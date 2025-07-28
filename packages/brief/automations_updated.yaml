@@ -1,0 +1,87 @@
+# packages/brief/automations_updated.yaml
+#
+# Updated automations for modular briefing system
+# Uses the new modular daily_brief script
+#
+
+automation:
+  - alias: "notification_brief_morning"
+    id: "notification_brief_morning"
+    description: "Trigger modular brief in the morning"
+    trigger:
+      - platform: time
+        at: "06:45:00"
+    condition:
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+    action:
+      - service: script.daily_brief
+
+  - alias: "notification_brief_evening"
+    id: "notification_brief_evening"
+    description: "Trigger modular brief in the evening"
+    trigger:
+      - platform: time
+        at: "17:30:00"
+    action:
+      - service: script.daily_brief
+
+  - alias: "notification_brief_calendar"
+    id: "notification_brief_calendar"
+    description: "Trigger modular brief on calendar events"
+    trigger:
+      platform: event
+      event_type: calendar_event_start
+      event_data: {}
+    condition:
+      - condition: template
+        value_template: "{{ trigger.event.data.offset_reached == false }}"
+      - condition: template
+        value_template: "{{ trigger.event.data.offset == 1800 }}"
+    action:
+      - service: script.daily_brief
+
+  - alias: "notification_brief_significant_changes"
+    id: "notification_brief_significant_changes"
+    description: "Trigger modular brief on significant changes"
+    trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          domain: device_tracker
+      - platform: state
+        entity_id:
+          - input_boolean.chore_dishwasher_completed
+          - input_boolean.chore_bathroom_completed
+        to: "on"
+      - platform: state
+        entity_id: weather.forecast_home
+        attribute: weather_alert
+    action:
+      - service: script.daily_brief
+
+  # New automation for testing the modular system
+  - alias: "brief_system_health_check"
+    id: "brief_system_health_check"
+    description: "Monitor briefing system health"
+    trigger:
+      - platform: time_pattern
+        hours: "/6"  # Every 6 hours
+    condition:
+      - condition: template
+        value_template: >
+          {{ states('sensor.brief_context_summary') == 'Not Ready' }}
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Briefing System Issue"
+          message: >
+            The modular briefing system appears to have issues.
+            Context: {{ states('sensor.brief_context_summary') }}
+            Last update: {{ state_attr('sensor.brief_context_summary', 'last_generated') }}
+          notification_id: briefing_system_health
