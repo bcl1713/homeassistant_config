@@ -1,0 +1,182 @@
+# packages/brief/template_builder.yaml
+#
+# Template Builder for Modular Briefing System
+# Assembles prompts based on collected data and context
+#
+
+script:
+  brief_build_prompt:
+    alias: "Build Contextual Prompt"
+    description: "Creates AI prompt based on collected data and current context"
+    variables:
+      is_morning: "{{ now().hour < 12 }}"
+      is_afternoon: "{{ now().hour >= 12 and now().hour < 17 }}"
+      is_evening: "{{ now().hour >= 17 }}"
+      is_weekday: "{{ now().weekday() < 5 }}"
+      current_time: "{{ now().strftime('%H:%M') }}"
+    sequence:
+      # Collect all the data modules
+      - parallel:
+          - service: script.brief_collect_chores
+          - service: script.brief_collect_appliances  
+          - service: script.brief_collect_calendar
+          - service: script.brief_collect_garbage
+          - service: script.brief_collect_meals
+          - service: script.brief_collect_devices
+          - service: script.brief_collect_commute
+      
+      # Wait a moment for MQTT messages to be processed
+      - delay:
+          seconds: 2
+      
+      # Get weather forecast
+      - service: weather.get_forecasts
+        data:
+          type: hourly
+        target:
+          entity_id: weather.forecast_home
+        response_variable: hourly_forecast
+      
+      # Read collected data from MQTT
+      - variables:
+          chores_data: "{{ states('sensor.brief_data_chores') | from_json if states('sensor.brief_data_chores') not in ['unknown', 'unavailable'] else {} }}"
+          appliances_data: "{{ states('sensor.brief_data_appliances') | from_json if states('sensor.brief_data_appliances') not in ['unknown', 'unavailable'] else {} }}"
+          calendar_data: "{{ states('sensor.brief_data_calendar') | from_json if states('sensor.brief_data_calendar') not in ['unknown', 'unavailable'] else {} }}"
+          garbage_data: "{{ states('sensor.brief_data_garbage') | from_json if states('sensor.brief_data_garbage') not in ['unknown', 'unavailable'] else {} }}"
+          meals_data: "{{ states('sensor.brief_data_meals') | from_json if states('sensor.brief_data_meals') not in ['unknown', 'unavailable'] else {} }}"
+          devices_data: "{{ states('sensor.brief_data_devices') | from_json if states('sensor.brief_data_devices') not in ['unknown', 'unavailable'] else {} }}"
+          commute_data: "{{ states('sensor.brief_data_commute') | from_json if states('sensor.brief_data_commute') not in ['unknown', 'unavailable'] else {} }}"
+      
+      # Build contextual sections
+      - variables:
+          prompt_sections: >
+            {% set ns = namespace(sections=[]) %}
+            
+            {# Base instructions #}
+            {% set ns.sections = ns.sections + ['Instructions for generating home status briefs:'] %}
+            {% set ns.sections = ns.sections + ['- Create a concise, conversational brief'] %}
+            {% set ns.sections = ns.sections + ['- Avoid technical terms and Home Assistant terminology'] %}
+            {% set ns.sections = ns.sections + ['- Round numbers naturally (say "around 3" instead of "2.87")'] %}
+            {% set ns.sections = ns.sections + ['- Response should be close to but less than 255 characters'] %}
+            {% set ns.sections = ns.sections + ['- Only mention events in next 4 hours'] %}
+            {% set ns.sections = ns.sections + ['- Current time: ' + current_time] %}
+            {% set ns.sections = ns.sections + ['- Time of day: ' + ('morning' if is_morning else 'afternoon' if is_afternoon else 'evening')] %}
+            {% set ns.sections = ns.sections + ['- ' + ('Weekday' if is_weekday else 'Weekend')] %}
+            
+            {# Weather section (always include) #}
+            {% if hourly_forecast %}
+              {% set weather_condition = hourly_forecast['weather.forecast_home'].forecast[0].condition %}
+              {% set ns.sections = ns.sections + ['Current weather: ' + weather_condition] %}
+            {% endif %}
+            
+            {# Commute section (weekday mornings only) #}
+            {% if commute_data.get('relevant', false) %}
+              {% set ns.sections = ns.sections + ['Commute times:'] %}
+              {% if commute_data.brian_time != 'N/A' %}
+                {% set ns.sections = ns.sections + ['- Brian to work: ' + commute_data.brian_time + ' minutes'] %}
+              {% endif %}
+              {% if commute_data.hester_time != 'N/A' %}
+                {% set ns.sections = ns.sections + ['- Hester to work: ' + commute_data.hester_time + ' minutes'] %}
+              {% endif %}
+            {% endif %}
+            
+            {# Calendar events (non-garbage) #}
+            {% if calendar_data.get('events', []) %}
+              {% set ns.sections = ns.sections + ['Upcoming events:'] %}
+              {% for event in calendar_data.events %}
+                {% if event.is_timed %}
+                  {% set ns.sections = ns.sections + ['- ' + event.summary + ' at ' + event.formatted_time] %}
+                {% else %}
+                  {% set ns.sections = ns.sections + ['- ' + event.summary + ' (all day)'] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            
+            {# Garbage reminders (separate logic) #}
+            {% if garbage_data.get('relevant', false) %}
+              {% set ns.sections = ns.sections + [garbage_data.reminder_message] %}
+            {% endif %}
+            
+            {# Meal planning #}
+            {% if meals_data.get('has_today', false) or meals_data.get('has_tomorrow', false) %}
+              {% set ns.sections = ns.sections + ['Meal planning:'] %}
+              {% if meals_data.get('has_today', false) %}
+                {% set today_meals = meals_data.today %}
+                {% for meal_type, meal in today_meals.items() %}
+                  {% set ns.sections = ns.sections + ['- Today ' + meal_type + ': ' + meal] %}
+                {% endfor %}
+              {% endif %}
+              {% if meals_data.get('has_tomorrow', false) %}
+                {% set tomorrow_meals = meals_data.tomorrow %}
+                {% for meal_type, meal in tomorrow_meals.items() %}
+                  {% set ns.sections = ns.sections + ['- Tomorrow ' + meal_type + ': ' + meal] %}
+                {% endfor %}
+              {% endif %}
+            {% endif %}
+            
+            {# Chores (context aware) #}
+            {% if chores_data %}
+              {% set ns_chores = namespace(chore_items=[]) %}
+              
+              {# Daily dishwasher (always relevant) #}
+              {% if chores_data.daily.dishwasher.relevant and not chores_data.daily.dishwasher.completed %}
+                {% set ns_chores.chore_items = ns_chores.chore_items + [chores_data.daily.dishwasher.assignee + ' needs to empty the dishwasher'] %}
+              {% endif %}
+              
+              {# Weekend bathroom (only on weekends) #}
+              {% if chores_data.weekend.bathroom.relevant and not chores_data.weekend.bathroom.completed %}
+                {% set ns_chores.chore_items = ns_chores.chore_items + [chores_data.weekend.bathroom.assignee + ' needs to clean the bathroom'] %}
+              {% endif %}
+              
+              {% if ns_chores.chore_items %}
+                {% set ns.sections = ns.sections + ['Chores:'] %}
+                {% for item in ns_chores.chore_items %}
+                  {% set ns.sections = ns.sections + ['- ' + item] %}
+                {% endfor %}
+              {% endif %}
+            {% endif %}
+            
+            {# Appliance maintenance (only when relevant) #}
+            {% if appliances_data.dishwasher.maintenance.relevant %}
+              {% set ns.sections = ns.sections + ['Dishwasher maintenance needed:'] %}
+              {% if appliances_data.dishwasher.maintenance.needs_salt %}
+                {% set ns.sections = ns.sections + ['- Needs salt refill'] %}
+              {% endif %}
+              {% if appliances_data.dishwasher.maintenance.needs_rinse_aid %}
+                {% set ns.sections = ns.sections + ['- Needs rinse aid refill'] %}
+              {% endif %}
+            {% endif %}
+            
+            {# Device issues (only when present) #}
+            {% if devices_data.get('has_issues', false) %}
+              {% set ns.sections = ns.sections + ['Device issues:'] %}
+              {% if devices_data.battery_count > 0 %}
+                {% set ns.sections = ns.sections + ['- ' + devices_data.battery_count|string + ' devices with low battery'] %}
+              {% endif %}
+              {% if devices_data.offline_count > 0 %}
+                {% set ns.sections = ns.sections + ['- ' + devices_data.offline_count|string + ' critical devices offline'] %}
+              {% endif %}
+            {% endif %}
+            
+            {{ ns.sections | join('\n') }}
+          
+          compact_prompt: "{{ prompt_sections }}"
+      
+      # Store the built prompt
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/prompt"
+          payload: >
+            {
+              "prompt": {{ compact_prompt | tojson }},
+              "timestamp": "{{ now().isoformat() }}",
+              "context": {
+                "is_morning": {{ is_morning }},
+                "is_weekday": {{ is_weekday }},
+                "has_critical_issues": {{ devices_data.get('has_issues', false) }}
+              }
+            }
+      
+      # Return the prompt for immediate use
+      - variables:
+          result: "{{ compact_prompt }}"
