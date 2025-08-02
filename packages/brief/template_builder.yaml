@@ -243,19 +243,22 @@ script:
           
           compact_prompt: "{{ prompt_sections }}"
       
-      # Store the built prompt
+      # Store the built prompt with proper JSON escaping
       - service: mqtt.publish
         data:
           topic: "home/brief/prompt"
           payload: >
-            {
-              "prompt": {{ compact_prompt | tojson }},
-              "timestamp": "{{ now().isoformat() }}",
-              "is_morning": {{ is_morning }},
-              "is_weekday": {{ is_weekday }},
-              "has_critical_issues": {{ devices_data.get('has_issues', false) }},
-              "prompt_length": {{ compact_prompt | length }}
-            }
+            {{
+              {
+                "prompt": compact_prompt,
+                "timestamp": now().isoformat(),
+                "context": {
+                  "is_morning": is_morning,
+                  "is_weekday": is_weekday,
+                  "has_critical_issues": devices_data.get('has_issues', false)
+                }
+              } | tojson
+            }}
       
       # Return the prompt for immediate use
       - variables:

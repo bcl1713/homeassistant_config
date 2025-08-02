@@ -19,7 +19,8 @@ script:
       
       - variables:
           prompt_data: "{{ state_attr('sensor.brief_prompt', 'prompt') }}"
-          has_critical_issues: "{{ state_attr('sensor.brief_prompt', 'has_critical_issues') | default(false) }}"
+          context: "{{ state_attr('sensor.brief_prompt', 'context') }}"
+          has_critical_issues: "{{ context.get('has_critical_issues', false) if context else false }}"
       
       # Only proceed if we have a valid prompt
       - condition: template
@@ -75,7 +76,7 @@ script:
 
       # Enhanced audio delivery based on context and time
       - variables:
-          is_morning: "{{ state_attr('sensor.brief_prompt', 'is_morning') | default(false) }}"
+          is_morning: "{{ context.get('is_morning', false) if context else now().hour < 12 }}"
           is_evening: "{{ now().hour >= 17 and now().hour < 20 }}"
           kitchen_available: "{{ is_state('media_player.display_kitchen', 'on') }}"
       
