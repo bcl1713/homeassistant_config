@@ -104,8 +104,15 @@ script:
                   {% set include_event = false %}
                   {% if event_date == today %}
                     {% set include_event = true %}
-                  {% elif event_datetime and event_datetime <= now() + timedelta(hours=4) %}
-                    {% set include_event = true %}
+                  {% elif event_datetime %}
+                    {# For timed events, check if within next 4 hours #}
+                    {# Convert to timestamp for comparison to avoid timezone issues #}
+                    {% set event_timestamp = event_datetime.timestamp() %}
+                    {% set current_timestamp = now().timestamp() %}
+                    {% set four_hours_later = current_timestamp + (4 * 3600) %}
+                    {% if event_timestamp <= four_hours_later %}
+                      {% set include_event = true %}
+                    {% endif %}
                   {% endif %}
                   
                   {% if include_event %}

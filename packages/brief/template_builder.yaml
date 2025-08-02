@@ -40,76 +40,57 @@ script:
       # Read collected data from MQTT sensor attributes
       - variables:
           chores_data: >
-            {% set attrs = state_attr('sensor.brief_data_chores', 'daily') %}
-            {% if attrs %}
-              {{ dict(daily=attrs, weekend=state_attr('sensor.brief_data_chores', 'weekend')) }}
+            {% set daily = state_attr('sensor.brief_data_chores', 'daily') %}
+            {% set weekend = state_attr('sensor.brief_data_chores', 'weekend') %}
+            {% if daily %}
+              {{ dict(daily=daily, weekend=weekend) }}
             {% else %}
               {}
             {% endif %}
           appliances_data: >
-            {% set attrs = state_attr('sensor.brief_data_appliances', 'dishwasher') %}
-            {% if attrs %}
-              {{ dict(dishwasher=attrs) }}
+            {% set dishwasher = state_attr('sensor.brief_data_appliances', 'dishwasher') %}
+            {% if dishwasher %}
+              {{ dict(dishwasher=dishwasher) }}
             {% else %}
               {}
             {% endif %}
           calendar_data: >
             {% set events = state_attr('sensor.brief_data_calendar', 'events') %}
-            {% if events %}
-              {{ dict(events=events) }}
-            {% else %}
-              {'events': []}
-            {% endif %}
+            {{ dict(events=events if events else []) }}
           garbage_data: >
             {% set relevant = state_attr('sensor.brief_data_garbage', 'relevant') %}
+            {% set has_pickup = state_attr('sensor.brief_data_garbage', 'has_pickup_tomorrow') %}
+            {% set reminder = state_attr('sensor.brief_data_garbage', 'reminder_message') %}
             {% if relevant is not none %}
-              {{
-                dict(
-                  relevant=relevant,
-                  has_pickup_tomorrow=state_attr('sensor.brief_data_garbage', 'has_pickup_tomorrow'),
-                  reminder_message=state_attr('sensor.brief_data_garbage', 'reminder_message')
-                )
-              }}
+              {{ dict(relevant=relevant, has_pickup_tomorrow=has_pickup, reminder_message=reminder) }}
             {% else %}
               {}
             {% endif %}
           meals_data: >
             {% set has_today = state_attr('sensor.brief_data_meals', 'has_today') %}
+            {% set has_tomorrow = state_attr('sensor.brief_data_meals', 'has_tomorrow') %}
+            {% set today = state_attr('sensor.brief_data_meals', 'today') %}
+            {% set tomorrow = state_attr('sensor.brief_data_meals', 'tomorrow') %}
             {% if has_today is not none %}
-              {{
-                dict(
-                  has_today=has_today,
-                  has_tomorrow=state_attr('sensor.brief_data_meals', 'has_tomorrow'),
-                  today=state_attr('sensor.brief_data_meals', 'today'),
-                  tomorrow=state_attr('sensor.brief_data_meals', 'tomorrow')
-                )
-              }}
+              {{ dict(has_today=has_today, has_tomorrow=has_tomorrow, today=today, tomorrow=tomorrow) }}
             {% else %}
               {}
             {% endif %}
           devices_data: >
             {% set has_issues = state_attr('sensor.brief_data_devices', 'has_issues') %}
+            {% set battery_count = state_attr('sensor.brief_data_devices', 'battery_count') %}
+            {% set offline_count = state_attr('sensor.brief_data_devices', 'offline_count') %}
             {% if has_issues is not none %}
-              {{
-                dict(
-                  has_issues=has_issues,
-                  battery_count=state_attr('sensor.brief_data_devices', 'battery_count'),
-                  offline_count=state_attr('sensor.brief_data_devices', 'offline_count')
-                )
-              }}
+              {{ dict(has_issues=has_issues, battery_count=battery_count, offline_count=offline_count) }}
             {% else %}
               {}
             {% endif %}
           commute_data: >
             {% set relevant = state_attr('sensor.brief_data_commute', 'relevant') %}
+            {% set brian_time = state_attr('sensor.brief_data_commute', 'brian_time') %}
+            {% set hester_time = state_attr('sensor.brief_data_commute', 'hester_time') %}
             {% if relevant is not none %}
-              {{
-                dict(
-                  relevant=relevant,
-                  brian_time=state_attr('sensor.brief_data_commute', 'brian_time'),
-                  hester_time=state_attr('sensor.brief_data_commute', 'hester_time')
-                )
-              }}
+              {{ dict(relevant=relevant, brian_time=brian_time, hester_time=hester_time) }}
             {% else %}
               {}
             {% endif %}
