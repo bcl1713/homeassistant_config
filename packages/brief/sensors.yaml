@@ -60,16 +60,13 @@ template:
     - name: "Brief Context Summary"
       unique_id: brief_context_summary
       state: >
-        {% set prompt_data = states('sensor.brief_prompt') %}
-        {% if prompt_data not in ['unknown', 'unavailable'] %}
-          {% set context = state_attr('sensor.brief_prompt', 'context') %}
-          {% if context %}
-            {{ context.get('is_morning', false) | title }} | 
-            {{ 'Weekday' if context.get('is_weekday', false) else 'Weekend' }} |
-            {{ 'Issues' if context.get('has_critical_issues', false) else 'Normal' }}
-          {% else %}
-            Ready
-          {% endif %}
+        {% set is_morning = state_attr('sensor.brief_prompt', 'is_morning') %}
+        {% set is_weekday = state_attr('sensor.brief_prompt', 'is_weekday') %}
+        {% set has_issues = state_attr('sensor.brief_prompt', 'has_critical_issues') %}
+        {% if is_morning is not none %}
+          {{ ('Morning' if is_morning else 'Evening') }} | 
+          {{ 'Weekday' if is_weekday else 'Weekend' }} |
+          {{ 'Issues' if has_issues else 'Normal' }}
         {% else %}
           Not Ready
         {% endif %}

@@ -251,11 +251,10 @@ script:
             {
               "prompt": {{ compact_prompt | tojson }},
               "timestamp": "{{ now().isoformat() }}",
-              "context": {
-                "is_morning": {{ is_morning }},
-                "is_weekday": {{ is_weekday }},
-                "has_critical_issues": {{ devices_data.get('has_issues', false) }}
-              }
+              "is_morning": {{ is_morning }},
+              "is_weekday": {{ is_weekday }},
+              "has_critical_issues": {{ devices_data.get('has_issues', false) }},
+              "prompt_length": {{ compact_prompt | length }}
             }
       
       # Return the prompt for immediate use
