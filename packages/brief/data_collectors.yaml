@@ -141,12 +141,14 @@ script:
     alias: "Collect Garbage Schedule"
     description: "Dedicated garbage collection logic - reminds to take out trash the night before"
     sequence:
-      # Get all calendar events for the next 2 days to check for garbage pickup
+      # Get garbage calendar events for the next 2 days
       - service: calendar.get_events
         data:
           duration:
             days: 2
-        response_variable: all_events
+        target:
+          label_id: trash_calendar
+        response_variable: garbage_events
       
       - variables:
           today: "{{ now().date() }}"
@@ -154,7 +156,7 @@ script:
           is_evening: "{{ now().hour >= 17 }}"
           garbage_tomorrow: >
             {% set ns = namespace(garbage_events=[]) %}
-            {% for calendar, event_list in all_events.items() %}
+            {% for calendar, event_list in garbage_events.items() %}
               {% for event in event_list.events %}
                 {# Parse event start date #}
                 {% if 'T' in event.start %}
@@ -163,10 +165,9 @@ script:
                   {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
                 {% endif %}
                 
-                {% set is_garbage_event = 'garbage' in event.summary.lower() %}
-                
-                {# Check if garbage pickup is tomorrow #}
-                {% if is_garbage_event and event_date == tomorrow %}
+                {# Since this is the trash calendar, all events are garbage-related #}
+                {# Check if pickup is tomorrow #}
+                {% if event_date == tomorrow %}
                   {% set ns.garbage_events = ns.garbage_events + [{
                     'summary': event.summary,
                     'date': event_date.isoformat(),
