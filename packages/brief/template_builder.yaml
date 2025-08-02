@@ -119,16 +119,22 @@ script:
           prompt_sections: >
             {% set ns = namespace(sections=[]) %}
             
-            {# Base instructions #}
+            {# Base instructions with date/time context #}
             {% set ns.sections = ns.sections + ['Instructions for generating home status briefs:'] %}
             {% set ns.sections = ns.sections + ['- Create a concise, conversational brief'] %}
             {% set ns.sections = ns.sections + ['- Avoid technical terms and Home Assistant terminology'] %}
             {% set ns.sections = ns.sections + ['- Round numbers naturally (say "around 3" instead of "2.87")'] %}
             {% set ns.sections = ns.sections + ['- Response should be close to but less than 255 characters'] %}
             {% set ns.sections = ns.sections + ['- Only mention events in next 4 hours'] %}
+            {% set ns.sections = ns.sections + [''] %}
+            {% set ns.sections = ns.sections + ['CURRENT DATE/TIME CONTEXT:'] %}
+            {% set ns.sections = ns.sections + ['- Current date: ' + now().strftime('%A, %B %d, %Y')] %}
             {% set ns.sections = ns.sections + ['- Current time: ' + current_time] %}
+            {% set ns.sections = ns.sections + ['- Today is: ' + now().strftime('%A')] %}
+            {% set ns.sections = ns.sections + ['- Tomorrow is: ' + (now() + timedelta(days=1)).strftime('%A, %B %d')] %}
             {% set ns.sections = ns.sections + ['- Time of day: ' + ('morning' if is_morning else 'afternoon' if is_afternoon else 'evening')] %}
             {% set ns.sections = ns.sections + ['- ' + ('Weekday' if is_weekday else 'Weekend')] %}
+            {% set ns.sections = ns.sections + [''] %}
             
             {# Weather section (always include) #}
             {% if hourly_forecast %}
@@ -147,14 +153,22 @@ script:
               {% endif %}
             {% endif %}
             
-            {# Calendar events (non-garbage) #}
+            {# Calendar events (non-garbage) with explicit dates #}
             {% if calendar_data.get('events', []) %}
               {% set ns.sections = ns.sections + ['Upcoming events:'] %}
               {% for event in calendar_data.events %}
                 {% if event.is_timed %}
-                  {% set ns.sections = ns.sections + ['- ' + event.summary + ' at ' + event.formatted_time] %}
+                  {% if event.is_today %}
+                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' at ' + event.formatted_time] %}
+                  {% else %}
+                    {% set ns.sections = ns.sections + ['- ' + event.summary + ' at ' + event.formatted_time] %}
+                  {% endif %}
                 {% else %}
-                  {% set ns.sections = ns.sections + ['- ' + event.summary + ' (all day)'] %}
+                  {% if event.is_today %}
+                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' (all day)'] %}
+                  {% else %}
+                    {% set ns.sections = ns.sections + ['- ' + event.summary + ' (all day)'] %}
+                  {% endif %}
                 {% endif %}
               {% endfor %}
             {% endif %}

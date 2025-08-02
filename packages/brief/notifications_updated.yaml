@@ -1,0 +1,128 @@
+# packages/brief/notifications_updated.yaml
+#
+# Updated Notifications for Modular Briefing System
+# Simplified and more focused AI interaction
+#
+
+script:
+  daily_brief:
+    alias: "Enhanced Daily Status Brief - Modular"
+    description: "Generates contextual status brief using modular data collection"
+    sequence:
+      # Build the contextual prompt using our modular system
+      - service: script.brief_build_prompt
+        response_variable: prompt_response
+      
+      # Get the built prompt from MQTT attributes
+      - delay:
+          seconds: 1
+      
+      - variables:
+          prompt_data: "{{ state_attr('sensor.brief_prompt', 'prompt') }}"
+          context: "{{ state_attr('sensor.brief_prompt', 'context') }}"
+          has_critical_issues: "{{ context.get('has_critical_issues', false) if context else false }}"
+      
+      # Only proceed if we have a valid prompt
+      - condition: template
+        value_template: "{{ prompt_data is defined and prompt_data != '' }}"
+      
+      # Process with AI using the modular prompt
+      - service: conversation.process
+        data:
+          agent_id: conversation.chatgpt
+          text: "{{ prompt_data }}"
+        response_variable: agent_response
+      
+      # Extract the brief text
+      - variables:
+          condensed_brief: "{{ agent_response.response.speech.plain.speech }}"
+      
+      # Publish to MQTT for other integrations
+      - service: mqtt.publish
+        data:
+          topic: "home/ai/response"
+          payload: >-
+            {
+              "state": "{{ now().isoformat() }}",
+              "condensed_brief": {{ condensed_brief | tojson }},
+              "modular_version": true,
+              "context": {{ context | tojson }}
+            }
+      
+      # Enhanced delivery based on context
+      - choose:
+          # For critical issues, send with higher priority
+          - conditions:
+              - condition: template
+                value_template: "{{ has_critical_issues }}"
+            sequence:
+              - service: notify.all_mobile_devices
+                data:
+                  title: "Home Brief (Issues Detected)"
+                  message: "{{ condensed_brief }}"
+                  data:
+                    ttl: 0
+                    priority: high
+                    clickAction: "/dashboard-briefing"
+        
+        # Default notification
+        default:
+          - service: notify.all_mobile_devices
+            data:
+              title: "Home Brief"
+              message: "{{ condensed_brief }}"
+              data:
+                clickAction: "/dashboard-briefing"
+
+      # Enhanced audio delivery based on context and time
+      - variables:
+          is_morning: "{{ context.get('is_morning', false) if context else now().hour < 12 }}"
+          is_evening: "{{ now().hour >= 17 and now().hour < 20 }}"
+          kitchen_available: "{{ is_state('media_player.display_kitchen', 'on') }}"
+      
+      - if:
+          - condition: and
+            conditions:
+              - condition: template
+                value_template: "{{ kitchen_available }}"
+              - condition: or
+                conditions:
+                  - condition: template
+                    value_template: "{{ is_morning and now().hour >= 7 }}"
+                  - condition: template
+                    value_template: "{{ is_evening }}"
+        then:
+          - service: tts.speak
+            target:
+              entity_id: tts.google_en_com
+            data:
+              cache: true
+              media_player_entity_id: media_player.display_kitchen
+              message: "{{ condensed_brief }}"
+
+  # Utility script to test data collection
+  brief_test_collectors:
+    alias: "Test Brief Data Collectors"
+    description: "Test all data collectors and show results"
+    sequence:
+      - service: script.brief_build_prompt
+      - delay:
+          seconds: 3
+      - service: persistent_notification.create
+        data:
+          title: "Brief Data Collection Test"
+          message: >
+            Context: {{ state_attr('sensor.brief_prompt', 'context') }}
+            
+            Data Sources: {{ state_attr('sensor.brief_context_summary', 'data_sources') }}
+            
+            Prompt Length: {{ states('sensor.brief_prompt') }} characters
+            
+            Last Generated: {{ state_attr('sensor.brief_context_summary', 'last_generated') }}
+
+  # Manual trigger for testing
+  brief_manual_trigger:
+    alias: "Manual Brief Trigger"
+    description: "Manually trigger brief for testing"
+    sequence:
+      - service: script.daily_brief

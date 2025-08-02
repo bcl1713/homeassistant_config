@@ -48,10 +48,10 @@ mqtt:
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/brief/data/commute"
     
-    # Built prompt sensor
+    # Built prompt sensor - use attributes for prompt content
     - name: "Brief Prompt"
       state_topic: "home/brief/prompt"
-      value_template: "{{ value_json.prompt | length }}"
+      value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/brief/prompt"
 
 template:
@@ -77,7 +77,8 @@ template:
         last_generated: >
           {{ state_attr('sensor.brief_prompt', 'timestamp') }}
         prompt_length: >
-          {{ states('sensor.brief_prompt') }}
+          {% set prompt = state_attr('sensor.brief_prompt', 'prompt') %}
+          {{ prompt | length if prompt else 0 }}
         data_sources: >
           {% set sources = [] %}
           {% if states('sensor.brief_data_chores') not in ['unknown', 'unavailable'] %}
