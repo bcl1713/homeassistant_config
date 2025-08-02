@@ -200,10 +200,10 @@ script:
                     clickAction: "/dashboard-briefing"
         
         # Default notification
-        default:
-          - service: notify.all_mobile_devices
-            data:
-              title: "Home Brief"
-              message: "{{ condensed_brief }}"
-              data:
-                clickAction: "/dashboard-briefing"
+        # default:
+        #   - service: notify.all_mobile_devices
+        #     data:
+        #       title: "Home Brief"
+        #       message: "{{ condensed_brief }}"
+        #       data:
+        #         clickAction: "/dashboard-briefing"
