@@ -37,15 +37,82 @@ script:
           entity_id: weather.forecast_home
         response_variable: hourly_forecast
       
-      # Read collected data from MQTT
+      # Read collected data from MQTT sensor attributes
       - variables:
-          chores_data: "{{ states('sensor.brief_data_chores') | from_json if states('sensor.brief_data_chores') not in ['unknown', 'unavailable'] else {} }}"
-          appliances_data: "{{ states('sensor.brief_data_appliances') | from_json if states('sensor.brief_data_appliances') not in ['unknown', 'unavailable'] else {} }}"
-          calendar_data: "{{ states('sensor.brief_data_calendar') | from_json if states('sensor.brief_data_calendar') not in ['unknown', 'unavailable'] else {} }}"
-          garbage_data: "{{ states('sensor.brief_data_garbage') | from_json if states('sensor.brief_data_garbage') not in ['unknown', 'unavailable'] else {} }}"
-          meals_data: "{{ states('sensor.brief_data_meals') | from_json if states('sensor.brief_data_meals') not in ['unknown', 'unavailable'] else {} }}"
-          devices_data: "{{ states('sensor.brief_data_devices') | from_json if states('sensor.brief_data_devices') not in ['unknown', 'unavailable'] else {} }}"
-          commute_data: "{{ states('sensor.brief_data_commute') | from_json if states('sensor.brief_data_commute') not in ['unknown', 'unavailable'] else {} }}"
+          chores_data: >
+            {% set attrs = state_attr('sensor.brief_data_chores', 'daily') %}
+            {% if attrs %}
+              {{ dict(daily=attrs, weekend=state_attr('sensor.brief_data_chores', 'weekend')) }}
+            {% else %}
+              {}
+            {% endif %}
+          appliances_data: >
+            {% set attrs = state_attr('sensor.brief_data_appliances', 'dishwasher') %}
+            {% if attrs %}
+              {{ dict(dishwasher=attrs) }}
+            {% else %}
+              {}
+            {% endif %}
+          calendar_data: >
+            {% set events = state_attr('sensor.brief_data_calendar', 'events') %}
+            {% if events %}
+              {{ dict(events=events) }}
+            {% else %}
+              {'events': []}
+            {% endif %}
+          garbage_data: >
+            {% set relevant = state_attr('sensor.brief_data_garbage', 'relevant') %}
+            {% if relevant is not none %}
+              {{
+                dict(
+                  relevant=relevant,
+                  has_pickup_tomorrow=state_attr('sensor.brief_data_garbage', 'has_pickup_tomorrow'),
+                  reminder_message=state_attr('sensor.brief_data_garbage', 'reminder_message')
+                )
+              }}
+            {% else %}
+              {}
+            {% endif %}
+          meals_data: >
+            {% set has_today = state_attr('sensor.brief_data_meals', 'has_today') %}
+            {% if has_today is not none %}
+              {{
+                dict(
+                  has_today=has_today,
+                  has_tomorrow=state_attr('sensor.brief_data_meals', 'has_tomorrow'),
+                  today=state_attr('sensor.brief_data_meals', 'today'),
+                  tomorrow=state_attr('sensor.brief_data_meals', 'tomorrow')
+                )
+              }}
+            {% else %}
+              {}
+            {% endif %}
+          devices_data: >
+            {% set has_issues = state_attr('sensor.brief_data_devices', 'has_issues') %}
+            {% if has_issues is not none %}
+              {{
+                dict(
+                  has_issues=has_issues,
+                  battery_count=state_attr('sensor.brief_data_devices', 'battery_count'),
+                  offline_count=state_attr('sensor.brief_data_devices', 'offline_count')
+                )
+              }}
+            {% else %}
+              {}
+            {% endif %}
+          commute_data: >
+            {% set relevant = state_attr('sensor.brief_data_commute', 'relevant') %}
+            {% if relevant is not none %}
+              {{
+                dict(
+                  relevant=relevant,
+                  brian_time=state_attr('sensor.brief_data_commute', 'brian_time'),
+                  hester_time=state_attr('sensor.brief_data_commute', 'hester_time')
+                )
+              }}
+            {% else %}
+              {}
+            {% endif %}
       
       # Build contextual sections
       - variables:
@@ -72,10 +139,10 @@ script:
             {# Commute section (weekday mornings only) #}
             {% if commute_data.get('relevant', false) %}
               {% set ns.sections = ns.sections + ['Commute times:'] %}
-              {% if commute_data.brian_time != 'N/A' %}
+              {% if commute_data.get('brian_time') != 'N/A' and commute_data.get('brian_time') %}
                 {% set ns.sections = ns.sections + ['- Brian to work: ' + commute_data.brian_time + ' minutes'] %}
               {% endif %}
-              {% if commute_data.hester_time != 'N/A' %}
+              {% if commute_data.get('hester_time') != 'N/A' and commute_data.get('hester_time') %}
                 {% set ns.sections = ns.sections + ['- Hester to work: ' + commute_data.hester_time + ' minutes'] %}
               {% endif %}
             {% endif %}
@@ -94,19 +161,19 @@ script:
             
             {# Garbage reminders (separate logic) #}
             {% if garbage_data.get('relevant', false) %}
-              {% set ns.sections = ns.sections + [garbage_data.reminder_message] %}
+              {% set ns.sections = ns.sections + [garbage_data.get('reminder_message', '')] %}
             {% endif %}
             
             {# Meal planning #}
             {% if meals_data.get('has_today', false) or meals_data.get('has_tomorrow', false) %}
               {% set ns.sections = ns.sections + ['Meal planning:'] %}
-              {% if meals_data.get('has_today', false) %}
+              {% if meals_data.get('has_today', false) and meals_data.get('today') %}
                 {% set today_meals = meals_data.today %}
                 {% for meal_type, meal in today_meals.items() %}
                   {% set ns.sections = ns.sections + ['- Today ' + meal_type + ': ' + meal] %}
                 {% endfor %}
               {% endif %}
-              {% if meals_data.get('has_tomorrow', false) %}
+              {% if meals_data.get('has_tomorrow', false) and meals_data.get('tomorrow') %}
                 {% set tomorrow_meals = meals_data.tomorrow %}
                 {% for meal_type, meal in tomorrow_meals.items() %}
                   {% set ns.sections = ns.sections + ['- Tomorrow ' + meal_type + ': ' + meal] %}
@@ -115,16 +182,16 @@ script:
             {% endif %}
             
             {# Chores (context aware) #}
-            {% if chores_data %}
+            {% if chores_data and chores_data.get('daily') %}
               {% set ns_chores = namespace(chore_items=[]) %}
               
               {# Daily dishwasher (always relevant) #}
-              {% if chores_data.daily.dishwasher.relevant and not chores_data.daily.dishwasher.completed %}
+              {% if chores_data.daily.get('dishwasher', {}).get('relevant', false) and not chores_data.daily.get('dishwasher', {}).get('completed', false) %}
                 {% set ns_chores.chore_items = ns_chores.chore_items + [chores_data.daily.dishwasher.assignee + ' needs to empty the dishwasher'] %}
               {% endif %}
               
               {# Weekend bathroom (only on weekends) #}
-              {% if chores_data.weekend.bathroom.relevant and not chores_data.weekend.bathroom.completed %}
+              {% if chores_data.get('weekend', {}).get('bathroom', {}).get('relevant', false) and not chores_data.get('weekend', {}).get('bathroom', {}).get('completed', false) %}
                 {% set ns_chores.chore_items = ns_chores.chore_items + [chores_data.weekend.bathroom.assignee + ' needs to clean the bathroom'] %}
               {% endif %}
               
@@ -137,12 +204,12 @@ script:
             {% endif %}
             
             {# Appliance maintenance (only when relevant) #}
-            {% if appliances_data.dishwasher.maintenance.relevant %}
+            {% if appliances_data.get('dishwasher', {}).get('maintenance', {}).get('relevant', false) %}
               {% set ns.sections = ns.sections + ['Dishwasher maintenance needed:'] %}
-              {% if appliances_data.dishwasher.maintenance.needs_salt %}
+              {% if appliances_data.dishwasher.maintenance.get('needs_salt', false) %}
                 {% set ns.sections = ns.sections + ['- Needs salt refill'] %}
               {% endif %}
-              {% if appliances_data.dishwasher.maintenance.needs_rinse_aid %}
+              {% if appliances_data.dishwasher.maintenance.get('needs_rinse_aid', false) %}
                 {% set ns.sections = ns.sections + ['- Needs rinse aid refill'] %}
               {% endif %}
             {% endif %}
@@ -150,10 +217,10 @@ script:
             {# Device issues (only when present) #}
             {% if devices_data.get('has_issues', false) %}
               {% set ns.sections = ns.sections + ['Device issues:'] %}
-              {% if devices_data.battery_count > 0 %}
+              {% if devices_data.get('battery_count', 0) > 0 %}
                 {% set ns.sections = ns.sections + ['- ' + devices_data.battery_count|string + ' devices with low battery'] %}
               {% endif %}
-              {% if devices_data.offline_count > 0 %}
+              {% if devices_data.get('offline_count', 0) > 0 %}
                 {% set ns.sections = ns.sections + ['- ' + devices_data.offline_count|string + ' critical devices offline'] %}
               {% endif %}
             {% endif %}

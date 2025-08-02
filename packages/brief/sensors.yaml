@@ -2,6 +2,7 @@
 #
 # MQTT Sensors for Modular Briefing System
 # Stores collected data from different modules
+#
 
 mqtt:
   sensor:
@@ -11,7 +12,7 @@ mqtt:
       value_template: "{{ value_json.state }}"
       json_attributes_topic: "home/ai/response"
     
-    # Data collection sensors
+    # Data collection sensors - use attributes for JSON data
     - name: "Brief Data Chores"
       state_topic: "home/brief/data/chores"
       value_template: "{{ now().isoformat() }}"
@@ -26,7 +27,7 @@ mqtt:
       state_topic: "home/brief/data/calendar"
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/brief/data/calendar"
-
+    
     - name: "Brief Data Garbage"
       state_topic: "home/brief/data/garbage"
       value_template: "{{ now().isoformat() }}"
