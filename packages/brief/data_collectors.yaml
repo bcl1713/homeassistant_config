@@ -2,15 +2,16 @@
 #
 # Data Collectors for Modular Briefing System
 # Each collector focuses on gathering specific types of information
+#
 
 script:
   brief_collect_chores:
-    alias: "Collect Chores information"
+    alias: "Collect Chores Information"
     description: "Gathers current chore status with context-aware filtering"
     variables:
       is_weekend: "{{ is_state('binary_sensor.time_is_weekend', 'on') }}"
       dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') }}"
-      dishwaher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
+      dishwasher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
       bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
       bathroom_completed: "{{ is_state('input_boolean.chore_bathroom_completed', 'on') }}"
     sequence:
@@ -19,7 +20,7 @@ script:
             daily:
               dishwasher:
                 assignee: "{{ dishwasher_assignee }}"
-                completed: "{{ dishwaher_completed }}"
+                completed: "{{ dishwasher_completed }}"
                 relevant: true
             weekend:
               bathroom:
@@ -35,14 +36,27 @@ script:
     alias: "Collect Appliance Status"
     description: "Gathers appliance information with intelligent filtering"
     variables:
-      dishwasher_state: "{{ states('sensor.dishwasher_operation_state') }}"
-      needs_salt: "{{ is_state('sensor.dishwasher_salt_nearly_empty', 'present') }}"
-      needs_rinse_aid: " {{is_state('sensor.dishwasher_rinse_aid_nearly_empty', 'present') }}"
+      dishwasher_state: "{{ states('sensor.dishwasher_state') }}"
+      dishwasher_available: >
+        {{ not is_state('sensor.dishwasher_state', 'unavailable') and 
+           not is_state('sensor.dishwasher_state', 'unknown') }}
+      dishwasher_running: >
+        {{ dishwasher_available and 
+           states('sensor.dishwasher_state') == "BSH.Common.EnumType.OperationState.Run" }}
+      # New dishwasher status sensors
+      needs_salt: >
+        {{ is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_saltnearlyempty', 'on') or
+           is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_saltempty', 'on') }}
+      needs_rinse_aid: >
+        {{ is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidnearlyempty', 'on') or
+           is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidempty', 'on') }}
     sequence:
       - variables:
           appliance_data:
             dishwasher:
               state: "{{ dishwasher_state }}"
+              available: "{{ dishwasher_available }}"
+              running: "{{ dishwasher_running }}"
               maintenance:
                 needs_salt: "{{ needs_salt }}"
                 needs_rinse_aid: "{{ needs_rinse_aid }}"
@@ -54,7 +68,7 @@ script:
 
   brief_collect_calendar:
     alias: "Collect Calendar Information"
-    description: "Gathers relevant calendar events"
+    description: "Gathers relevant calendar events (excluding garbage events)"
     sequence:
       # Get calendar events for next 3 days
       - service: calendar.get_events
@@ -68,32 +82,49 @@ script:
       - variables:
           today: "{{ now().date() }}"
           processed_events: >
-            {% set ns = namespace(items=[]) %}
+            {% set ns = namespace(events=[]) %}
             {% for calendar, event_list in raw_events.items() %}
               {% for event in event_list.events %}
-                {% set calendar = calendar.split('.')[1] | replace('_', ' ') | title %}
-                {% if 'T' in event.start %}
-                  {# Timed event - has time component #}
-                  {% set event_datetime = strptime(event.start.split('T')[0] + 'T' + event.start.split('T')[1].split('-')[0].split('+')[0], '%Y-%m-%dT%H:%M:%S') %}
-                  {% set event_date = event_datetime.date() %}
-                {% else %}
-                  {# All-day event - just date #}
-                  {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
-                  {% set event_datetime = none %}
+                {% set is_garbage = 'garbage' in event.summary.lower() %}
+                
+                {# Only include non-garbage events #}
+                {% if not is_garbage %}
+                  {# Parse event start date #}
+                  {% if 'T' in event.start %}
+                    {# Timed event - has time component #}
+                    {% set event_datetime = strptime(event.start.split('T')[0] + 'T' + event.start.split('T')[1].split('-')[0].split('+')[0], '%Y-%m-%dT%H:%M:%S') %}
+                    {% set event_date = event_datetime.date() %}
+                  {% else %}
+                    {# All-day event - just date #}
+                    {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
+                    {% set event_datetime = none %}
+                  {% endif %}
+                  
+                  {# Include if today or within next 4 hours for timed events #}
+                  {% set include_event = false %}
+                  {% if event_date == today %}
+                    {% set include_event = true %}
+                  {% elif event_datetime and event_datetime <= now() + timedelta(hours=4) %}
+                    {% set include_event = true %}
+                  {% endif %}
+                  
+                  {% if include_event %}
+                    {% set ns.events = ns.events + [{
+                      'summary': event.summary,
+                      'start': event.start,
+                      'date': event_date.isoformat(),
+                      'is_today': event_date == today,
+                      'is_timed': event_datetime is not none,
+                      'formatted_time': event_datetime.strftime('%H:%M') if event_datetime else 'All day',
+                      'formatted_date': event_date.strftime('%A') if event_date != today else 'TODAY',
+                      'day_name': event_date.strftime('%A, %B %d') if event_date != today else 'Today'
+                    }] %}
+                  {% endif %}
                 {% endif %}
-                {% set ns.items = ns.items + [{
-                  'calendar': calendar,
-                  'summary': event.summary,
-                  'start': event.start,
-                  'date': event_date.isoformat(),
-                  'is_today': event_date == today,
-                  'is_timed': event_datetime is not none,
-                  'formatted_time': event_datetime.strftime('%H:%M') if event_datetime else 'All day'
-                }] %}
               {% endfor %}
             {% endfor %}
-            {{ ns.items }}
-
+            {{ ns.events }}
+      
       - service: mqtt.publish
         data:
           topic: "home/brief/data/calendar"
@@ -101,16 +132,14 @@ script:
 
   brief_collect_garbage:
     alias: "Collect Garbage Schedule"
-    description: "Reminds to take ou the trash the night before garbage day"
+    description: "Dedicated garbage collection logic - reminds to take out trash the night before"
     sequence:
-      # Get calendar events for next 3 days
+      # Get all calendar events for the next 2 days to check for garbage pickup
       - service: calendar.get_events
         data:
           duration:
-            days: 3
-        target:
-          label_id: trash_calendar
-        response_variable: raw_events
+            days: 2
+        response_variable: all_events
       
       - variables:
           today: "{{ now().date() }}"
@@ -118,10 +147,19 @@ script:
           is_evening: "{{ now().hour >= 17 }}"
           garbage_tomorrow: >
             {% set ns = namespace(garbage_events=[]) %}
-            {% for calendar, event_list in raw_events.items() %}
+            {% for calendar, event_list in all_events.items() %}
               {% for event in event_list.events %}
-                {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
-                {% if (event_date | string)  == (tomorrow | string) %}
+                {# Parse event start date #}
+                {% if 'T' in event.start %}
+                  {% set event_date = strptime(event.start.split('T')[0], '%Y-%m-%d').date() %}
+                {% else %}
+                  {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
+                {% endif %}
+                
+                {% set is_garbage_event = 'garbage' in event.summary.lower() %}
+                
+                {# Check if garbage pickup is tomorrow #}
+                {% if is_garbage_event and event_date == tomorrow %}
                   {% set ns.garbage_events = ns.garbage_events + [{
                     'summary': event.summary,
                     'date': event_date.isoformat(),
@@ -131,6 +169,7 @@ script:
               {% endfor %}
             {% endfor %}
             {{ ns.garbage_events }}
+          
           garbage_data:
             has_pickup_tomorrow: "{{ garbage_tomorrow | length > 0 }}"
             pickup_events: "{{ garbage_tomorrow }}"
@@ -149,6 +188,7 @@ script:
               {% else %}
                 ""
               {% endif %}
+      
       - service: mqtt.publish
         data:
           topic: "home/brief/data/garbage"

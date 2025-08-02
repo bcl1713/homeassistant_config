@@ -161,13 +161,13 @@ script:
                   {% if event.is_today %}
                     {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' at ' + event.formatted_time] %}
                   {% else %}
-                    {% set ns.sections = ns.sections + ['- ' + event.summary + ' at ' + event.formatted_time] %}
+                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' at ' + event.formatted_time] %}
                   {% endif %}
                 {% else %}
                   {% if event.is_today %}
                     {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' (all day)'] %}
                   {% else %}
-                    {% set ns.sections = ns.sections + ['- ' + event.summary + ' (all day)'] %}
+                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' (all day)'] %}
                   {% endif %}
                 {% endif %}
               {% endfor %}
