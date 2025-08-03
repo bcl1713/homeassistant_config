@@ -46,40 +46,47 @@ export_entities() {
     echo "Exporting entity states..."
     
     # Try to read from Home Assistant's state file if available
-    local state_content=""
+    local entities_content=""
     
     # Check for entity registry file
     if [ -f "$CONFIG_DIR/.storage/core.entity_registry" ]; then
         echo "Found entity registry, extracting entity list..."
+        
         local entity_count
         entity_count=$(grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | wc -l || echo "0")
         
-        state_content="# Entity Registry Summary\n"
-        state_content+="Total registered entities: $entity_count\n\n"
+        entities_content="# Entity Registry Summary
+Total registered entities: $entity_count
+
+# Domain Summary
+"
         
-        # Extract entities by domain
+        # Extract entities by domain and count them
         grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | \
         sed 's/"entity_id":"\([^"]*\)"/\1/' | \
         cut -d'.' -f1 | sort | uniq -c | \
         while read -r count domain; do
-            state_content+="- $domain: $count entities\n"
+            entities_content="${entities_content}- $domain: $count entities
+"
         done 2>/dev/null || true
         
-        state_content+="\n# All Entities\n\n"
+        entities_content="${entities_content}
+# All Entities
+
+"
         
         # List all entities
-        grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | \
-        sed 's/"entity_id":"\([^"]*\)"/- \1/' >> /tmp/entities_list.tmp 2>/dev/null || true
+        local all_entities
+        all_entities=$(grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | \
+                      sed 's/"entity_id":"\([^"]*\)"/- \1/' || echo "No entities found")
         
-        if [ -f "/tmp/entities_list.tmp" ]; then
-            state_content+="$(cat /tmp/entities_list.tmp)\n"
-            rm -f /tmp/entities_list.tmp
-        fi
+        entities_content="${entities_content}${all_entities}"
     else
-        state_content="Entity registry not found. This is normal if Home Assistant is not running or if this is a fresh installation."
+        entities_content="Entity registry not found at $CONFIG_DIR/.storage/core.entity_registry
+This is normal if Home Assistant is not running or if this is a fresh installation."
     fi
     
-    add_section "ENTITIES" "$state_content"
+    add_section "ENTITIES" "$entities_content"
 }
 
 # Export configuration files
