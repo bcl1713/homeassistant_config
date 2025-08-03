@@ -45,9 +45,6 @@ EOF
 export_entities() {
     echo "Exporting entity states..."
     
-    # Try to read from Home Assistant's state file if available
-    local entities_content=""
-    
     # Check for entity registry file
     if [ -f "$CONFIG_DIR/.storage/core.entity_registry" ]; then
         echo "Found entity registry, extracting entity list..."
@@ -55,38 +52,41 @@ export_entities() {
         local entity_count
         entity_count=$(grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | wc -l || echo "0")
         
-        entities_content="# Entity Registry Summary
+        # Create a temporary file for the entities content
+        local entities_temp="/tmp/entities_export.txt"
+        
+        cat > "$entities_temp" << EOF
+# Entity Registry Summary
 Total registered entities: $entity_count
 
 # Domain Summary
-"
+EOF
         
         # Extract entities by domain and count them
-        grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | \
-        sed 's/"entity_id":"\([^"]*\)"/\1/' | \
-        cut -d'.' -f1 | sort | uniq -c | \
-        while read -r count domain; do
-            entities_content="${entities_content}- $domain: $count entities
-"
-        done 2>/dev/null || true
+        if grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | \
+           sed 's/"entity_id":"\([^"]*\)"/\1/' | \
+           cut -d'.' -f1 | sort | uniq -c > /tmp/domain_counts.txt 2>/dev/null; then
+            
+            while read -r count domain; do
+                echo "- $domain: $count entities" >> "$entities_temp"
+            done < /tmp/domain_counts.txt
+            rm -f /tmp/domain_counts.txt
+        fi
         
-        entities_content="${entities_content}
-# All Entities
-
-"
+        echo "" >> "$entities_temp"
+        echo "# All Entities" >> "$entities_temp"
+        echo "" >> "$entities_temp"
         
         # List all entities
-        local all_entities
-        all_entities=$(grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | \
-                      sed 's/"entity_id":"\([^"]*\)"/- \1/' || echo "No entities found")
+        grep -o '"entity_id":"[^"]*"' "$CONFIG_DIR/.storage/core.entity_registry" 2>/dev/null | \
+        sed 's/"entity_id":"\([^"]*\)"/- \1/' >> "$entities_temp" 2>/dev/null || true
         
-        entities_content="${entities_content}${all_entities}"
+        add_section "ENTITIES" "$(cat "$entities_temp")"
+        rm -f "$entities_temp"
     else
-        entities_content="Entity registry not found at $CONFIG_DIR/.storage/core.entity_registry
+        add_section "ENTITIES" "Entity registry not found at $CONFIG_DIR/.storage/core.entity_registry
 This is normal if Home Assistant is not running or if this is a fresh installation."
     fi
-    
-    add_section "ENTITIES" "$entities_content"
 }
 
 # Export configuration files
