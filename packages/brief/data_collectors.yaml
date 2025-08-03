@@ -341,3 +341,9 @@ script:
         data:
           topic: "home/brief/data/commute"
           payload: "{{ commute_data | tojson }}"
+
+  brief_collect_air_quality:
+    alias: "Collect Air Quality Information"
+    description: "Gathers current air quality status and trends for briefing"
+    sequence:
+      - service: script.collect_air_quality_summary

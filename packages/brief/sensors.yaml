@@ -47,6 +47,11 @@ mqtt:
       state_topic: "home/brief/data/commute"
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/brief/data/commute"
+
+    - name: "Brief Data Air Quality"
+      state_topic: "home/brief/data/air_quality"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/air_quality"
     
     # Built prompt sensor - use attributes for prompt content
     - name: "Brief Prompt"
@@ -96,5 +101,8 @@ template:
           {% endif %}
           {% if states('sensor.brief_data_commute') not in ['unknown', 'unavailable'] %}
             {% set sources = sources + ['commute'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_air_quality') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['air_quality'] %}
           {% endif %}
           {{ sources | join(', ') }}
