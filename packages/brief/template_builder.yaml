@@ -24,6 +24,7 @@ script:
           - service: script.brief_collect_meals
           - service: script.brief_collect_devices
           - service: script.brief_collect_commute
+          - service: script.brief_collect_air_quality
       
       # Wait a moment for MQTT messages to be processed
       - delay:
@@ -94,7 +95,17 @@ script:
             {% else %}
               {}
             {% endif %}
-      
+          air_quality_data: >
+            {% set relevant = state_attr('sensor.brief_data_air_quality', 'relevant') %}
+            {% set status = state_attr('sensor.brief_data_air_quality', 'status') %}
+            {% set summary = state_attr('sensor.brief_data_air_quality', 'summary') %}
+            {% set trend = state_attr('sensor.brief_data_air_quality', 'trend') %}
+            {% if relevant is not none %}
+              {{ dict(relevant=relevant, status=status, summary=summary, trend=trend) }}
+            {% else %}
+              {}
+            {% endif %}   
+
       # Build contextual sections
       - variables:
           prompt_sections: >
@@ -219,7 +230,15 @@ script:
                 {% set ns.sections = ns.sections + ['- ' + devices_data.offline_count|string + ' critical devices offline'] %}
               {% endif %}
             {% endif %}
-            
+
+            {# Air quality (only when relevant) #}
+            {% if air_quality_data.get('relevant', false) %}
+              {% set ns.sections = ns.sections + ['Air quality: ' + air_quality_data.get('summary', '')] %}
+              {% if air_quality_data.get('trend') == 'worsening' %}
+                {% set ns.sections = ns.sections + ['- Trend: Declining, monitor closely'] %}
+              {% endif %}
+            {% endif %} 
+
             {{ ns.sections | join('\n') }}
           
           compact_prompt: "{{ prompt_sections }}"

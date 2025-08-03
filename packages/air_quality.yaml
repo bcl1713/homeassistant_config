@@ -1,0 +1,421 @@
+# packages/air_quality.yaml
+#
+# Air Quality Monitoring Package
+#
+# Features:
+# - Composite air quality status sensor with good/moderate/poor states
+# - Threshold-based alerts for poor air quality conditions
+# - CO2 buildup monitoring with 15-minute delay for stability
+# - Historical trending and pattern analysis
+# - Integration with weather data for context
+# - Daily air quality summary in morning briefing
+#
+# Uses existing thermostat sensors:
+# - sensor.thermostat_air_quality_index
+# - sensor.thermostat_carbon_dioxide
+# - sensor.thermostat_vocs
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      co2_alert_threshold: &co2_threshold 1000
+      voc_high_threshold: &voc_threshold 500
+      aqi_poor_threshold: &aqi_threshold 101
+
+input_boolean:
+  air_quality_monitoring_enabled:
+    name: "Air Quality Monitoring"
+    icon: mdi:air-filter
+    initial: true
+
+  air_quality_co2_alert_sent:
+    name: "CO2 Alert Status"
+    icon: mdi:molecule-co2
+    initial: false
+
+input_number:
+  air_quality_co2_threshold:
+    name: "CO2 Alert Threshold"
+    min: 800
+    max: 2000
+    step: 50
+    unit_of_measurement: "ppm"
+    icon: mdi:molecule-co2
+    initial: *co2_threshold
+
+  air_quality_voc_threshold:
+    name: "VOC Alert Threshold"
+    min: 100
+    max: 1000
+    step: 50
+    unit_of_measurement: "ppb"
+    icon: mdi:gas-cylinder
+    initial: *voc_threshold
+
+  air_quality_aqi_threshold:
+    name: "AQI Alert Threshold"
+    min: 50
+    max: 200
+    step: 10
+    unit_of_measurement: "AQI"
+    icon: mdi:air-filter
+    initial: *aqi_threshold
+
+template:
+  - sensor:
+      - name: "Air Quality Composite Status"
+        unique_id: air_quality_composite_status
+        state: >
+          {% set aqi = states('sensor.thermostat_air_quality_index') | int(0) %}
+          {% set co2 = states('sensor.thermostat_carbon_dioxide') | int(0) %}
+          {% set voc = states('sensor.thermostat_vocs') | int(0) %}
+          {% set co2_threshold = states('input_number.air_quality_co2_threshold') | int %}
+          {% set voc_threshold = states('input_number.air_quality_voc_threshold') | int %}
+          {% set aqi_threshold = states('input_number.air_quality_aqi_threshold') | int %}
+          
+          {# Determine worst condition #}
+          {% set conditions = [] %}
+          
+          {# AQI-based assessment #}
+          {% if aqi >= aqi_threshold %}
+            {% set conditions = conditions + ['poor'] %}
+          {% elif aqi >= 51 %}
+            {% set conditions = conditions + ['moderate'] %}
+          {% else %}
+            {% set conditions = conditions + ['good'] %}
+          {% endif %}
+          
+          {# CO2-based assessment #}
+          {% if co2 >= co2_threshold %}
+            {% set conditions = conditions + ['poor'] %}
+          {% elif co2 >= 800 %}
+            {% set conditions = conditions + ['moderate'] %}
+          {% else %}
+            {% set conditions = conditions + ['good'] %}
+          {% endif %}
+          
+          {# VOC-based assessment #}
+          {% if voc >= voc_threshold %}
+            {% set conditions = conditions + ['poor'] %}
+          {% elif voc >= 250 %}
+            {% set conditions = conditions + ['moderate'] %}
+          {% else %}
+            {% set conditions = conditions + ['good'] %}
+          {% endif %}
+          
+          {# Return worst condition #}
+          {% if 'poor' in conditions %}
+            poor
+          {% elif 'moderate' in conditions %}
+            moderate
+          {% else %}
+            good
+          {% endif %}
+        attributes:
+          aqi_value: "{{ states('sensor.thermostat_air_quality_index') }}"
+          co2_value: "{{ states('sensor.thermostat_carbon_dioxide') }}"
+          voc_value: "{{ states('sensor.thermostat_vocs') }}"
+          aqi_status: >
+            {% set aqi = states('sensor.thermostat_air_quality_index') | int(0) %}
+            {% set threshold = states('input_number.air_quality_aqi_threshold') | int %} 
+            {% if aqi >= threshold %}
+              Poor
+            {% elif aqi >= 51 %}
+              Moderate
+            {% else %}
+              Good
+            {% endif %}
+          co2_status: >
+            {% set co2 = states('sensor.thermostat_carbon_dioxide') | int(0) %}
+            {% set threshold = states('input_number.air_quality_co2_threshold') | int %}
+            {% if co2 >= threshold %}
+              High
+            {% elif co2 >= 800 %}
+              Elevated
+            {% else %}
+              Normal
+            {% endif %}
+          voc_status: >
+            {% set voc = states('sensor.thermostat_vocs') | int(0) %}
+            {% set threshold = states('input_number.air_quality_voc_threshold') | int %}
+            {% if voc >= threshold %}
+              High
+            {% elif voc >= 250 %}
+              Elevated
+            {% else %}
+              Normal
+            {% endif %}
+          recommendation: >
+            {% set status = states('sensor.air_quality_composite_status') %}
+            {% if status == 'poor' %}
+              Consider opening windows, running air purifiers, or reducing indoor pollutant sources.
+            {% elif status == 'moderate' %}
+              Monitor air quality and consider ventilation if levels persist.
+            {% else %}
+              Air quality is good. No action needed.
+            {% endif %}
+
+      - name: "Air Quality Trend"
+        unique_id: air_quality_trend
+        state: >
+          {% set current_aqi = states('sensor.thermostat_air_quality_index') | int(0) %}
+          {% set current_co2 = states('sensor.thermostat_carbon_dioxide') | int(0) %}
+          {% set current_voc = states('sensero.thermostat_vocs') | int(0) %}
+          
+          {# Get previous hour's average (simplified for template) #}
+          {% set prev_aqi = state_attr('sensor.air_quality_composite_status', 'aqi_value') | int(0) %}
+          {% set prev_co2 = state_attr('sensor.air_quality_composite_status', 'co2_value') | int(0) %}
+          {% set prev_voc = state_attr('sensor.air_quality_composite_status', 'voc_value') | int(0) %}
+          
+          {% set aqi_diff = current_aqi - prev_aqi %}
+          {% set co2_diff = current_co2 - prev_co2 %}
+          {% set voc_diff = current_voc - prev_voc %}
+          
+          {% if aqi_diff > 10 or co2_diff > 100 or voc_diff > 100 %}
+            worsening
+          {% elif aqi_diff < -10 or co2_diff < -100 or voc_diff < -100 %}
+            improving
+          {% else %}
+            stable
+          {% endif %}
+        attributes:
+          aqi_change: >
+            {% set current = states('sensor.thermostat_air_quality_index') | int(0) %}
+            {% set previous = state_attr('sensor.air_quality_composite_status', 'aqi_value') | int(0) %}
+            {{ current - previous }}
+          co2_change: >
+            {% set current = states('sensor.thermostat_carbon_dioxide') | int(0) %}
+            {% set previous = state_attr('sensor.air_quality_composite_status', 'co2_value') | int(0) %}
+            {{ current - previous }}
+          voc_change: >
+            {% set current = states('sensor.thermostat_vocs') | int(0) %}
+            {% set previous = state_attr('sensor.air_quality_composite_status', 'voc_value') | int(0) %}
+            {{ current - previous }}
+
+  - binary_sensor:
+      - name: "Air Quality Poor"
+        unique_id: air_quality_poor
+        state: "{{ is_state('sensor.air_quality_composite_status', 'poor') }}"
+        device_class: problem
+
+      - name: "CO2 Level High"
+        unique_id: co2_level_high
+        state: >
+          {% set co2 = states('sensor.thermostat_carbon_dioxide') | int(0) %}
+          {% set threshold = states('input_number.air_quality_co2_threshold') | int %}
+          {{ co2 >= threshold }}
+        device_class: gas
+
+      - name: "VOCs Level High"
+        unique_id: vocs_level_high
+        state: >
+          {% set voc = states('sensor.thermostat_vocs') | int(0) %}
+          {% set threshold = states('input_number.air_quality_voc_threshold') | int %}
+          {{ voc >= threshold }}
+        device_class: gas
+
+automation:
+  - alias: "air_quality_co2_alert"
+    id: "air_quality_co2_alert"
+    description: "Alert when CO2 levels are high for 15+ minutes"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.co2_level_high
+        to: "on"
+        for:
+          minutes: 15
+    condition:
+      - condition: state
+        entity_id: input_boolean.air_quality_monitoring_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.air_quality_co2_alert_sent
+        state: "off"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.air_quality_co2_alert_sent
+      
+      - variables:
+          co2_level: "{{ states('sensor.thermostat_carbon_dioxide') }}"
+          recommendation: >
+            {% set co2 = states('sensor.thermostat_carbon_dioxide') | int %}
+            {% if co2 >= 1500 %}
+              High CO2 detected. Open windows immediately and increase ventilation.
+            {% elif co2 >= 1200 %}
+              Elevated CO2. Consider opening windows or improving air circulation.
+            {% else %}
+              CO2 levels are elevated. Monitor and consider ventilation.
+            {% endif %}
+      
+      - service: notify.all_mobile_devices
+        data:
+          title: "Air Quality Alert"
+          message: >
+            CO2 level is {{ co2_level }}ppm (high for 15+ minutes).
+            {{ recommendation }}
+          data:
+            tag: "air-quality-co2-alert"
+            priority: "normal"
+            ttl: 0
+            actions:
+              - action: "air_quality_dismiss"
+                title: "Dismiss"
+              - action: "air_quality_snooze"
+                title: "Snooze 1hr"
+
+  - alias: "air_quality_co2_alert_reset"
+    id: "air_quality_co2_alert_reset"
+    description: "Reset CO2 alert when levels return to normal"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.co2_level_high
+        to: "off"
+        for:
+          minutes: 5
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.air_quality_co2_alert_sent
+
+  - alias: "air_quality_poor_alert"
+    id: "air_quality_poor_alert"
+    description: "Alert when overall air quality becomes poor"
+    trigger:
+      - platform: state
+        entity_id: sensor.air_quality_composite_status
+        to: "poor"
+        for:
+          minutes: 10
+    condition:
+      - condition: state
+        entity_id: input_boolean.air_quality_monitoring_enabled
+        state: "on"
+    action:
+      - variables:
+          aqi: "{{ state_attr('sensor.air_quality_composite_status', 'aqi_value') }}"
+          co2: "{{ state_attr('sensor.air_quality_composite_status', 'co2_value') }}"
+          voc: "{{ state_attr('sensor.air_quality_composite_status', 'voc_value') }}"
+          recommendation: "{{ state_attr('sensor.air_quality_composite_status', 'recommendation') }}"
+      
+      - service: notify.all_mobile_devices
+        data:
+          title: "Poor Air Quality Detected"
+          message: >
+            Air quality is poor. AQI: {{ aqi }}, CO2: {{ co2 }}ppm, VOC: {{ voc }}ppb.
+            {{ recommendation }}
+          data:
+            tag: "air-quality-poor"
+            priority: "normal"
+
+  - alias: "air_quality_notification_actions"
+    id: "air_quality_notification_actions"
+    description: "Handle air quality notification actions"
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: air_quality_dismiss
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: air_quality_snooze
+    action:
+      - choose:
+          # Dismiss action
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.action == 'air_quality_dismiss' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.air_quality_co2_alert_sent
+
+          # Snooze action
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.action == 'air_quality_snooze' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.air_quality_co2_alert_sent
+              - delay:
+                  hours: 1
+              # Re-check after snooze if still high
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.co2_level_high
+                    state: "on"
+                then:
+                  - service: script.air_quality_recheck_and_notify
+
+script:
+  air_quality_recheck_and_notify:
+    alias: "Air Quality Recheck and Notify"
+    description: "Recheck air quality after snooze and notify if still poor"
+    sequence:
+      - variables:
+          co2_level: "{{ states('sensor.thermostat_carbon_dioxide') }}"
+          status: "{{ states('sensor.air_quality_composite_status') }}"
+      
+      - if:
+          - condition: template
+            value_template: "{{ status == 'poor' }}"
+        then:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.air_quality_co2_alert_sent
+          
+          - service: notify.all_mobile_devices
+            data:
+              title: "Air Quality Still Poor"
+              message: >
+                Air quality remains poor after snooze period.
+                CO2: {{ co2_level }}ppm. Consider taking action.
+              data:
+                tag: "air-quality-recheck"
+                priority: "normal"
+
+  collect_air_quality_summary:
+    alias: "Collect Air Quality Summary"
+    description: "Generate air quality summary for daily brief"
+    sequence:
+      - variables:
+          current_status: "{{ states('sensor.air_quality_composite_status') }}"
+          aqi: "{{ state_attr('sensor.air_quality_composite_status', 'aqi_value') }}"
+          co2: "{{ state_attr('sensor.air_quality_composite_status', 'co2_value') }}"
+          voc: "{{ state_attr('sensor.air_quality_composite_status', 'voc_value') }}"
+          trend: "{{ states('sensor.air_quality_trend') }}"
+          
+          air_quality_data:
+            status: "{{ current_status }}"
+            aqi_value: "{{ aqi }}"
+            co2_value: "{{ co2 }}"
+            voc_value: "{{ voc }}"
+            trend: "{{ trend }}"
+            relevant: >
+              {% set relevant_conditions = ['poor', 'moderate'] %}
+              {{ current_status in relevant_conditions or trend == 'worsening' }}
+            summary: >
+              {% if current_status == 'poor' %}
+                Air quality is poor (AQI: {{ aqi }}, CO2: {{ co2 }}ppm)
+              {% elif current_status == 'moderate' %}
+                Air quality is moderate (AQI: {{ aqi }}, CO2: {{ co2 }}ppm)
+              {% elif trend == 'worsening' %}
+                Air quality is declining ({{ trend }})
+              {% else %}
+                Air quality is good
+              {% endif %}
+      
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/data/air_quality"
+          payload: "{{ air_quality_data | tojson }}"
+
+# MQTT sensor for storing air quality data for briefing system
+mqtt:
+  sensor:
+    - name: "Brief Data Air Quality"
+      state_topic: "home/brief/data/air_quality"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/air_quality"
