@@ -48,7 +48,7 @@ input_number:
     min: 100
     max: 1000
     step: 50
-    unit_of_measurement: "ppb"
+    unit_of_measurement: "µg/m³"
     icon: mdi:gas-cylinder
     initial: *voc_threshold
 
@@ -400,7 +400,7 @@ script:
               {% if current_status == 'poor' %}
                 Air quality is poor (AQI: {{ aqi }}, CO2: {{ co2 }}ppm)
               {% elif current_status == 'moderate' %}
-                Air quality is moderate (AQI: {{ aqi }}, CO2: {{ co2 }}ppm)
+              Air quality is moderate (AQI: {{ aqi }}, CO2: {{ co2 }}ppm, VOCs: {{ voc }}µg/m³)
               {% elif trend == 'worsening' %}
                 Air quality is declining ({{ trend }})
               {% else %}
