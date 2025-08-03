@@ -1,0 +1,322 @@
+# packages/garage_door_monitoring.yaml
+#
+# Garage Door Monitoring Package
+#
+# Features:
+# - Monitors garage door open duration
+# - Sends notifications when door is open too long
+# - Provides actionable notifications to close door
+# - Considers obstruction sensor before offering remote close
+# - Respects presence to avoid unnecessary notifications
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      garage_door_entity: &garage_door cover.garage_door
+      obstruction_sensor: &obstruction_sensor binary_sensor.ratgdov25i_0cd7df_obstruction
+
+input_number:
+  garage_door_open_timeout:
+    name: "Garage Door Open Timeout"
+    min: 5
+    max: 180
+    step: 5
+    unit_of_measurement: "minutes"
+    icon: mdi:timer-outline
+    initial: 30
+
+input_boolean:
+  garage_door_monitoring_enabled:
+    name: "Garage Door Monitoring Enabled"
+    icon: mdi:garage-variant
+    initial: true
+
+  garage_door_notification_sent:
+    name: "Garage Door Notification Sent"
+    icon: mdi:bell-check
+    initial: false
+
+automation:
+  - alias: "garage_door_open_too_long_warning"
+    id: "garage_door_open_too_long_warning"
+    description: "Notify when garage door has been open too long"
+    trigger:
+      - platform: state
+        entity_id: *garage_door
+        to: "open"
+        for:
+          minutes: "{{ states('input_number.garage_door_open_timeout') | int }}"
+    condition:
+      - condition: state
+        entity_id: input_boolean.garage_door_monitoring_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.garage_door_notification_sent
+        state: "off"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.garage_door_notification_sent
+      
+      - variables:
+          timeout_minutes: "{{ states('input_number.garage_door_open_timeout') | int }}"
+          has_obstruction: "{{ is_state('binary_sensor.ratgdov25i_0cd7df_obstruction', 'on') }}"
+          someone_home: "{{ states('zone.home') | int > 0 }}"
+      
+      # Send different notifications based on obstruction status
+      - choose:
+          # Case 1: No obstruction - can offer to close
+          - conditions:
+              - condition: template
+                value_template: "{{ not has_obstruction }}"
+            sequence:
+              - service: notify.all_mobile_devices
+                data:
+                  title: "Garage Door Alert"
+                  message: >
+                    Garage door has been open for {{ timeout_minutes }} minutes.
+                    {% if not someone_home %}Nobody appears to be home.{% endif %}
+                  data:
+                    tag: "garage-door-open-{{ now().timestamp() | int }}"
+                    when: "{{ now().timestamp() | int }}"
+                    priority: "high"
+                    ttl: 0
+                    actions:
+                      - action: "close_garage_door"
+                        title: "Close Door"
+                      - action: "snooze_garage_alert"
+                        title: "Snooze (15 min)"
+                      - action: "disable_garage_monitoring"
+                        title: "Disable Monitoring"
+        
+        # Case 2: Obstruction present - cannot close
+        default:
+          - service: notify.all_mobile_devices
+            data:
+              title: "Garage Door Alert"
+              message: >
+                Garage door has been open for {{ timeout_minutes }} minutes.
+                ⚠️ Obstruction detected - cannot close remotely.
+                {% if not someone_home %}Nobody appears to be home.{% endif %}
+              data:
+                tag: "garage-door-open-{{ now().timestamp() | int }}"
+                when: "{{ now().timestamp() | int }}"
+                priority: "high"
+                ttl: 0
+                actions:
+                  - action: "snooze_garage_alert"
+                    title: "Snooze (15 min)"
+                  - action: "disable_garage_monitoring"
+                    title: "Disable Monitoring"
+
+  - alias: "garage_door_closed_reset_notification"
+    id: "garage_door_closed_reset_notification"
+    description: "Reset notification flag when door closes"
+    trigger:
+      - platform: state
+        entity_id: *garage_door
+        to: "closed"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.garage_door_notification_sent
+
+  - alias: "garage_door_notification_actions"
+    id: "garage_door_notification_actions"
+    description: "Handle garage door notification actions"
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: close_garage_door
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: snooze_garage_alert
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: disable_garage_monitoring
+    action:
+      - choose:
+          # Close garage door action
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.action == 'close_garage_door' }}"
+            sequence:
+              # Double-check no obstruction before closing
+              - if:
+                  - condition: state
+                    entity_id: *obstruction_sensor
+                    state: "off"
+                then:
+                  - service: cover.close_cover
+                    target:
+                      entity_id: *garage_door
+                  - service: notify.all_mobile_devices
+                    data:
+                      title: "Garage Door"
+                      message: "Closing garage door remotely..."
+                      data:
+                        tag: "garage-door-closing"
+                else:
+                  - service: notify.all_mobile_devices
+                    data:
+                      title: "Garage Door Error"
+                      message: "Cannot close - obstruction detected!"
+                      data:
+                        tag: "garage-door-error"
+                        priority: "high"
+
+          # Snooze action
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.action == 'snooze_garage_alert' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.garage_door_notification_sent
+              - delay:
+                  minutes: 15
+              # Re-check if door is still open after snooze
+              - if:
+                  - condition: state
+                    entity_id: *garage_door
+                    state: "open"
+                then:
+                  - service: script.garage_door_recheck_and_notify
+
+          # Disable monitoring action
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.action == 'disable_garage_monitoring' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.garage_door_monitoring_enabled
+              - service: notify.all_mobile_devices
+                data:
+                  title: "Garage Door Monitoring"
+                  message: "Monitoring disabled. Re-enable in settings when needed."
+                  data:
+                    tag: "garage-monitoring-disabled"
+
+  - alias: "garage_door_daily_monitoring_reset"
+    id: "garage_door_daily_monitoring_reset"
+    description: "Re-enable monitoring daily if disabled"
+    trigger:
+      - platform: time
+        at: "06:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.garage_door_monitoring_enabled
+        state: "off"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.garage_door_monitoring_enabled
+      - service: logbook.log
+        data:
+          name: "Garage Door Monitoring"
+          message: "Monitoring automatically re-enabled at 6 AM"
+
+script:
+  garage_door_recheck_and_notify:
+    alias: "Garage Door Recheck and Notify"
+    description: "Re-check garage door status and send follow-up notification"
+    sequence:
+      - variables:
+          has_obstruction: "{{ is_state('binary_sensor.ratgdov25i_0cd7df_obstruction', 'on') }}"
+          timeout_minutes: "{{ states('input_number.garage_door_open_timeout') | int }}"
+      
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.garage_door_notification_sent
+      
+      # Send different notifications based on obstruction status
+      - choose:
+          # Case 1: No obstruction - can offer to close
+          - conditions:
+              - condition: template
+                value_template: "{{ not has_obstruction }}"
+            sequence:
+              - service: notify.all_mobile_devices
+                data:
+                  title: "Garage Door Still Open"
+                  message: "Garage door is still open after snooze period."
+                  data:
+                    tag: "garage-door-recheck"
+                    priority: "high"
+                    actions:
+                      - action: "close_garage_door"
+                        title: "Close Door"
+                      - action: "snooze_garage_alert"
+                        title: "Snooze Again"
+                      - action: "disable_garage_monitoring"
+                        title: "Stop Monitoring"
+        
+        # Case 2: Obstruction present - cannot close
+        default:
+          - service: notify.all_mobile_devices
+            data:
+              title: "Garage Door Still Open"
+              message: >
+                Garage door is still open after snooze period.
+                ⚠️ Obstruction still detected.
+              data:
+                tag: "garage-door-recheck"
+                priority: "high"
+                actions:
+                  - action: "snooze_garage_alert"
+                    title: "Snooze Again"
+                  - action: "disable_garage_monitoring"
+                    title: "Stop Monitoring"
+
+template:
+  - sensor:
+      - name: "Garage Door Status Summary"
+        unique_id: garage_door_status_summary
+        state: >
+          {% if is_state('cover.garage_door', 'closed') %}
+            Closed
+          {% elif is_state('cover.garage_door', 'open') %}
+            {% set opened_time = as_timestamp(states.cover.garage_door.last_changed) %}
+            {% set current_time = as_timestamp(now()) %}
+            {% set minutes_open = ((current_time - opened_time) / 60) | round(0) %}
+            Open for {{ minutes_open }} minutes
+          {% else %}
+            {{ states('cover.garage_door') | title }}
+          {% endif %}
+        attributes:
+          minutes_open: >
+            {% if is_state('cover.garage_door', 'open') %}
+              {% set opened_time = as_timestamp(states.cover.garage_door.last_changed) %}
+              {% set current_time = as_timestamp(now()) %}
+              {{ ((current_time - opened_time) / 60) | round(0) }}
+            {% else %}
+              0
+            {% endif %}
+          has_obstruction: "{{ is_state('binary_sensor.ratgdov25i_0cd7df_obstruction', 'on') }}"
+          monitoring_enabled: "{{ is_state('input_boolean.garage_door_monitoring_enabled', 'on') }}"
+          timeout_threshold: "{{ states('input_number.garage_door_open_timeout') | int }}"
+
+  - binary_sensor:
+      - name: "Garage Door Open Too Long"
+        unique_id: garage_door_open_too_long
+        state: >
+          {% if is_state('cover.garage_door', 'open') %}
+            {% set minutes_open = state_attr('sensor.garage_door_status_summary', 'minutes_open') | int %}
+            {% set threshold = states('input_number.garage_door_open_timeout') | int %}
+            {{ minutes_open >= threshold }}
+          {% else %}
+            false
+          {% endif %}
+        attributes:
+          minutes_over_threshold: >
+            {% if is_state('binary_sensor.garage_door_open_too_long', 'on') %}
+              {% set minutes_open = state_attr('sensor.garage_door_status_summary', 'minutes_open') | int %}
+              {% set threshold = states('input_number.garage_door_open_timeout') | int %}
+              {{ minutes_open - threshold }}
+            {% else %}
+              0
+            {% endif %}
