@@ -75,30 +75,30 @@ script:
                 clickAction: "/dashboard-briefing"
 
       # Enhanced audio delivery based on context and time
-      - variables:
-          is_morning: "{{ context.get('is_morning', false) if context else now().hour < 12 }}"
-          is_evening: "{{ now().hour >= 17 and now().hour < 20 }}"
-          kitchen_available: "{{ is_state('media_player.display_kitchen', 'on') }}"
-      
-      - if:
-          - condition: and
-            conditions:
-              - condition: template
-                value_template: "{{ kitchen_available }}"
-              - condition: or
-                conditions:
-                  - condition: template
-                    value_template: "{{ is_morning and now().hour >= 7 }}"
-                  - condition: template
-                    value_template: "{{ is_evening }}"
-        then:
-          - service: tts.speak
-            target:
-              entity_id: tts.google_en_com
-            data:
-              cache: true
-              media_player_entity_id: media_player.display_kitchen
-              message: "{{ condensed_brief }}"
+      # - variables:
+      #     is_morning: "{{ context.get('is_morning', false) if context else now().hour < 12 }}"
+      #     is_evening: "{{ now().hour >= 17 and now().hour < 20 }}"
+      #     kitchen_available: "{{ is_state('media_player.display_kitchen', 'on') }}"
+      #
+      # - if:
+      #     - condition: and
+      #       conditions:
+      #         - condition: template
+      #           value_template: "{{ kitchen_available }}"
+      #         - condition: or
+      #           conditions:
+      #             - condition: template
+      #               value_template: "{{ is_morning and now().hour >= 7 }}"
+      #             - condition: template
+      #               value_template: "{{ is_evening }}"
+      #   then:
+      #     - service: tts.speak
+      #       target:
+      #         entity_id: tts.google_en_com
+      #       data:
+      #         cache: true
+      #         media_player_entity_id: media_player.display_kitchen
+      #         message: "{{ condensed_brief }}"
 
   # Utility script to test data collection
   brief_test_collectors:
