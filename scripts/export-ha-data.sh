@@ -90,12 +90,34 @@ This is normal if Home Assistant is not running or if this is a fresh installati
   fi
 }
 
+# Function to read .gitignore patterns
+read_gitignore_patterns() {
+  local gitignore_file="$CONFIG_DIR/.gitignore"
+  local patterns=()
+
+  if [ -f "$gitignore_file" ]; then
+    echo "Reading .gitignore patterns..."
+    while IFS= read -r line; do
+      # Skip empty lines and comments
+      if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
+        # Remove leading/trailing whitespace
+        line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        if [[ -n "$line" ]]; then
+          patterns+=("$line")
+        fi
+      fi
+    done <"$gitignore_file"
+  fi
+
+  printf '%s\n' "${patterns[@]}"
+}
+
 # Export configuration files
 export_config() {
   echo "Exporting configuration files..."
 
-  # Directories and files to exclude from the search
-  local exclude_patterns=(
+  # Base exclude patterns (always exclude these)
+  local base_exclude_patterns=(
     ".git"
     ".storage"
     "__pycache__"
@@ -125,10 +147,30 @@ export_config() {
     "custom_components/*/translations"
   )
 
+  # Read .gitignore patterns
+  local gitignore_patterns
+  mapfile -t gitignore_patterns < <(read_gitignore_patterns)
+
+  # Combine base patterns with gitignore patterns
+  local all_exclude_patterns=("${base_exclude_patterns[@]}" "${gitignore_patterns[@]}")
+
+  echo "Total exclude patterns: ${#all_exclude_patterns[@]} (${#base_exclude_patterns[@]} base + ${#gitignore_patterns[@]} from .gitignore)"
+
   # Build exclude arguments for find command
   local exclude_args=""
-  for pattern in "${exclude_patterns[@]}"; do
-    exclude_args="$exclude_args -not -path '*/$pattern' -not -name '$pattern'"
+  for pattern in "${all_exclude_patterns[@]}"; do
+    # Handle different gitignore pattern types
+    if [[ "$pattern" == */ ]]; then
+      # Directory pattern (ends with /)
+      pattern="${pattern%/}"
+      exclude_args="$exclude_args -not -path '*/$pattern' -not -path '*/$pattern/*'"
+    elif [[ "$pattern" == */* ]]; then
+      # Path pattern (contains /)
+      exclude_args="$exclude_args -not -path '*/$pattern'"
+    else
+      # File pattern
+      exclude_args="$exclude_args -not -name '$pattern'"
+    fi
   done
 
   # Change to config directory for consistent file discovery
