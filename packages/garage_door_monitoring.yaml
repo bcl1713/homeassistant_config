@@ -18,9 +18,9 @@ homeassistant:
 input_number:
   garage_door_open_timeout:
     name: "Garage Door Open Timeout"
-    min: 5
+    min: 1
     max: 180
-    step: 5
+    step: 1
     unit_of_measurement: "minutes"
     icon: mdi:timer-outline
     initial: 30
