@@ -52,3 +52,16 @@ ha_export_*.txt
 # Temporary script files
 scripts/*.tmp
 scripts/*.log
+
+# Custom Components
+custom_components/
+
+# Blueprints
+blueprints/
+
+# www
+www/
+
+.HA_VERSION
+*.log*
+secrets.yaml
