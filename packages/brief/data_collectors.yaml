@@ -140,7 +140,6 @@ script:
   brief_collect_garbage:
     alias: "Collect Garbage Schedule"
     description: "Dedicated garbage collection logic - reminds to take out trash the night before"
-    variables:
     sequence:
       # Get garbage calendar events for the next 2 days
       - service: calendar.get_events
