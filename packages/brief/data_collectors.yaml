@@ -79,24 +79,14 @@ script:
           label_id: brief
         response_variable: raw_events
       
-      # Debug: Log raw events
-      - service: logbook.log
-        data:
-          name: "Calendar Debug"
-          message: "Raw events: {{ raw_events }}"
-      
       - variables:
           today: "{{ now().date() }}"
           processed_events: >
             {% set ns = namespace(events=[]) %}
             {% set today_date = now().date() %}
-            {% set debug_info = [] %}
             {% for calendar, event_list in raw_events.items() %}
               {% for event in event_list.events %}
                 {% set is_garbage = 'garbage' in event.summary.lower() %}
-                
-                {# Debug: track each event #}
-                {% set debug_info = debug_info + ['Processing: ' + event.summary + ' (garbage: ' + is_garbage|string + ')'] %}
                 
                 {# Only include non-garbage events #}
                 {% if not is_garbage %}
@@ -111,18 +101,14 @@ script:
                     {% set event_datetime = none %}
                   {% endif %}
                   
-                  {% set debug_info = debug_info + ['  Event date: ' + event_date.isoformat() + ', Today: ' + today_date.isoformat()] %}
-                  
                   {# Include logic: Today (all events) OR tomorrow's events OR future events within next 4 hours #}
                   {% set include_event = false %}
                   {% if event_date == today_date %}
                     {# Include ALL events from today, regardless of time #}
                     {% set include_event = true %}
-                    {% set debug_info = debug_info + ['  Including: TODAY event'] %}
                   {% elif event_date == (today_date + timedelta(days=1)) %}
                     {# Include ALL events from tomorrow (both timed and all-day) #}
                     {% set include_event = true %}
-                    {% set debug_info = debug_info + ['  Including: TOMORROW event'] %}
                   {% elif event_datetime %}
                     {# For future timed events beyond tomorrow, check if within next 4 hours #}
                     {% set event_timestamp = event_datetime.timestamp() %}
@@ -130,21 +116,13 @@ script:
                     {% set four_hours_later = current_timestamp + (4 * 3600) %}
                     {% if event_timestamp <= four_hours_later %}
                       {% set include_event = true %}
-                      {% set debug_info = debug_info + ['  Including: Within 4 hours'] %}
-                    {% else %}
-                      {% set debug_info = debug_info + ['  Skipping: Beyond 4 hours'] %}
                     {% endif %}
                   {% elif event_date > today_date %}
                     {# Include future all-day events within the next few days #}
                     {% set days_ahead = (event_date - today_date).days %}
                     {% if days_ahead <= 2 %}
                       {% set include_event = true %}
-                      {% set debug_info = debug_info + ['  Including: Future all-day (' + days_ahead|string + ' days)'] %}
-                    {% else %}
-                      {% set debug_info = debug_info + ['  Skipping: Too far ahead (' + days_ahead|string + ' days)'] %}
                     {% endif %}
-                  {% else %}
-                    {% set debug_info = debug_info + ['  Skipping: Past event'] %}
                   {% endif %}
                   
                   {% if include_event %}
@@ -162,63 +140,7 @@ script:
                 {% endif %}
               {% endfor %}
             {% endfor %}
-            {% set debug_info = debug_info + ['Final events count: ' + ns.events|length|string] %}
             {{ ns.events }}
-          debug_messages: >
-            {% set ns = namespace(events=[]) %}
-            {% set today_date = now().date() %}
-            {% set debug_info = [] %}
-            {% for calendar, event_list in raw_events.items() %}
-              {% for event in event_list.events %}
-                {% set is_garbage = 'garbage' in event.summary.lower() %}
-                {% set debug_info = debug_info + ['Processing: ' + event.summary + ' (garbage: ' + is_garbage|string + ')'] %}
-                {% if not is_garbage %}
-                  {% if 'T' in event.start %}
-                    {% set event_datetime = strptime(event.start.split('T')[0] + 'T' + event.start.split('T')[1].split('-')[0].split('+')[0], '%Y-%m-%dT%H:%M:%S') %}
-                    {% set event_date = event_datetime.date() %}
-                  {% else %}
-                    {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
-                    {% set event_datetime = none %}
-                  {% endif %}
-                  {% set debug_info = debug_info + ['  Event date: ' + event_date.isoformat() + ', Today: ' + today_date.isoformat()] %}
-                  {% if event_date == today_date %}
-                    {% set debug_info = debug_info + ['  Including: TODAY event'] %}
-                  {% elif event_date == (today_date + timedelta(days=1)) %}
-                    {% set debug_info = debug_info + ['  Including: TOMORROW event'] %}
-                  {% elif event_datetime %}
-                    {% set event_timestamp = event_datetime.timestamp() %}
-                    {% set current_timestamp = now().timestamp() %}
-                    {% set four_hours_later = current_timestamp + (4 * 3600) %}
-                    {% if event_timestamp <= four_hours_later %}
-                      {% set debug_info = debug_info + ['  Including: Within 4 hours'] %}
-                    {% else %}
-                      {% set debug_info = debug_info + ['  Skipping: Beyond 4 hours'] %}
-                    {% endif %}
-                  {% elif event_date > today_date %}
-                    {% set days_ahead = (event_date - today_date).days %}
-                    {% if days_ahead <= 2 %}
-                      {% set debug_info = debug_info + ['  Including: Future all-day (' + days_ahead|string + ' days)'] %}
-                    {% else %}
-                      {% set debug_info = debug_info + ['  Skipping: Too far ahead (' + days_ahead|string + ' days)'] %}
-                    {% endif %}
-                  {% else %}
-                    {% set debug_info = debug_info + ['  Skipping: Past event'] %}
-                  {% endif %}
-                {% endif %}
-              {% endfor %}
-            {% endfor %}
-            {{ debug_info | join('\n') }}
-      
-      # Debug: Log processed events and debug info
-      - service: logbook.log
-        data:
-          name: "Calendar Debug"
-          message: "Debug info: {{ debug_messages }}"
-      
-      - service: logbook.log
-        data:
-          name: "Calendar Debug"  
-          message: "Processed events: {{ processed_events }}"
       
       - service: mqtt.publish
         data:
