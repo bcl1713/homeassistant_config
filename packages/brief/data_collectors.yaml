@@ -83,6 +83,7 @@ script:
           today: "{{ now().date() }}"
           processed_events: >
             {% set ns = namespace(events=[]) %}
+            {% set today_date = now().date() %}
             {% for calendar, event_list in raw_events.items() %}
               {% for event in event_list.events %}
                 {% set is_garbage = 'garbage' in event.summary.lower() %}
@@ -102,7 +103,7 @@ script:
                   
                   {# Include logic: Today (all events) OR future events within next 4 hours #}
                   {% set include_event = false %}
-                  {% if event_date == today %}
+                  {% if event_date == today_date %}
                     {# Include ALL events from today, regardless of time #}
                     {% set include_event = true %}
                   {% elif event_datetime %}
@@ -113,9 +114,9 @@ script:
                     {% if event_timestamp <= four_hours_later %}
                       {% set include_event = true %}
                     {% endif %}
-                  {% elif event_date > today %}
+                  {% elif event_date > today_date %}
                     {# Include future all-day events within the next day #}
-                    {% set days_ahead = (event_date - today).days %}
+                    {% set days_ahead = (event_date - today_date).days %}
                     {% if days_ahead <= 1 %}
                       {% set include_event = true %}
                     {% endif %}
@@ -126,11 +127,11 @@ script:
                       'summary': event.summary,
                       'start': event.start,
                       'date': event_date.isoformat(),
-                      'is_today': event_date == today,
+                      'is_today': event_date == today_date,
                       'is_timed': event_datetime is not none,
                       'formatted_time': event_datetime.strftime('%H:%M') if event_datetime else 'All day',
-                      'formatted_date': event_date.strftime('%A') if event_date != today else 'TODAY',
-                      'day_name': event_date.strftime('%A, %B %d') if event_date != today else 'Today'
+                      'formatted_date': event_date.strftime('%A') if event_date != today_date else 'TODAY',
+                      'day_name': event_date.strftime('%A, %B %d') if event_date != today_date else 'Today'
                     }] %}
                   {% endif %}
                 {% endif %}
