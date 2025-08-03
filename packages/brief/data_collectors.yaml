@@ -113,14 +113,18 @@ script:
                   
                   {% set debug_info = debug_info + ['  Event date: ' + event_date.isoformat() + ', Today: ' + today_date.isoformat()] %}
                   
-                  {# Include logic: Today (all events) OR future events within next 4 hours #}
+                  {# Include logic: Today (all events) OR tomorrow's events OR future events within next 4 hours #}
                   {% set include_event = false %}
                   {% if event_date == today_date %}
                     {# Include ALL events from today, regardless of time #}
                     {% set include_event = true %}
                     {% set debug_info = debug_info + ['  Including: TODAY event'] %}
+                  {% elif event_date == (today_date + timedelta(days=1)) %}
+                    {# Include ALL events from tomorrow (both timed and all-day) #}
+                    {% set include_event = true %}
+                    {% set debug_info = debug_info + ['  Including: TOMORROW event'] %}
                   {% elif event_datetime %}
-                    {# For future timed events, check if within next 4 hours #}
+                    {# For future timed events beyond tomorrow, check if within next 4 hours #}
                     {% set event_timestamp = event_datetime.timestamp() %}
                     {% set current_timestamp = now().timestamp() %}
                     {% set four_hours_later = current_timestamp + (4 * 3600) %}
@@ -131,11 +135,11 @@ script:
                       {% set debug_info = debug_info + ['  Skipping: Beyond 4 hours'] %}
                     {% endif %}
                   {% elif event_date > today_date %}
-                    {# Include future all-day events within the next day #}
+                    {# Include future all-day events within the next few days #}
                     {% set days_ahead = (event_date - today_date).days %}
-                    {% if days_ahead <= 1 %}
+                    {% if days_ahead <= 2 %}
                       {% set include_event = true %}
-                      {% set debug_info = debug_info + ['  Including: Tomorrow all-day'] %}
+                      {% set debug_info = debug_info + ['  Including: Future all-day (' + days_ahead|string + ' days)'] %}
                     {% else %}
                       {% set debug_info = debug_info + ['  Skipping: Too far ahead (' + days_ahead|string + ' days)'] %}
                     {% endif %}
@@ -179,6 +183,8 @@ script:
                   {% set debug_info = debug_info + ['  Event date: ' + event_date.isoformat() + ', Today: ' + today_date.isoformat()] %}
                   {% if event_date == today_date %}
                     {% set debug_info = debug_info + ['  Including: TODAY event'] %}
+                  {% elif event_date == (today_date + timedelta(days=1)) %}
+                    {% set debug_info = debug_info + ['  Including: TOMORROW event'] %}
                   {% elif event_datetime %}
                     {% set event_timestamp = event_datetime.timestamp() %}
                     {% set current_timestamp = now().timestamp() %}
@@ -190,8 +196,8 @@ script:
                     {% endif %}
                   {% elif event_date > today_date %}
                     {% set days_ahead = (event_date - today_date).days %}
-                    {% if days_ahead <= 1 %}
-                      {% set debug_info = debug_info + ['  Including: Tomorrow all-day'] %}
+                    {% if days_ahead <= 2 %}
+                      {% set debug_info = debug_info + ['  Including: Future all-day (' + days_ahead|string + ' days)'] %}
                     {% else %}
                       {% set debug_info = debug_info + ['  Skipping: Too far ahead (' + days_ahead|string + ' days)'] %}
                     {% endif %}
