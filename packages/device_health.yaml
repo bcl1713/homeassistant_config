@@ -38,7 +38,7 @@ input_number:
   device_health_critical_threshold:
     name: "Critical Battery Threshold"
     min: 5
-    max: 25
+    max: 75
     step: 1
     unit_of_measurement: "%"
     icon: mdi:battery-20
