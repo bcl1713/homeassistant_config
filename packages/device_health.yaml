@@ -67,8 +67,32 @@ template:
       - name: "Real-time Battery Levels"
         unique_id: realtime_battery_levels
         state: >
-          {% set batteries = state_attr('sensor.realtime_battery_levels', 'batteries') or [] %}
-          {{ batteries | length }}
+          {% set ns = namespace(batteries=[]) %}
+          
+          {# Simplified discovery logic for state calculation #}
+          {% for entity in states if entity.attributes.battery_level is defined %}
+            {% set level = entity.attributes.battery_level | float(-1) | int %}
+            {% if level >= 0 %}
+              {% set ns.batteries = ns.batteries + [{'entity_id': entity.entity_id, 'level': level}] %}
+            {% endif %}
+          {% endfor %}
+          
+          {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+            {% if entity.state | string | regex_match('^[0-9.]+$') %}
+              {% set level = entity.state | int %}
+              {% if 0 <= level <= 100 %}
+                {% if not entity.entity_id.startswith('sensor.device_health_') and 
+                      entity.entity_id != 'sensor.real_time_battery_levels' %}
+                  {% set already_included = ns.batteries | selectattr('entity_id', '==', entity.entity_id) | list | length > 0 %}
+                  {% if not already_included %}
+                    {% set ns.batteries = ns.batteries + [{'entity_id': entity.entity_id, 'level': level}] %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          
+          {{ ns.batteries | length }}
         unit_of_measurement: "devices"
         attributes:
           batteries: >
@@ -204,25 +228,25 @@ template:
             {{ unique_batteries | sort(attribute='level') }}
           
           total_count: >
-            {% set batteries = state_attr('sensor.realtime_battery_levels', 'batteries') or [] %}
+            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') or [] %}
             {{ batteries | length }}
           
           critical_count: >
-            {% set batteries = state_attr('sensor.realtime_battery_levels', 'batteries') or [] %}
+            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') or [] %}
             {% set threshold = states('input_number.device_health_critical_threshold') | int(15) %}
             {{ batteries | selectattr('level', '<=', threshold) | list | length }}
           
           warning_count: >
-            {% set batteries = state_attr('sensor.realtime_battery_levels', 'batteries') or [] %}
+            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') or [] %}
             {% set threshold = states('input_number.device_health_warning_threshold') | int(25) %}
             {{ batteries | selectattr('level', '<=', threshold) | list | length }}
           
           charging_count: >
-            {% set batteries = state_attr('sensor.realtime_battery_levels', 'batteries') or [] %}
+            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') or [] %}
             {{ batteries | selectattr('is_charging', '==', true) | list | length }}
           
           lowest_battery: >
-            {% set batteries = state_attr('sensor.realtime_battery_levels', 'batteries') or [] %}
+            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') or [] %}
             {% if batteries | length > 0 %}
               {% set lowest = batteries | sort(attribute='level') | first %}
               {{ lowest.name }}: {{ lowest.level }}%
