@@ -1,0 +1,319 @@
+# packages/device_health.yaml
+#
+# Device Health Monitoring Package
+#
+# Features:
+# - Enhanced battery monitoring with proactive alerts
+# - Device health trend analysis
+# - Maintenance scheduling and tracking
+# - Integration with existing brief system
+#
+# This package enhances the existing brief system's device monitoring
+# without breaking existing functionality.
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      critical_battery_threshold: &critical_threshold 15
+      warning_battery_threshold: &warning_threshold 25
+      low_battery_threshold: &low_threshold 5
+
+input_boolean:
+  device_health_monitoring_enabled:
+    name: "Device Health Monitoring"
+    icon: mdi:heart-pulse
+    initial: true
+
+  device_health_proactive_alerts:
+    name: "Proactive Battery Alerts"
+    icon: mdi:battery-alert
+    initial: true
+
+  device_health_critical_alert_sent:
+    name: "Critical Battery Alert Status"
+    icon: mdi:battery-10
+    initial: false
+
+input_number:
+  device_health_critical_threshold:
+    name: "Critical Battery Threshold"
+    min: 5
+    max: 25
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-20
+    initial: *critical_threshold
+
+  device_health_warning_threshold:
+    name: "Warning Battery Threshold"
+    min: 10
+    max: 50
+    step: 5
+    unit_of_measurement: "%"
+    icon: mdi:battery-30
+    initial: *warning_threshold
+
+  device_health_low_threshold:
+    name: "Low Battery Threshold"
+    min: 1
+    max: 10
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-alert-variant-outline
+    initial: *low_threshold
+
+template:
+  - sensor:
+      - name: "Device Health Battery Summary"
+        unique_id: device_health_battery_summary
+        state: >
+          {% set device_data = state_attr('sensor.brief_data_devices', 'battery_summary') %}
+          {% if device_data %}
+            {{ device_data.total_discovered }}
+          {% else %}
+            0
+          {% endif %}
+        attributes:
+          total_batteries: >
+            {% set device_data = state_attr('sensor.brief_data_devices', 'battery_summary') %}
+            {{ device_data.total_discovered if device_data else 0 }}
+          critical_count: >
+            {% set devices = state_attr('sensor.brief_data_devices', 'critical_batteries') %}
+            {{ devices | length if devices else 0 }}
+          warning_count: >
+            {% set devices = state_attr('sensor.brief_data_devices', 'critical_batteries') %}
+            {% set warning_threshold = states('input_number.device_health_warning_threshold') | int %}
+            {% if devices %}
+              {{ devices | selectattr('level', '<=', warning_threshold) | list | length }}
+            {% else %}
+              0
+            {% endif %}
+          lowest_battery: >
+            {% set device_data = state_attr('sensor.brief_data_devices', 'battery_summary') %}
+            {% if device_data and device_data.lowest_battery %}
+              {{ device_data.lowest_battery.name }}: {{ device_data.lowest_battery.level }}%
+            {% else %}
+              "All batteries healthy"
+            {% endif %}
+          charging_devices: >
+            {% set device_data = state_attr('sensor.brief_data_devices', 'battery_summary') %}
+            {% if device_data and device_data.charging_devices %}
+              {{ device_data.charging_devices | map(attribute='name') | list | join(', ') }}
+            {% else %}
+              "None"
+            {% endif %}
+
+      - name: "Device Health Critical Devices"
+        unique_id: device_health_critical_devices
+        state: >
+          {% set devices = state_attr('sensor.brief_data_devices', 'critical_batteries') %}
+          {% set critical_threshold = states('input_number.device_health_critical_threshold') | int %}
+          {% if devices %}
+            {% set critical_devices = devices | selectattr('level', '<=', critical_threshold) | list %}
+            {{ critical_devices | length }}
+          {% else %}
+            0
+          {% endif %}
+        attributes:
+          devices: >
+            {% set devices = state_attr('sensor.brief_data_devices', 'critical_batteries') %}
+            {% set critical_threshold = states('input_number.device_health_critical_threshold') | int %}
+            {% if devices %}
+              {% set critical_devices = devices | selectattr('level', '<=', critical_threshold) | list %}
+              {{ critical_devices }}
+            {% else %}
+              []
+            {% endif %}
+          domains_affected: >
+            {% set devices = state_attr('sensor.brief_data_devices', 'critical_batteries') %}
+            {% set critical_threshold = states('input_number.device_health_critical_threshold') | int %}
+            {% if devices %}
+              {% set critical_devices = devices | selectattr('level', '<=', critical_threshold) | list %}
+              {% set domains = critical_devices | map(attribute='domain') | unique | list %}
+              {{ domains | join(', ') }}
+            {% else %}
+              "None"
+            {% endif %}
+
+  - binary_sensor:
+      - name: "Device Health Has Critical Batteries"
+        unique_id: device_health_has_critical_batteries
+        state: >
+          {{ states('sensor.device_health_critical_devices') | int > 0 }}
+        device_class: problem
+
+      - name: "Device Health Has Low Batteries"
+        unique_id: device_health_has_low_batteries
+        state: >
+          {% set devices = state_attr('sensor.brief_data_devices', 'critical_batteries') %}
+          {% set low_threshold = states('input_number.device_health_low_threshold') | int %}
+          {% if devices %}
+            {% set low_devices = devices | selectattr('level', '<=', low_threshold) | list %}
+            {{ low_devices | length > 0 }}
+          {% else %}
+            false
+          {% endif %}
+        device_class: problem
+
+automation:
+  - alias: "device_health_critical_battery_alert"
+    id: "device_health_critical_battery_alert"
+    description: "Alert when batteries reach critical levels (15% default)"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.device_health_has_critical_batteries
+        to: "on"
+        for:
+          minutes: 5  # Wait 5 minutes to avoid false alarms
+    condition:
+      - condition: state
+        entity_id: input_boolean.device_health_monitoring_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.device_health_proactive_alerts
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.device_health_critical_alert_sent
+        state: "off"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.device_health_critical_alert_sent
+      
+      - variables:
+          critical_devices: "{{ state_attr('sensor.device_health_critical_devices', 'devices') }}"
+          device_count: "{{ critical_devices | length }}"
+          device_names: "{{ critical_devices | map(attribute='name') | list | join(', ') }}"
+          lowest_level: "{{ critical_devices | map(attribute='level') | min }}"
+      
+      - service: notify.all_mobile_devices
+        data:
+          title: "Critical Battery Alert"
+          message: >
+            {{ device_count }} device{{ 's' if device_count > 1 else '' }} 
+            ha{{ 's' if device_count == 1 else 've' }} critical battery levels.
+            Lowest: {{ lowest_level }}%. Devices: {{ device_names }}
+          data:
+            tag: "device-health-critical"
+            priority: "high"
+            ttl: 0
+            actions:
+              - action: "device_health_view_details"
+                title: "View Details"
+              - action: "device_health_snooze"
+                title: "Snooze 2hrs"
+              - action: "device_health_dismiss"
+                title: "Dismiss"
+
+  - alias: "device_health_low_battery_alert"
+    id: "device_health_low_battery_alert"
+    description: "Urgent alert when batteries reach very low levels (5% default)"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.device_health_has_low_batteries
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.device_health_monitoring_enabled
+        state: "on"
+    action:
+      - variables:
+          devices: "{{ state_attr('sensor.brief_data_devices', 'critical_batteries') }}"
+          low_threshold: "{{ states('input_number.device_health_low_threshold') | int }}"
+          low_devices: >
+            {% if devices %}
+              {{ devices | selectattr('level', '<=', low_threshold) | list }}
+            {% else %}
+              []
+            {% endif %}
+          device_count: "{{ low_devices | length }}"
+          device_names: "{{ low_devices | map(attribute='name') | list | join(', ') }}"
+      
+      - service: notify.all_mobile_devices
+        data:
+          title: "🚨 URGENT: Battery Nearly Dead"
+          message: >
+            {{ device_count }} device{{ 's' if device_count > 1 else '' }} 
+            at critically low battery (≤{{ low_threshold }}%).
+            Replace immediately: {{ device_names }}
+          data:
+            tag: "device-health-urgent"
+            priority: "high"
+            ttl: 0
+            critical: true
+
+  - alias: "device_health_alert_reset"
+    id: "device_health_alert_reset"
+    description: "Reset alert flags when batteries are replaced/charged"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.device_health_has_critical_batteries
+        to: "off"
+        for:
+          minutes: 10
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.device_health_critical_alert_sent
+
+  - alias: "device_health_notification_actions"
+    id: "device_health_notification_actions"
+    description: "Handle device health notification actions"
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: device_health_view_details
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: device_health_snooze
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: device_health_dismiss
+    action:
+      - choose:
+          # View details action (placeholder for dashboard link)
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.action == 'device_health_view_details' }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: "Device Health Details"
+                  message: >
+                    Critical batteries: {{ state_attr('sensor.device_health_critical_devices', 'devices') | length }}
+                    Total batteries monitored: {{ states('sensor.device_health_battery_summary') }}
+                    
+                    Details: {{ state_attr('sensor.device_health_critical_devices', 'devices') }}
+                  notification_id: device_health_details
+
+          # Snooze action
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.action == 'device_health_snooze' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.device_health_critical_alert_sent
+              - delay:
+                  hours: 2
+              # Re-check after snooze
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.device_health_has_critical_batteries
+                    state: "on"
+                then:
+                  - service: input_boolean.turn_on
+                    target:
+                      entity_id: input_boolean.device_health_critical_alert_sent
+
+          # Dismiss action
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.action == 'device_health_dismiss' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.device_health_critical_alert_sent
