@@ -275,7 +275,7 @@ script:
     alias: "Collect Device Status"
     description: "Gathers critical device issues with intelligent filtering"
     variables:
-      battery_threshold: 15
+      battery_threshold: "{{ states('input_number.device_health_critical_threshold') | int(15) }}"
       critical_domains: ['camera', 'alarm_control_panel', 'lock', 'binary_sensor']
     sequence:
       - variables:
