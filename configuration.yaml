@@ -32,6 +32,7 @@ notify:
     name: all_mobile_devices
     services:
       - service: mobile_app_brian_phone
+      - service: mobile_app_hester_phone
 
 lovelace:
   mode: storage
@@ -41,4 +42,4 @@ lovelace:
       title: Battery Monitoring
       icon: mdi:battery-heart
       show_in_sidebar: true
-      filename: dashboards/battery-monitoring.yaml     - service: mobile_app_hester_phone
+      filename: dashboards/battery-monitoring.yaml
