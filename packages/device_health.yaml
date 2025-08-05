@@ -67,239 +67,80 @@ template:
       - name: "Real-time Battery Levels"
         unique_id: realtime_battery_levels
         state: >
-          {% set ns = namespace(batteries=[]) %}
-          
-          {# Simplified discovery logic for state calculation #}
+          {% set ns = namespace(count=0) %}
           {% for entity in states if entity.attributes.battery_level is defined %}
             {% set level = entity.attributes.battery_level | float(-1) | int %}
             {% if level >= 0 %}
-              {% set ns.batteries = ns.batteries + [{'entity_id': entity.entity_id, 'level': level}] %}
+              {% set ns.count = ns.count + 1 %}
             {% endif %}
           {% endfor %}
-          
           {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
             {% if entity.state | string | regex_match('^[0-9.]+$') %}
               {% set level = entity.state | int %}
               {% if 0 <= level <= 100 %}
                 {% if not entity.entity_id.startswith('sensor.device_health_') and 
                       entity.entity_id != 'sensor.real_time_battery_levels' %}
-                  {% set already_included = ns.batteries | selectattr('entity_id', '==', entity.entity_id) | list | length > 0 %}
-                  {% if not already_included %}
-                    {% set ns.batteries = ns.batteries + [{'entity_id': entity.entity_id, 'level': level}] %}
-                  {% endif %}
+                  {% set ns.count = ns.count + 1 %}
                 {% endif %}
               {% endif %}
             {% endif %}
           {% endfor %}
-          
-          {{ ns.batteries | length }}
+          {{ ns.count }}
         unit_of_measurement: "devices"
         attributes:
-          batteries: >
-            {% set ns = namespace(batteries=[]) %}
-            
-            {# Method 1: Entities with battery_level attribute #}
-            {% for entity in states if entity.attributes.battery_level is defined %}
-              {% set level = entity.attributes.battery_level | float(-1) | int %}
-              {% if level >= 0 %}
-                {% set device_name = entity.name or entity.entity_id %}
-                {% set friendly_name = device_name.replace('_', ' ').title() %}
-                {% set ns.batteries = ns.batteries + [{
-                  'entity_id': entity.entity_id,
-                  'name': friendly_name,
-                  'level': level,
-                  'source': 'battery_level_attr',
-                  'domain': entity.domain,
-                  'unit': '%',
-                  'icon': 'mdi:battery-' + (
-                    '10' if level <= 10 else
-                    '20' if level <= 20 else
-                    '30' if level <= 30 else
-                    '40' if level <= 40 else
-                    '50' if level <= 50 else
-                    '60' if level <= 60 else
-                    '70' if level <= 70 else
-                    '80' if level <= 80 else
-                    '90' if level <= 90 else
-                    ''
-                  ),
-                  'state_class': 'measurement',
-                  'device_class': 'battery',
-                  'last_updated': entity.last_updated or 'unknown',
-                  'is_charging': entity.attributes.get('is_charging', false),
-                  'health': entity.attributes.get('battery_health', 'unknown'),
-                  'cycle_count': entity.attributes.get('battery_cycle_count', 'unknown')
-                }] %}
+          critical_count: >
+            {% set ns = namespace(count=0) %}
+            {% set threshold = states('input_number.device_health_critical_threshold') | int(15) %}
+            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+              {% if entity.state | string | regex_match('^[0-9.]+$') %}
+                {% set level = entity.state | int %}
+                {% if 0 <= level <= threshold %}
+                  {% if not entity.entity_id.startswith('sensor.device_health_') and 
+                        entity.entity_id != 'sensor.real_time_battery_levels' %}
+                    {% set ns.count = ns.count + 1 %}
+                  {% endif %}
+                {% endif %}
               {% endif %}
             {% endfor %}
-            
-            {# Method 2: Battery device class sensors #}
+            {{ ns.count }}
+          
+          warning_count: >
+            {% set ns = namespace(count=0) %}
+            {% set threshold = states('input_number.device_health_warning_threshold') | int(25) %}
+            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+              {% if entity.state | string | regex_match('^[0-9.]+$') %}
+                {% set level = entity.state | int %}
+                {% if 0 <= level <= threshold %}
+                  {% if not entity.entity_id.startswith('sensor.device_health_') and 
+                        entity.entity_id != 'sensor.real_time_battery_levels' %}
+                    {% set ns.count = ns.count + 1 %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.count }}
+          
+          lowest_battery: >
+            {% set ns = namespace(lowest=999, name='') %}
             {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
               {% if entity.state | string | regex_match('^[0-9.]+$') %}
                 {% set level = entity.state | int %}
                 {% if 0 <= level <= 100 %}
-                  {# Skip our own device_health sensors and this sensor to avoid circular reference #}
                   {% if not entity.entity_id.startswith('sensor.device_health_') and 
                         entity.entity_id != 'sensor.real_time_battery_levels' %}
-                    {# Check if we already have this entity from previous methods #}
-                    {% set already_included = ns.batteries | selectattr('entity_id', '==', entity.entity_id) | list | length > 0 %}
-                    {% if not already_included %}
-                      {% set device_name = entity.name or entity.entity_id %}
-                      {% set friendly_name = device_name.replace('_', ' ').title() %}
-                      {% set ns.batteries = ns.batteries + [{
-                        'entity_id': entity.entity_id,
-                        'name': friendly_name,
-                        'level': level,
-                        'source': 'battery_sensor',
-                        'domain': entity.domain,
-                        'unit': '%',
-                        'icon': 'mdi:battery-' + (
-                          '10' if level <= 10 else
-                          '20' if level <= 20 else
-                          '30' if level <= 30 else
-                          '40' if level <= 40 else
-                          '50' if level <= 50 else
-                          '60' if level <= 60 else
-                          '70' if level <= 70 else
-                          '80' if level <= 80 else
-                          '90' if level <= 90 else
-                          ''
-                        ),
-                        'state_class': 'measurement',
-                        'device_class': 'battery',
-                        'last_updated': entity.last_updated or 'unknown',
-                        'is_charging': entity.attributes.get('is_charging', false),
-                        'health': entity.attributes.get('battery_health', 'unknown'),
-                        'cycle_count': entity.attributes.get('battery_cycle_count', 'unknown')
-                      }] %}
+                    {% if level < ns.lowest %}
+                      {% set ns.lowest = level %}
+                      {% set ns.name = entity.name or entity.entity_id %}
                     {% endif %}
                   {% endif %}
                 {% endif %}
               {% endif %}
             {% endfor %}
-            
-            {# Method 3: Auto-discovery by entity naming patterns (excluding our own sensors) #}
-            {% for entity in states.sensor %}
-              {% set entity_lower = entity.entity_id | lower %}
-              {% if 'battery' in entity_lower and entity.state | string | regex_match('^[0-9.]+$') %}
-                {% if not entity.entity_id.startswith('sensor.device_health_') and 
-                      entity.entity_id != 'sensor.real_time_battery_levels' %}
-                  {% set level = entity.state | int %}
-                  {% if 0 <= level <= 100 %}
-                    {# Check if we already have this entity from previous methods #}
-                    {% set already_included = ns.batteries | selectattr('entity_id', '==', entity.entity_id) | list | length > 0 %}
-                    {% if not already_included %}
-                      {% set device_name = entity.name or entity.entity_id %}
-                      {% set friendly_name = device_name.replace('_', ' ').title() %}
-                      {% set ns.batteries = ns.batteries + [{
-                        'entity_id': entity.entity_id,
-                        'name': friendly_name,
-                        'level': level,
-                        'source': 'name_pattern',
-                        'domain': entity.domain,
-                        'unit': '%',
-                        'icon': 'mdi:battery-' + (
-                          '10' if level <= 10 else
-                          '20' if level <= 20 else
-                          '30' if level <= 30 else
-                          '40' if level <= 40 else
-                          '50' if level <= 50 else
-                          '60' if level <= 60 else
-                          '70' if level <= 70 else
-                          '80' if level <= 80 else
-                          '90' if level <= 90 else
-                          ''
-                        ),
-                        'state_class': 'measurement',
-                        'device_class': 'battery',
-                        'last_updated': entity.last_updated or 'unknown',
-                        'is_charging': entity.attributes.get('is_charging', false),
-                        'health': entity.attributes.get('battery_health', 'unknown'),
-                        'cycle_count': entity.attributes.get('battery_cycle_count', 'unknown')
-                      }] %}
-                    {% endif %}
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            
-            {# Remove duplicates and sort by battery level (lowest first) #}
-            {% set unique_batteries = ns.batteries | groupby('entity_id') | map('last') | map('first') | list %}
-            {{ unique_batteries | sort(attribute='level') }}
-          
-          total_count: >
-            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
-            {% if batteries and batteries | length > 0 %}
-              {{ batteries | length }}
-            {% else %}
-              0
-            {% endif %}
-          
-          critical_count: >
-            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
-            {% set threshold = states('input_number.device_health_critical_threshold') | int(15) %}
-            {% if batteries and batteries | length > 0 %}
-              {% set critical = [] %}
-              {% for battery in batteries %}
-                {% if battery.level is defined and battery.level <= threshold %}
-                  {% set critical = critical + [battery] %}
-                {% endif %}
-              {% endfor %}
-              {{ critical | length }}
-            {% else %}
-              0
-            {% endif %}
-          
-          warning_count: >
-            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
-            {% set threshold = states('input_number.device_health_warning_threshold') | int(25) %}
-            {% if batteries and batteries | length > 0 %}
-              {% set warning = [] %}
-              {% for battery in batteries %}
-                {% if battery.level is defined and battery.level <= threshold %}
-                  {% set warning = warning + [battery] %}
-                {% endif %}
-              {% endfor %}
-              {{ warning | length }}
-            {% else %}
-              0
-            {% endif %}
-          
-          charging_count: >
-            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
-            {% if batteries and batteries | length > 0 %}
-              {% set charging = [] %}
-              {% for battery in batteries %}
-                {% if battery.is_charging is defined and battery.is_charging %}
-                  {% set charging = charging + [battery] %}
-                {% endif %}
-              {% endfor %}
-              {{ charging | length }}
-            {% else %}
-              0
-            {% endif %}
-          
-          lowest_battery: >
-            {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
-            {% if batteries and batteries | length > 0 %}
-              {% set lowest_level = 999 %}
-              {% set lowest_name = "" %}
-              {% for battery in batteries %}
-                {% if battery.level is defined and battery.level < lowest_level %}
-                  {% set lowest_level = battery.level %}
-                  {% set lowest_name = battery.name %}
-                {% endif %}
-              {% endfor %}
-              {% if lowest_name %}
-                {{ lowest_name }}: {{ lowest_level }}%
-              {% else %}
-                "No valid batteries found"
-              {% endif %}
+            {% if ns.name %}
+              {{ ns.name }}: {{ ns.lowest }}%
             {% else %}
               "No batteries found"
             {% endif %}
-          
-          last_updated: "{{ now().isoformat() }}"
 
       - name: "Device Health Battery Summary"
         unique_id: device_health_battery_summary
