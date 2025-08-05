@@ -8,6 +8,7 @@
 # - Provides actionable notifications to close door
 # - Considers obstruction sensor before offering remote close
 # - Respects presence to avoid unnecessary notifications
+# - Automatically dismisses notifications when door closes
 
 homeassistant:
   customize:
@@ -62,6 +63,14 @@ automation:
           timeout_minutes: "{{ states('input_number.garage_door_open_timeout') | int }}"
           has_obstruction: "{{ is_state('binary_sensor.ratgdov25i_0cd7df_obstruction', 'on') }}"
           someone_home: "{{ states('zone.home') | int > 0 }}"
+          notification_tag: "garage-door-open-{{ now().timestamp() | int }}"
+      
+      # Store the notification tag for later dismissal
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.garage_door_active_notification_tag
+        data:
+          value: "{{ notification_tag }}"
       
       # Send different notifications based on obstruction status
       - choose:
@@ -77,7 +86,7 @@ automation:
                     Garage door has been open for {{ timeout_minutes }} minutes.
                     {% if not someone_home %}Nobody appears to be home.{% endif %}
                   data:
-                    tag: "garage-door-open-{{ now().timestamp() | int }}"
+                    tag: "{{ notification_tag }}"
                     when: "{{ now().timestamp() | int }}"
                     priority: "high"
                     ttl: 0
@@ -99,7 +108,7 @@ automation:
                 ⚠️ Obstruction detected - cannot close remotely.
                 {% if not someone_home %}Nobody appears to be home.{% endif %}
               data:
-                tag: "garage-door-open-{{ now().timestamp() | int }}"
+                tag: "{{ notification_tag }}"
                 when: "{{ now().timestamp() | int }}"
                 priority: "high"
                 ttl: 0
@@ -111,15 +120,44 @@ automation:
 
   - alias: "garage_door_closed_reset_notification"
     id: "garage_door_closed_reset_notification"
-    description: "Reset notification flag when door closes"
+    description: "Reset notification flag and dismiss notification when door closes"
     trigger:
       - platform: state
         entity_id: *garage_door
         to: "closed"
     action:
+      # Reset the notification flag
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.garage_door_notification_sent
+      
+      # Dismiss any active notifications by sending a clearing message
+      - variables:
+          active_tag: "{{ states('input_text.garage_door_active_notification_tag') }}"
+      
+      # Only try to dismiss if we have an active notification tag
+      - if:
+          - condition: template
+            value_template: "{{ active_tag != 'unknown' and active_tag != '' }}"
+        then:
+          - service: notify.all_mobile_devices
+            data:
+              message: "clear_notification"
+              data:
+                tag: "{{ active_tag }}"
+                
+      # Clear the stored notification tag
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.garage_door_active_notification_tag
+        data:
+          value: ""
+      
+      # Log the closure for tracking
+      - service: logbook.log
+        data:
+          name: "Garage Door"
+          message: "Door closed, notification cleared"
 
   - alias: "garage_door_notification_actions"
     id: "garage_door_notification_actions"
@@ -176,6 +214,26 @@ automation:
               - service: input_boolean.turn_off
                 target:
                   entity_id: input_boolean.garage_door_notification_sent
+              
+              # Clear the current notification
+              - variables:
+                  active_tag: "{{ states('input_text.garage_door_active_notification_tag') }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ active_tag != 'unknown' and active_tag != '' }}"
+                then:
+                  - service: notify.all_mobile_devices
+                    data:
+                      message: "clear_notification"
+                      data:
+                        tag: "{{ active_tag }}"
+              
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.garage_door_active_notification_tag
+                data:
+                  value: ""
+              
               - delay:
                   minutes: 15
               # Re-check if door is still open after snooze
@@ -194,6 +252,26 @@ automation:
               - service: input_boolean.turn_off
                 target:
                   entity_id: input_boolean.garage_door_monitoring_enabled
+              
+              # Clear the current notification
+              - variables:
+                  active_tag: "{{ states('input_text.garage_door_active_notification_tag') }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ active_tag != 'unknown' and active_tag != '' }}"
+                then:
+                  - service: notify.all_mobile_devices
+                    data:
+                      message: "clear_notification"
+                      data:
+                        tag: "{{ active_tag }}"
+              
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.garage_door_active_notification_tag
+                data:
+                  value: ""
+              
               - service: notify.all_mobile_devices
                 data:
                   title: "Garage Door Monitoring"
@@ -220,6 +298,13 @@ automation:
           name: "Garage Door Monitoring"
           message: "Monitoring automatically re-enabled at 6 AM"
 
+# New input_text to track active notification tags
+input_text:
+  garage_door_active_notification_tag:
+    name: "Active Garage Door Notification Tag"
+    initial: ""
+    max: 100
+
 script:
   garage_door_recheck_and_notify:
     alias: "Garage Door Recheck and Notify"
@@ -228,10 +313,18 @@ script:
       - variables:
           has_obstruction: "{{ is_state('binary_sensor.ratgdov25i_0cd7df_obstruction', 'on') }}"
           timeout_minutes: "{{ states('input_number.garage_door_open_timeout') | int }}"
+          notification_tag: "garage-door-recheck-{{ now().timestamp() | int }}"
       
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.garage_door_notification_sent
+      
+      # Store the new notification tag
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.garage_door_active_notification_tag
+        data:
+          value: "{{ notification_tag }}"
       
       # Send different notifications based on obstruction status
       - choose:
@@ -245,7 +338,7 @@ script:
                   title: "Garage Door Still Open"
                   message: "Garage door is still open after snooze period."
                   data:
-                    tag: "garage-door-recheck"
+                    tag: "{{ notification_tag }}"
                     priority: "high"
                     actions:
                       - action: "close_garage_door"
@@ -264,7 +357,7 @@ script:
                 Garage door is still open after snooze period.
                 ⚠️ Obstruction still detected.
               data:
-                tag: "garage-door-recheck"
+                tag: "{{ notification_tag }}"
                 priority: "high"
                 actions:
                   - action: "snooze_garage_alert"
