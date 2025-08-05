@@ -229,7 +229,7 @@ template:
           
           total_count: >
             {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
-            {% if batteries and batteries is iterable and batteries is not string %}
+            {% if batteries and batteries | length > 0 %}
               {{ batteries | length }}
             {% else %}
               0
@@ -238,10 +238,10 @@ template:
           critical_count: >
             {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
             {% set threshold = states('input_number.device_health_critical_threshold') | int(15) %}
-            {% if batteries and batteries is iterable and batteries is not string %}
+            {% if batteries and batteries | length > 0 %}
               {% set critical = [] %}
               {% for battery in batteries %}
-                {% if battery is mapping and battery.level is defined and battery.level <= threshold %}
+                {% if battery.level is defined and battery.level <= threshold %}
                   {% set critical = critical + [battery] %}
                 {% endif %}
               {% endfor %}
@@ -253,10 +253,10 @@ template:
           warning_count: >
             {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
             {% set threshold = states('input_number.device_health_warning_threshold') | int(25) %}
-            {% if batteries and batteries is iterable and batteries is not string %}
+            {% if batteries and batteries | length > 0 %}
               {% set warning = [] %}
               {% for battery in batteries %}
-                {% if battery is mapping and battery.level is defined and battery.level <= threshold %}
+                {% if battery.level is defined and battery.level <= threshold %}
                   {% set warning = warning + [battery] %}
                 {% endif %}
               {% endfor %}
@@ -267,10 +267,10 @@ template:
           
           charging_count: >
             {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
-            {% if batteries and batteries is iterable and batteries is not string %}
+            {% if batteries and batteries | length > 0 %}
               {% set charging = [] %}
               {% for battery in batteries %}
-                {% if battery is mapping and battery.is_charging is defined and battery.is_charging %}
+                {% if battery.is_charging is defined and battery.is_charging %}
                   {% set charging = charging + [battery] %}
                 {% endif %}
               {% endfor %}
@@ -281,11 +281,11 @@ template:
           
           lowest_battery: >
             {% set batteries = state_attr('sensor.real_time_battery_levels', 'batteries') %}
-            {% if batteries and batteries is iterable and batteries is not string and batteries | length > 0 %}
+            {% if batteries and batteries | length > 0 %}
               {% set lowest_level = 999 %}
               {% set lowest_name = "" %}
               {% for battery in batteries %}
-                {% if battery is mapping and battery.level is defined and battery.level < lowest_level %}
+                {% if battery.level is defined and battery.level < lowest_level %}
                   {% set lowest_level = battery.level %}
                   {% set lowest_name = battery.name %}
                 {% endif %}
