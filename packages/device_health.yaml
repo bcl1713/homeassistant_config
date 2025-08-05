@@ -72,7 +72,7 @@ template:
             {% set level = entity.attributes.battery_level | float(-1) | int %}
             {% if level >= 0 %}
               {% set ns.count = ns.count + 1 %}
-            {% endif %}sensor.battery_
+            {% endif %}
           {% endfor %}
           {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
             {% if entity.state | string | regex_match('^[0-9.]+$') %}
