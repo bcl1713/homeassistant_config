@@ -72,7 +72,7 @@ template:
             {% set level = entity.attributes.battery_level | float(-1) | int %}
             {% if level >= 0 %}
               {% set ns.count = ns.count + 1 %}
-            {% endif %}
+            {% endif %}sensor.battery_
           {% endfor %}
           {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
             {% if entity.state | string | regex_match('^[0-9.]+$') %}
@@ -97,6 +97,7 @@ template:
                 {% set level = entity.state | int %}
                 {% if 0 <= level <= threshold %}
                   {% if not entity.entity_id.startswith('sensor.device_health_') and 
+                        not entity.entity_id.startswith('sensor.battery_') and
                         entity.entity_id != 'sensor.real_time_battery_levels' %}
                     {% set ns.count = ns.count + 1 %}
                   {% endif %}
@@ -113,6 +114,7 @@ template:
                 {% set level = entity.state | int %}
                 {% if 0 <= level <= threshold %}
                   {% if not entity.entity_id.startswith('sensor.device_health_') and 
+                        not entity.entity_id.startswith('sensor.battery_') and
                         entity.entity_id != 'sensor.real_time_battery_levels' %}
                     {% set ns.count = ns.count + 1 %}
                   {% endif %}
@@ -128,6 +130,7 @@ template:
                 {% set level = entity.state | int %}
                 {% if 0 <= level <= 100 %}
                   {% if not entity.entity_id.startswith('sensor.device_health_') and 
+                        not entity.entity_id.startswith('sensor.battery_') and
                         entity.entity_id != 'sensor.real_time_battery_levels' %}
                     {% if level < ns.lowest %}
                       {% set ns.lowest = level %}
