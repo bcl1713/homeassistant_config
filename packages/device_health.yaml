@@ -79,6 +79,7 @@ template:
               {% set level = entity.state | int %}
               {% if 0 <= level <= 100 %}
                 {% if not entity.entity_id.startswith('sensor.device_health_') and 
+                      not entity.entity_id.startswith('sensor.battery_') and
                       entity.entity_id != 'sensor.real_time_battery_levels' %}
                   {% set ns.count = ns.count + 1 %}
                 {% endif %}
