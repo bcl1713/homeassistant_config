@@ -33,13 +33,3 @@ notify:
     services:
       - service: mobile_app_brian_phone
       - service: mobile_app_hester_phone
-
-lovelace:
-  mode: storage
-  dashboards:
-    battery-monitoring:
-      mode: yaml
-      title: Battery Monitoring
-      icon: mdi:battery-heart
-      show_in_sidebar: true
-      filename: dashboards/battery-monitoring.yaml
