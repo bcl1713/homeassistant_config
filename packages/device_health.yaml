@@ -116,7 +116,7 @@ template:
                 {% if 0 <= level <= 100 %}
                   {# Skip our own device_health sensors and this sensor to avoid circular reference #}
                   {% if not entity.entity_id.startswith('sensor.device_health_') and 
-                        entity.entity_id != 'sensor.realtime_battery_levels' %}
+                        entity.entity_id != 'sensor.real_time_battery_levels' %}
                     {# Check if we already have this entity from previous methods #}
                     {% set already_included = ns.batteries | selectattr('entity_id', '==', entity.entity_id) | list | length > 0 %}
                     {% if not already_included %}
@@ -159,7 +159,7 @@ template:
               {% set entity_lower = entity.entity_id | lower %}
               {% if 'battery' in entity_lower and entity.state | string | regex_match('^[0-9.]+$') %}
                 {% if not entity.entity_id.startswith('sensor.device_health_') and 
-                      entity.entity_id != 'sensor.realtime_battery_levels' %}
+                      entity.entity_id != 'sensor.real_time_battery_levels' %}
                   {% set level = entity.state | int %}
                   {% if 0 <= level <= 100 %}
                     {# Check if we already have this entity from previous methods #}
