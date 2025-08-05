@@ -273,17 +273,14 @@ script:
 
   brief_collect_devices:
     alias: "Collect Device Status"
-    description: "Gathers critical device issues with intelligent filtering and enhanced battery tracking"
+    description: "Gathers critical device issues with intelligent filtering"
     variables:
       battery_threshold: 15
       critical_domains: ['camera', 'alarm_control_panel', 'lock', 'binary_sensor']
     sequence:
       - variables:
-          # Enhanced battery collection with auto-discovery
           critical_batteries: >
             {% set ns = namespace(batteries=[]) %}
-            
-            {# Method 1: Entities with battery_level attribute (existing logic) #}
             {% for entity in states if entity.attributes.battery_level is defined %}
               {% set level = entity.attributes.battery_level | float(-1) | int %}
               {% if level >= 0 and level <= battery_threshold %}
@@ -292,71 +289,29 @@ script:
                 {% set ns.batteries = ns.batteries + [{
                   'entity_id': entity.entity_id,
                   'name': friendly_name,
-                  'level': level,
-                  'source': 'battery_level_attr',
-                  'domain': entity.domain,
-                  'cycle_count': entity.attributes.get('battery_cycle_count', 'unknown'),
-                  'health': entity.attributes.get('battery_health', 'unknown'),
-                  'is_charging': entity.attributes.get('is_charging', false),
-                  'last_changed': entity.last_changed or 'unknown'
+                  'level': level
                 }] %}
               {% endif %}
             {% endfor %}
-            
-            {# Method 2: Battery device class sensors (existing logic) #}
             {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
               {% if entity.state | string | regex_match('^[0-9.]+$') %}
                 {% set level = entity.state | int %}
                 {% if 0 <= level <= battery_threshold %}
-                  {% set device_name = entity.name or entity.entity_id %}
-                  {% set friendly_name = device_name.replace('_', ' ').title() %}
-                  {% set ns.batteries = ns.batteries + [{
-                    'entity_id': entity.entity_id,
-                    'name': friendly_name,
-                    'level': level,
-                    'source': 'battery_sensor',
-                    'domain': entity.domain,
-                    'cycle_count': entity.attributes.get('battery_cycle_count', 'unknown'),
-                    'health': entity.attributes.get('battery_health', 'unknown'),
-                    'is_charging': entity.attributes.get('is_charging', false),
-                    'last_changed': entity.last_changed or 'unknown'
-                  }] %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            
-            {# Method 3: Auto-discovery by entity naming patterns #}
-            {% for entity in states.sensor %}
-              {% set entity_lower = entity.entity_id | lower %}
-              {% if 'battery' in entity_lower and entity.state | string | regex_match('^[0-9.]+$') %}
-                {% set level = entity.state | int %}
-                {% if 0 <= level <= battery_threshold %}
-                  {# Check if we already have this entity from previous methods #}
-                  {% set already_included = ns.batteries | selectattr('entity_id', '==', entity.entity_id) | list | length > 0 %}
-                  {% if not already_included %}
+                  {# Skip our own device_health sensors to avoid circular reference #}
+                  {% if not entity.entity_id.startswith('sensor.device_health_') %}
                     {% set device_name = entity.name or entity.entity_id %}
                     {% set friendly_name = device_name.replace('_', ' ').title() %}
                     {% set ns.batteries = ns.batteries + [{
                       'entity_id': entity.entity_id,
                       'name': friendly_name,
-                      'level': level,
-                      'source': 'name_pattern',
-                      'domain': entity.domain,
-                      'cycle_count': entity.attributes.get('battery_cycle_count', 'unknown'),
-                      'health': entity.attributes.get('battery_health', 'unknown'),
-                      'is_charging': entity.attributes.get('is_charging', false),
-                      'last_changed': entity.last_changed or 'unknown'
+                      'level': level
                     }] %}
                   {% endif %}
                 {% endif %}
               {% endif %}
             {% endfor %}
-            
-            {# Remove duplicates and sort by battery level (lowest first) #}
-            {% set unique_batteries = ns.batteries | groupby('entity_id') | map('last') | map('first') | list %}
-            {{ unique_batteries | sort(attribute='level') }}
-          
-          # Enhanced offline device detection (keeping existing logic)
+            {{ ns.batteries }}
+
           offline_devices: >
             {% set ns = namespace(devices=[]) %}
             {% for entity in states if entity.state == 'unavailable' %}
@@ -366,61 +321,19 @@ script:
                 {% set ns.devices = ns.devices + [{
                   'entity_id': entity.entity_id,
                   'name': friendly_name,
-                  'domain': entity.domain,
-                  'last_seen': entity.last_changed or 'unknown'
+                  'domain': entity.domain
                 }] %}
               {% endif %}
             {% endfor %}
             {{ ns.devices }}
           
-          # Enhanced device data structure (maintains backward compatibility)
           device_data:
-            # Existing fields for backward compatibility
             critical_batteries: "{{ critical_batteries }}"
             offline_devices: "{{ offline_devices }}"
             has_issues: "{{ (critical_batteries | length) + (offline_devices | length) > 0 }}"
             battery_count: "{{ critical_batteries | length }}"
             offline_count: "{{ offline_devices | length }}"
-            
-            # New enhanced fields
-            battery_summary:
-              total_discovered: "{{ critical_batteries | length }}"
-              lowest_battery: >
-                {% if critical_batteries | length > 0 %}
-                  {{ critical_batteries[0] }}
-                {% else %}
-                  null
-                {% endif %}
-              by_domain: >
-                {% set ns = namespace(domains={}) %}
-                {% for battery in critical_batteries %}
-                  {% set domain = battery.domain %}
-                  {% if domain not in ns.domains %}
-                    {% set ns.domains = dict(ns.domains, **{domain: []}) %}
-                  {% endif %}
-                  {% set ns.domains = dict(ns.domains, **{domain: ns.domains[domain] + [battery]}) %}
-                {% endfor %}
-                {{ ns.domains }}
-              charging_devices: >
-                {{ critical_batteries | selectattr('is_charging', '==', true) | list }}
-            
-            device_summary:
-              total_offline: "{{ offline_devices | length }}"
-              by_domain: >
-                {% set ns = namespace(domains={}) %}
-                {% for device in offline_devices %}
-                  {% set domain = device.domain %}
-                  {% if domain not in ns.domains %}
-                    {% set ns.domains = dict(ns.domains, **{domain: []}) %}
-                  {% endif %}
-                  {% set ns.domains = dict(ns.domains, **{domain: ns.domains[domain] + [device]}) %}
-                {% endfor %}
-                {{ ns.domains }}
-            
-            # Metadata for tracking
-            last_updated: "{{ now().isoformat() }}"
-            discovery_methods: ["battery_level_attr", "battery_sensor", "name_pattern"]
-      
+
       - service: mqtt.publish
         data:
           topic: "home/brief/data/devices"
