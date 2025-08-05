@@ -138,10 +138,10 @@ script:
             {% if commute_data.get('relevant', false) %}
               {% set ns.sections = ns.sections + ['Commute times:'] %}
               {% if commute_data.get('brian_time') != 'N/A' and commute_data.get('brian_time') %}
-                {% set ns.sections = ns.sections + ['- Brian to work: ' + commute_data.brian_time + ' minutes'] %}
+                {% set ns.sections = ns.sections + ['- Brian to work: ' + (commute_data.brian_time | string) + ' minutes'] %}
               {% endif %}
               {% if commute_data.get('hester_time') != 'N/A' and commute_data.get('hester_time') %}
-                {% set ns.sections = ns.sections + ['- Hester to work: ' + commute_data.hester_time + ' minutes'] %}
+                {% set ns.sections = ns.sections + ['- Hester to work: ' + (commute_data.hester_time | string) + ' minutes'] %}
               {% endif %}
             {% endif %}
             
