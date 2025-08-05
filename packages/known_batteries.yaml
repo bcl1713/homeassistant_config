@@ -1,0 +1,180 @@
+# packages/known_batteries.yaml
+#
+# Individual Battery Template Sensors
+#
+# This file contains template sensors for each known battery in the system.
+# Each sensor provides a standardized interface with consistent naming and attributes.
+#
+# TO ADD A NEW BATTERY:
+# 1. Copy the template below and modify:
+#    - Replace DEVICE_NAME with descriptive name (use underscores)
+#    - Replace SOURCE_ENTITY_ID with the actual entity ID
+#    - Update the icon if desired
+# 
+# Template:
+# - name: "Battery DEVICE_NAME"
+#   unique_id: battery_device_name
+#   state: "{{ states('SOURCE_ENTITY_ID') }}"
+#   unit_of_measurement: "%"
+#   device_class: battery
+#   state_class: measurement
+#   icon: mdi:battery
+#   attributes:
+#     entity_id: "SOURCE_ENTITY_ID"
+#     friendly_name: "Descriptive Device Name"
+#     domain: "{{ states.SOURCE_ENTITY_ID.domain }}"
+#     is_charging: "{{ state_attr('SOURCE_ENTITY_ID', 'is_charging') or false }}"
+#     battery_health: "{{ state_attr('SOURCE_ENTITY_ID', 'battery_health') or 'unknown' }}"
+#     cycle_count: "{{ state_attr('SOURCE_ENTITY_ID', 'battery_cycle_count') or 'unknown' }}"
+#     last_updated: "{{ states.SOURCE_ENTITY_ID.last_updated }}"
+
+template:
+  - sensor:
+      # Bedroom Remotes
+      - name: "Battery Hester Remote"
+        unique_id: battery_hester_remote
+        state: "{{ states('sensor.bedroom_remote_hester_battery_level') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:remote
+        attributes:
+          entity_id: "sensor.bedroom_remote_hester_battery_level"
+          friendly_name: "Hester's Bedroom Remote"
+          domain: "{{ states.sensor.bedroom_remote_hester_battery_level.domain }}"
+          is_charging: "{{ state_attr('sensor.bedroom_remote_hester_battery_level', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.bedroom_remote_hester_battery_level', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.bedroom_remote_hester_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.bedroom_remote_hester_battery_level.last_updated }}"
+
+      - name: "Battery Brian Remote"
+        unique_id: battery_brian_remote
+        state: "{{ states('sensor.bedroom_remote_brian_battery_level') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:remote
+        attributes:
+          entity_id: "sensor.bedroom_remote_brian_battery_level"
+          friendly_name: "Brian's Bedroom Remote"
+          domain: "{{ states.sensor.bedroom_remote_brian_battery_level.domain }}"
+          is_charging: "{{ state_attr('sensor.bedroom_remote_brian_battery_level', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.bedroom_remote_brian_battery_level', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.bedroom_remote_brian_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.bedroom_remote_brian_battery_level.last_updated }}"
+
+      # Mobile Phones
+      - name: "Battery Hester Phone"
+        unique_id: battery_hester_phone
+        state: "{{ states('sensor.hester_phone_battery_level') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:cellphone
+        attributes:
+          entity_id: "sensor.hester_phone_battery_level"
+          friendly_name: "Hester's Phone"
+          domain: "{{ states.sensor.hester_phone_battery_level.domain }}"
+          is_charging: "{{ state_attr('sensor.hester_phone_battery_level', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.hester_phone_battery_level', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.hester_phone_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.hester_phone_battery_level.last_updated }}"
+
+      - name: "Battery Brian Phone"
+        unique_id: battery_brian_phone
+        state: "{{ states('sensor.brian_phone_battery_level') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:cellphone
+        attributes:
+          entity_id: "sensor.brian_phone_battery_level"
+          friendly_name: "Brian's Phone"
+          domain: "{{ states.sensor.brian_phone_battery_level.domain }}"
+          is_charging: "{{ state_attr('sensor.brian_phone_battery_level', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.brian_phone_battery_level', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.brian_phone_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.brian_phone_battery_level.last_updated }}"
+
+      - name: "Battery Towner Phone"
+        unique_id: battery_towner_phone
+        state: "{{ states('sensor.towner_phone_battery_level_2') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:cellphone
+        attributes:
+          entity_id: "sensor.towner_phone_battery_level_2"
+          friendly_name: "Towner's Phone"
+          domain: "{{ states.sensor.towner_phone_battery_level_2.domain }}"
+          is_charging: "{{ state_attr('sensor.towner_phone_battery_level_2', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.towner_phone_battery_level_2', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.towner_phone_battery_level_2', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.towner_phone_battery_level_2.last_updated }}"
+
+      # Security & Access
+      - name: "Battery Front Door"
+        unique_id: battery_front_door
+        state: "{{ states('sensor.front_door_battery') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:door
+        attributes:
+          entity_id: "sensor.front_door_battery"
+          friendly_name: "Front Door Lock"
+          domain: "{{ states.sensor.front_door_battery.domain }}"
+          is_charging: "{{ state_attr('sensor.front_door_battery', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.front_door_battery', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.front_door_battery', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.front_door_battery.last_updated }}"
+
+      - name: "Battery Master Bedroom Sensor"
+        unique_id: battery_master_bedroom_sensor
+        state: "{{ states('sensor.master_bedroom_battery') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:motion-sensor
+        attributes:
+          entity_id: "sensor.master_bedroom_battery"
+          friendly_name: "Master Bedroom Motion Sensor"
+          domain: "{{ states.sensor.master_bedroom_battery.domain }}"
+          is_charging: "{{ state_attr('sensor.master_bedroom_battery', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.master_bedroom_battery', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.master_bedroom_battery', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.master_bedroom_battery.last_updated }}"
+
+      # Cleaning Devices
+      - name: "Battery Sally Vacuum"
+        unique_id: battery_sally_vacuum
+        state: "{{ states('sensor.sally_battery') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:robot-vacuum
+        attributes:
+          entity_id: "sensor.sally_battery"
+          friendly_name: "Sally Robot Vacuum"
+          domain: "{{ states.sensor.sally_battery.domain }}"
+          is_charging: "{{ state_attr('sensor.sally_battery', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.sally_battery', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.sally_battery', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.sally_battery.last_updated }}"
+
+      # Special handling for vacuum entity with battery_level attribute
+      - name: "Battery Sally Vacuum Direct"
+        unique_id: battery_sally_vacuum_direct
+        state: "{{ state_attr('vacuum.sally', 'battery_level') }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        icon: mdi:robot-vacuum
+        attributes:
+          entity_id: "vacuum.sally"
+          friendly_name: "Sally Robot Vacuum (Direct)"
+          domain: "{{ states.vacuum.sally.domain }}"
+          is_charging: "{{ state_attr('vacuum.sally', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('vacuum.sally', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('vacuum.sally', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.vacuum.sally.last_updated }}"
