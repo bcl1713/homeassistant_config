@@ -14,7 +14,7 @@ cards:
         icon_color: red
         content: >
           {% set low_batteries = states.sensor 
-            | selectattr('attributes.device_class', 'eq', 'battery')
+            | selectattr('entity_id', 'match', 'sensor\.battery_.*')
             | selectattr('state', 'is_number')
             | selectattr('state', 'lt', 20)
             | list | count %}
@@ -26,7 +26,7 @@ cards:
         icon_color: orange
         content: >
           {% set low_batteries = states.sensor 
-            | selectattr('attributes.device_class', 'eq', 'battery')
+            | selectattr('entity_id', 'match', 'sensor\.battery_.*')
             | selectattr('state', 'is_number')
             | selectattr('state', 'ge', 20)
             | selectattr('state', 'lt', 30)
@@ -34,51 +34,6 @@ cards:
           {% if low_batteries > 0 %}
             {{ low_batteries }} Low
           {% endif %}
-
-  # Security & Safety Devices
-  - type: custom:mushroom-title-card
-    title: Security & Safety
-  - type: grid
-    columns: 2
-    square: false
-    cards:
-      # Front Door Lock
-      - type: custom:mushroom-entity-card
-        entity: sensor.front_door_battery
-        name: Front Door Lock
-        icon: mdi:door-closed-lock
-        icon_color: >-
-          {% set level = states('sensor.front_door_battery') | int(0) %}
-          {% if level > 30 %}
-            green
-          {% elif level > 20 %}
-            orange
-          {% else %}
-            red
-          {% endif %}
-        secondary_info: >-
-          {% set level = states('sensor.front_door_battery') | int(0) %}
-          {{ level }}% Battery
-        tap_action:
-          action: more-info
-
-      # Master Bedroom Motion
-      - type: custom:mushroom-entity-card
-        entity: sensor.master_bedroom_battery
-        name: Master Bedroom Motion
-        icon: mdi:motion-sensor
-        icon_color: >-
-          {% set level = states('sensor.master_bedroom_battery') | int(0) %}
-          {% if level > 30 %}
-            green
-          {% elif level > 20 %}
-            orange
-          {% else %}
-            red
-          {% endif %}
-        secondary_info: >-
-          {% set level = states('sensor.master_bedroom_battery') | int(0) %}
-          {{ level }}% Battery
 
   # Phone Devices
   - type: custom:mushroom-title-card
@@ -89,11 +44,11 @@ cards:
     cards:
       # Brian's Phone
       - type: custom:mushroom-entity-card
-        entity: sensor.brian_phone_battery_level
+        entity: sensor.battery_brian_phone
         name: Brian's Phone
         icon: mdi:cellphone
         icon_color: >-
-          {% set level = states('sensor.brian_phone_battery_level') | int(0) %}
+          {% set level = states('sensor.battery_brian_phone') | int(0) %}
           {% if level > 50 %}
             green
           {% elif level > 20 %}
@@ -102,17 +57,17 @@ cards:
             red
           {% endif %}
         secondary_info: >-
-          {% set level = states('sensor.brian_phone_battery_level') | int(0) %}
+          {% set level = states('sensor.battery_brian_phone') | int(0) %}
           {% set charging = is_state('binary_sensor.brian_phone_is_charging', 'on') %}
           {{ level }}%{% if charging %} ⚡{% endif %}
 
       # Hester's Phone  
       - type: custom:mushroom-entity-card
-        entity: sensor.hester_phone_battery_level
+        entity: sensor.battery_hester_phone
         name: Hester's Phone
         icon: mdi:cellphone
         icon_color: >-
-          {% set level = states('sensor.hester_phone_battery_level') | int(0) %}
+          {% set level = states('sensor.battery_hester_phone') | int(0) %}
           {% if level > 50 %}
             green
           {% elif level > 20 %}
@@ -121,17 +76,17 @@ cards:
             red
           {% endif %}
         secondary_info: >-
-          {% set level = states('sensor.hester_phone_battery_level') | int(0) %}
+          {% set level = states('sensor.battery_hester_phone') | int(0) %}
           {% set charging = is_state('binary_sensor.hester_phone_is_charging', 'on') %}
           {{ level }}%{% if charging %} ⚡{% endif %}
 
       # Towner's Phone
       - type: custom:mushroom-entity-card
-        entity: sensor.towner_phone_battery_level_2
+        entity: sensor.battery_towner_phone
         name: Towner's Phone
         icon: mdi:cellphone
         icon_color: >-
-          {% set level = states('sensor.towner_phone_battery_level_2') | int(0) %}
+          {% set level = states('sensor.battery_towner_phone') | int(0) %}
           {% if level > 50 %}
             green
           {% elif level > 20 %}
@@ -140,7 +95,7 @@ cards:
             red
           {% endif %}
         secondary_info: >-
-          {% set level = states('sensor.towner_phone_battery_level_2') | int(0) %}
+          {% set level = states('sensor.battery_towner_phone') | int(0) %}
           {% set charging = is_state('binary_sensor.towner_phone_is_charging_2', 'on') %}
           {{ level }}%{% if charging %} ⚡{% endif %}
 
@@ -153,11 +108,11 @@ cards:
     cards:
       # Brian's Bedroom Remote
       - type: custom:mushroom-entity-card
-        entity: sensor.bedroom_remote_brian_battery_level
+        entity: sensor.battery_bedroom_remote_brian
         name: Brian's Remote
         icon: mdi:remote
         icon_color: >-
-          {% set level = states('sensor.bedroom_remote_brian_battery_level') | int(0) %}
+          {% set level = states('sensor.battery_bedroom_remote_brian') | int(0) %}
           {% if level > 30 %}
             green
           {% elif level > 20 %}
@@ -166,17 +121,17 @@ cards:
             red
           {% endif %}
         secondary_info: >-
-          {% set level = states('sensor.bedroom_remote_brian_battery_level') | int(0) %}
+          {% set level = states('sensor.battery_bedroom_remote_brian') | int(0) %}
           {% set charging = is_state('binary_sensor.bedroom_remote_brian_battery_is_charging', 'on') %}
           {{ level }}%{% if charging %} ⚡{% endif %}
 
       # Hester's Bedroom Remote
       - type: custom:mushroom-entity-card
-        entity: sensor.bedroom_remote_hester_battery_level
+        entity: sensor.battery_bedroom_remote_hester
         name: Hester's Remote
         icon: mdi:remote
         icon_color: >-
-          {% set level = states('sensor.bedroom_remote_hester_battery_level') | int(0) %}
+          {% set level = states('sensor.battery_bedroom_remote_hester') | int(0) %}
           {% if level > 30 %}
             green
           {% elif level > 20 %}
@@ -185,7 +140,7 @@ cards:
             red
           {% endif %}
         secondary_info: >-
-          {% set level = states('sensor.bedroom_remote_hester_battery_level') | int(0) %}
+          {% set level = states('sensor.battery_bedroom_remote_hester') | int(0) %}
           {% set charging = is_state('binary_sensor.bedroom_remote_hester_battery_is_charging', 'on') %}
           {{ level }}%{% if charging %} ⚡{% endif %}
 
@@ -193,11 +148,11 @@ cards:
   - type: custom:mushroom-title-card
     title: Cleaning Devices
   - type: custom:mushroom-entity-card
-    entity: sensor.sally_battery
+    entity: sensor.battery_sally
     name: Sally (Roomba)
     icon: mdi:robot-vacuum
     icon_color: >-
-      {% set level = states('sensor.sally_battery') | int(0) %}
+      {% set level = states('sensor.battery_sally') | int(0) %}
       {% if level > 50 %}
         green
       {% elif level > 20 %}
@@ -206,6 +161,57 @@ cards:
         red
       {% endif %}
     secondary_info: >-
-      {% set level = states('sensor.sally_battery') | int(0) %}
+      {% set level = states('sensor.battery_sally') | int(0) %}
       {% set charging = is_state('vacuum.sally', 'docked') %}
       {{ level }}%{% if charging %} 🏠{% endif %}
+
+  # Security & Motion Sensors
+  - type: custom:mushroom-title-card
+    title: Security & Motion Sensors
+  - type: custom:mushroom-entity-card
+    entity: sensor.battery_master_bedroom
+    name: Master Bedroom Motion
+    icon: mdi:motion-sensor
+    icon_color: >-
+      {% set level = states('sensor.battery_master_bedroom') | int(0) %}
+      {% if level > 30 %}
+        green
+      {% elif level > 20 %}
+        orange
+      {% else %}
+        red
+      {% endif %}
+    secondary_info: >-
+      {% set level = states('sensor.battery_master_bedroom') | int(0) %}
+      {{ level }}% Battery
+
+  # All Battery Sensors Overview (auto-generated from template sensors)
+  - type: custom:mushroom-title-card
+    title: All Battery Devices
+  - type: entities
+    entities:
+      - type: template
+        content: |
+          {% for entity in states.sensor %}
+            {% if entity.entity_id.startswith('sensor.battery_') %}
+              - entity: {{ entity.entity_id }}
+                name: {{ entity.name or entity.entity_id.replace('sensor.battery_', '').replace('_', ' ').title() }}
+                secondary_info: >-
+                  {{ entity.state }}% Battery
+            {% endif %}
+          {% endfor %}
+
+  # Test Card to verify template sensors
+  - type: custom:mushroom-title-card
+    title: Debug Info
+  - type: custom:mushroom-template-card
+    primary: Template Sensor Count
+    secondary: >
+      {% set battery_sensors = states.sensor 
+        | selectattr('entity_id', 'match', 'sensor\.battery_.*')
+        | list %}
+      {{ battery_sensors | count }} template battery sensors found
+    icon: mdi:battery-heart
+    icon_color: green
+    tap_action:
+      action: none
