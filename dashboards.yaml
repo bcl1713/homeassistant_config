@@ -1,7 +1,8 @@
 views:
-  - title: Example
+  - title: Battery Monitoring
     cards:
-      - type: markdown
-        title: Dashboard
-        content: >
-          Welcome to your **dashboard**.
+      - type: custom:mushroom-template-card
+        primary: "Test Card"
+        secondary: "If you see this, Mushroom cards are working"
+        icon: mdi:battery
+        icon_color: green
