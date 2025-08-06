@@ -1,0 +1,7 @@
+views:
+  - title: Example
+    cards:
+      - type: markdown
+        title: Dashboard
+        content: >
+          Welcome to your **dashboard**.
