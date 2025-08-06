@@ -275,7 +275,7 @@ script:
     alias: "Collect Device Status"
     description: "Gathers critical device issues with intelligent filtering"
     variables:
-      battery_threshold: 15
+      battery_threshold: "{{ states('input_number.device_health_critical_threshold') | int(15) }}"
       critical_domains: ['camera', 'alarm_control_panel', 'lock', 'binary_sensor']
     sequence:
       - variables:
@@ -284,31 +284,43 @@ script:
             {% for entity in states if entity.attributes.battery_level is defined %}
               {% set level = entity.attributes.battery_level | float(-1) | int %}
               {% if level >= 0 and level <= battery_threshold %}
+                {% set device_name = entity.name or entity.entity_id %}
+                {% set friendly_name = device_name.replace('_', ' ').title() %}
                 {% set ns.batteries = ns.batteries + [{
                   'entity_id': entity.entity_id,
-                  'name': entity.name or entity.entity_id,
+                  'name': friendly_name,
                   'level': level
                 }] %}
               {% endif %}
             {% endfor %}
             {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
-              {% if 0 <= entity.state | int <= battery_threshold %}
-                {% set ns.batteries = ns.batteries + [{
-                  'entity_id': entity.entity_id,
-                  'name': entity.name or entity.entity_id,
-                  'level': entity.state | int
-                }] %}
+              {% if entity.state | string | regex_match('^[0-9.]+$') %}
+                {% set level = entity.state | int %}
+                {% if 0 <= level <= battery_threshold %}
+                  {# Skip our own device_health sensors to avoid circular reference #}
+                  {% if not entity.entity_id.startswith('sensor.device_health_') %}
+                    {% set device_name = entity.name or entity.entity_id %}
+                    {% set friendly_name = device_name.replace('_', ' ').title() %}
+                    {% set ns.batteries = ns.batteries + [{
+                      'entity_id': entity.entity_id,
+                      'name': friendly_name,
+                      'level': level
+                    }] %}
+                  {% endif %}
+                {% endif %}
               {% endif %}
             {% endfor %}
             {{ ns.batteries }}
-          
+
           offline_devices: >
             {% set ns = namespace(devices=[]) %}
             {% for entity in states if entity.state == 'unavailable' %}
               {% if entity.domain in critical_domains %}
+                {% set device_name = entity.name or entity.entity_id %}
+                {% set friendly_name = device_name.replace('_', ' ').title() %}
                 {% set ns.devices = ns.devices + [{
                   'entity_id': entity.entity_id,
-                  'name': entity.name or entity.entity_id,
+                  'name': friendly_name,
                   'domain': entity.domain
                 }] %}
               {% endif %}
@@ -321,7 +333,7 @@ script:
             has_issues: "{{ (critical_batteries | length) + (offline_devices | length) > 0 }}"
             battery_count: "{{ critical_batteries | length }}"
             offline_count: "{{ offline_devices | length }}"
-      
+
       - service: mqtt.publish
         data:
           topic: "home/brief/data/devices"
