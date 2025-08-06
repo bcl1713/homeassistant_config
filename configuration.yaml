@@ -33,13 +33,3 @@ notify:
     services:
       - service: mobile_app_brian_phone
       - service: mobile_app_hester_phone
-
-lovelace:
-  mode: storage
-  dashboards:
-    lovelace-yaml:
-      mode: yaml
-      title: YAML
-      icon: mdi:script
-      show_in_sidebar: true
-      filename: dashboards.yaml
