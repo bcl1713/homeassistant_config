@@ -117,7 +117,6 @@ script:
             {% set ns.sections = ns.sections + ['- Avoid technical terms and Home Assistant terminology'] %}
             {% set ns.sections = ns.sections + ['- Round numbers naturally (say "around 3" instead of "2.87")'] %}
             {% set ns.sections = ns.sections + ['- Response should be close to but less than 255 characters'] %}
-            {% set ns.sections = ns.sections + ['- Only mention events in next 4 hours'] %}
             {% set ns.sections = ns.sections + [''] %}
             {% set ns.sections = ns.sections + ['CURRENT DATE/TIME CONTEXT:'] %}
             {% set ns.sections = ns.sections + ['- Current date: ' + now().strftime('%A, %B %d, %Y')] %}
@@ -132,6 +131,7 @@ script:
             {% if hourly_forecast %}
               {% set weather_condition = hourly_forecast['weather.forecast_home'].forecast[0].condition %}
               {% set ns.sections = ns.sections + ['Current weather: ' + weather_condition] %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %}
             
             {# Commute section (weekday mornings only) #}
@@ -143,6 +143,7 @@ script:
               {% if commute_data.get('hester_time') != 'N/A' and commute_data.get('hester_time') %}
                 {% set ns.sections = ns.sections + ['- Hester to work: ' + (commute_data.hester_time | string) + ' minutes'] %}
               {% endif %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %}
             
             {# Calendar events (non-garbage) with explicit dates #}
@@ -151,23 +152,25 @@ script:
               {% for event in calendar_data.events %}
                 {% if event.is_timed %}
                   {% if event.is_today %}
-                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' at ' + event.formatted_time] %}
+                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' at ' + event.formatted_time + ' (' + event.calendar + ')'] %}
                   {% else %}
-                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' at ' + event.formatted_time] %}
+                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' at ' + event.formatted_time + ' (' + event.calendar + ')'] %}
                   {% endif %}
                 {% else %}
                   {% if event.is_today %}
-                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' (all day)'] %}
+                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' (all day)' + ' (' + event.calendar + ')'] %}
                   {% else %}
-                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' (all day)'] %}
+                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' (all day)' + ' (' + event.calendar + ')'] %}
                   {% endif %}
                 {% endif %}
               {% endfor %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %}
             
             {# Garbage reminders (separate logic) #}
             {% if garbage_data.get('relevant', false) %}
               {% set ns.sections = ns.sections + [garbage_data.get('reminder_message', '')] %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %}
             
             {# Meal planning #}
@@ -185,6 +188,7 @@ script:
                   {% set ns.sections = ns.sections + ['- Tomorrow ' + meal_type + ': ' + meal] %}
                 {% endfor %}
               {% endif %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %}
             
             {# Chores (context aware) #}
@@ -207,6 +211,7 @@ script:
                   {% set ns.sections = ns.sections + ['- ' + item] %}
                 {% endfor %}
               {% endif %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %}
             
             {# Appliance maintenance (only when relevant) #}
@@ -218,6 +223,7 @@ script:
               {% if appliances_data.dishwasher.maintenance.get('needs_rinse_aid', false) %}
                 {% set ns.sections = ns.sections + ['- Needs rinse aid refill'] %}
               {% endif %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %}
             
             {# Device issues (only when present) #}
@@ -229,6 +235,7 @@ script:
               {% if devices_data.get('offline_count', 0) > 0 %}
                 {% set ns.sections = ns.sections + ['- ' + devices_data.offline_count|string + ' critical devices offline'] %}
               {% endif %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
             {# Air quality (only when relevant) #}
@@ -237,6 +244,7 @@ script:
               {% if air_quality_data.get('trend') == 'worsening' %}
                 {% set ns.sections = ns.sections + ['- Trend: Declining, monitor closely'] %}
               {% endif %}
+              {% set ns.sections = ns.sections + [''] %}
             {% endif %} 
 
             {{ ns.sections | join('\n') }}
