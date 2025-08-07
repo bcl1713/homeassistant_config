@@ -151,15 +151,15 @@ script:
               {% for event in calendar_data.events %}
                 {% if event.is_timed %}
                   {% if event.is_today %}
-                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' at ' + event.formatted_time] %}
+                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' at ' + event.formatted_time + ' (' + event.calendar + ')'] %}
                   {% else %}
-                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' at ' + event.formatted_time] %}
+                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' at ' + event.formatted_time + ' (' + event.calendar + ')'] %}
                   {% endif %}
                 {% else %}
                   {% if event.is_today %}
-                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' (all day)'] %}
+                    {% set ns.sections = ns.sections + ['- TODAY: ' + event.summary + ' (all day)' + ' (' + event.calendar + ')'] %}
                   {% else %}
-                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' (all day)'] %}
+                    {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' (all day)' + ' (' + event.calendar + ')'] %}
                   {% endif %}
                 {% endif %}
               {% endfor %}

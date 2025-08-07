@@ -130,6 +130,7 @@ script:
                 {% if include_event %}
                   {% set ns.events = ns.events + [{
                     'summary': event.summary,
+                    'calendar': calendar.replace('calendar.', '').replace('_', ' ').title(),
                     'start': corrected_start,
                     'original_start': event.start,
                     'date': event_date.isoformat(),
