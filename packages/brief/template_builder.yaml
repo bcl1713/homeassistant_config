@@ -149,6 +149,7 @@ script:
             
             {# Calendar events (non-garbage) with explicit dates #}
             {% if calendar_data.get('events', []) %}
+              {% set ns.sections = ns.sections + ['- WHEN: What at When (Source Calendar)'] %}
               {% set ns.sections = ns.sections + ['Upcoming events:'] %}
               {% for event in calendar_data.events %}
                 {% if event.is_timed %}
