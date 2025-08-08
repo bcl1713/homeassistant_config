@@ -240,7 +240,7 @@ script:
 
             {# Air quality (only when relevant) #}
             {% if air_quality_data.get('relevant', false) %}
-              {% set ns.sections = ns.sections + ['Air quality: ' + air_quality_data.get('summary', '')] %}
+              {% set ns.sections = ns.sections + ['Indoor air quality: ' + air_quality_data.get('summary', '')] %}
               {% if air_quality_data.get('trend') == 'worsening' %}
                 {% set ns.sections = ns.sections + ['- Trend: Declining, monitor closely'] %}
               {% endif %}
