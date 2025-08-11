@@ -1,0 +1,74 @@
+# packages/quick_notifications.yaml
+#
+# Quick notifications for Towner zone transitions:
+# - Arrive/leave home
+# - Arrive/leave La Vista Middle School
+
+automation:
+  - id: "notify_towner_arrived_home"
+    alias: "Notify: Towner arrived home"
+    description: "Notify when Towner enters home zone"
+    trigger:
+      - platform: zone
+        entity_id: person.towner
+        zone: zone.home
+        event: enter
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          title: "Towner — Arrived Home"
+          message: "Towner arrived home at {{ now().strftime('%-I:%M %p') }}."
+          data:
+            tag: "towner-arrived-home"
+    mode: single
+
+  - id: "notify_towner_left_home"
+    alias: "Notify: Towner left home"
+    description: "Notify when Towner leaves home zone"
+    trigger:
+      - platform: zone
+        entity_id: person.towner
+        zone: zone.home
+        event: leave
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          title: "Towner — Left Home"
+          message: "Towner left home at {{ now().strftime('%-I:%M %p') }}."
+          data:
+            tag: "towner-left-home"
+    mode: single
+
+  - id: "notify_towner_arrived_school"
+    alias: "Notify: Towner arrived La Vista Middle School"
+    description: "Notify when Towner enters La Vista Middle School zone"
+    trigger:
+      - platform: zone
+        entity_id: person.towner
+        zone: zone.la_vista_middle_school
+        event: enter
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          title: "Towner — Arrived School"
+          message: "Towner arrived at La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
+          data:
+            tag: "towner-arrived-school"
+    mode: single
+
+  - id: "notify_towner_left_school"
+    alias: "Notify: Towner left La Vista Middle School"
+    description: "Notify when Towner leaves La Vista Middle School zone"
+    trigger:
+      - platform: zone
+        entity_id: person.towner
+        zone: zone.la_vista_middle_school
+        event: leave
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          title: "Towner — Left School"
+          message: "Towner left La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
+          data:
+            tag: "towner-left-school"
+    mode: single
