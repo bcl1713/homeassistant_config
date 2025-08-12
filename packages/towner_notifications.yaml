@@ -120,7 +120,7 @@ automation:
       # Verify still in the school zone
       - condition: template
         value_template: >
-          {{ (states(person.towner) | lower) == 'la vista middle school' }}
+          {{ (states('person.towner') | lower) == 'la vista middle school' }}
       # Scheduling & weekday
       - condition: template
         value_template: >
@@ -134,11 +134,12 @@ automation:
           {%- set start_ts = as_timestamp(start_dt) -%}
           {%- set end_ts = as_timestamp(end_dt) -%}
           {%- set weekday_ok = now().weekday() < 5 -%}
+          {%- set school_day_ok = is_state('input_boolean.towner_school_day_enabled','on') -%}
           {%- if start_ts <= end_ts -%}
-            {{ weekday_ok and (now_ts >= start_ts) and (now_ts <=end_ts) }}
+            {{ school_day_ok and weekday_ok and (now_ts >= start_ts) and (now_ts <=end_ts) }}
           {%- else -%}
-            {# window crosses midnight; accpt if now >= start or now <= end #}
-            {{ weekday_ok and ((now_ts >= start_ts) or (now_ts <= end_ts)) }}
+            {# window crosses midnight; accept if now >= start or now <= end #}
+            {{ school_day_ok and weekday_ok and ((now_ts >= start_ts) or (now_ts <= end_ts)) }}
           {%- endif -%}
       - service: notify.all_mobile_devices
         data:
@@ -167,7 +168,7 @@ automation:
       # Verify not in school zone
       - condition: template
         value_template: >
-          {{ not ((states(person.towner) | lower) == 'la vista middle school') }}
+          {{ not ((states('person.towner') | lower) == 'la vista middle school') }}
       # Scheduling & weekday (same robust check as above)
       - condition: template
         value_template: >
@@ -181,10 +182,11 @@ automation:
           {%- set start_ts = as_timestamp(start_dt) -%}
           {%- set end_ts = as_timestamp(end_dt) -%}
           {%- set weekday_ok = now().weekday() < 5 -%}
+          {%- set school_day_ok = is_state('input_boolean.towner_school_day_enabled','on') -%}
           {%- if start_ts <= end_ts -%}
-            {{ weekday_ok and (now_ts >= start_ts) and (now_ts <= end_ts) }}
+            {{ school_day_ok and weekday_ok and (now_ts >= start_ts) and (now_ts <= end_ts) }}
           {%- else -%}
-            {{ weekday_ok and ((now_ts >= start_ts) or (now_ts <= end_ts)) }}
+            {{ school_day_ok and weekday_ok and ((now_ts >= start_ts) or (now_ts <= end_ts)) }}
           {%- endif -%}
       # Send departure notification
       - service: notify.all_mobile_devices
