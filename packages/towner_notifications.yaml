@@ -62,7 +62,7 @@ automation:
       # Verify still at home
       - condition: template
         value_template: >
-          {{ is_state('person.towner', 'Home') }}
+          {{ (states('person.towner') | lower) == 'home' }}
       # Only notify if expected-home flag is ON
       - condition: state
         entity_id: input_boolean.towner_expected_home
@@ -93,7 +93,7 @@ automation:
           seconds: "{{ delay_seconds }}"
       - condition: template
         value_template: >
-          {{ not is_state('person.towner', 'Home') }}
+          {{ not ((states('person.towner') | lower) == 'home') }}
       - service: notify.all_mobile_devices
         data:
           title: "Towner — Left Home"
@@ -120,7 +120,7 @@ automation:
       # Verify still in the school zone
       - condition: template
         value_template: >
-          {{ is_state('person.towner', 'La Vista Middle School') }}
+          {{ (states(person.towner) | lower) == 'la vista middle school' }}
       # Scheduling & weekday
       - condition: template
         value_template: >
@@ -167,7 +167,7 @@ automation:
       # Verify not in school zone
       - condition: template
         value_template: >
-          {{ not is_state('person.towner', 'La Vista Middle School') }}
+          {{ not ((states(person.towner) | lower) == 'la vista middle school') }}
       # Scheduling & weekday (same robust check as above)
       - condition: template
         value_template: >
