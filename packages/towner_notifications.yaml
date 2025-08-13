@@ -63,6 +63,14 @@ automation:
       - condition: template
         value_template: >
           {{ (states('person.towner') | lower) == 'home' }}
+      # Check that person was away from home for at least delay_seconds before this arrival
+      - condition: template
+        value_template: >
+          {% set last_changed = states.person.towner.last_changed %}
+          {% set now_ts = as_timestamp(now()) %}
+          {% set changed_ts = as_timestamp(last_changed) %}
+          {% set time_since_change = now_ts - changed_ts %}
+          {{ time_since_change >= delay_seconds }}
       # Only notify if expected-home flag is ON
       - condition: state
         entity_id: input_boolean.towner_expected_home
@@ -121,6 +129,14 @@ automation:
       - condition: template
         value_template: >
           {{ (states('person.towner') | lower) == 'la vista middle school' }}
+      # Check that person was away from school for at least delay_seconds before this arrival
+      - condition: template
+        value_template: >
+          {% set last_changed = states.person.towner.last_changed %}
+          {% set now_ts = as_timestamp(now()) %}
+          {% set changed_ts = as_timestamp(last_changed) %}
+          {% set time_since_change = now_ts - changed_ts %}
+          {{ time_since_change >= delay_seconds }}
       # Scheduling & weekday
       - condition: template
         value_template: >
