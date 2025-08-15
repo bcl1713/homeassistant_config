@@ -1,233 +1,117 @@
 # packages/towner_notifications.yaml
 #
-# Towner notifications
-#
-# - Debounce configurable
-# - School window configurable
-# - Single toggle for days off
-# - Expected-home flag
-# - Arrival home notifications only when expected flag set
-# - Weekdays only by default
-# - Daily safety reset clears expected flag
-
-input_number:
-  towner_notification_delay_seconds:
-    name: "Towner Notification Delay (seconds)"
-    min: 5
-    max: 300
-    step: 1
-    unit_of_measurement: "s"
-    icon: mdi:clock
-    initial: 30
-
-input_datetime:
-  towner_school_window_start_time:
-    name: "Towner School Window Start"
-    has_date: false
-    has_time: true
-    icon: mdi:calendar-clock
-    initial: "06:30:00"
-
-  towner_school_window_end_time:
-    name: "Towner School Window End"
-    has_date: false
-    has_time: true
-    icon: mdi:calendar-clock
-    initial: "16:00:00"
+# Simple Towner school notifications
+# - Morning: notify when leaving for school (6:30-9:00 AM on weekdays)
+# - Afternoon: notify when arriving home from school (first arrival home since leaving)
 
 input_boolean:
-  towner_school_day_enabled:
-    name: "Towner School Day Enabled"
+  towner_left_for_school_today:
+    name: "Towner Left for School Today"
     icon: mdi:school
-    initial: true
-
-  towner_expected_home:
-    name: "Towner Expected Home"
-    icon: mdi:account-clock
     initial: false
 
 automation:
-  - id: "notify_towner_arrived_home_if_expected"
-    alias: "Notify: Towner arrived home (only if expected)"
+  - id: "notify_towner_left_for_school"
+    alias: "Notify: Towner left for school"
+    description: "Notify when Towner leaves home for school in the morning"
     trigger:
-      - platform: zone
+      - platform: state
         entity_id: person.towner
-        zone: zone.home
-        event: enter
+        from: "home"
+    condition:
+      - condition: time
+        after: "06:30:00"
+        before: "09:00:00"
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
     action:
-      - variables:
-          delay_seconds: "{{ states('input_number.towner_notification_delay_seconds') | int(30) }}"
-      - delay:
-          seconds: "{{ delay_seconds }}"
-      # Verify still at home
-      - condition: template
-        value_template: >
-          {{ (states('person.towner') | lower) == 'home' }}
-      # Check that person was away from home for at least delay_seconds before this arrival
-      - condition: template
-        value_template: >
-          {% set last_changed = states.person.towner.last_changed %}
-          {% set now_ts = as_timestamp(now()) %}
-          {% set changed_ts = as_timestamp(last_changed) %}
-          {% set time_since_change = now_ts - changed_ts %}
-          {{ time_since_change >= delay_seconds }}
-      # Only notify if expected-home flag is ON
-      - condition: state
-        entity_id: input_boolean.towner_expected_home
-        state: "on"
       - service: notify.all_mobile_devices
         data:
-          title: "Towner — Arrived Home"
-          message: "Towner arrived home at {{ now().strftime('%-I:%M %p') }}."
+          title: "Towner — Left for School"
+          message: "Towner left home for school at {{ now().strftime('%-I:%M %p') }}."
           data:
-            tag: "towner-arrived-home"
-      # Clear expected flag after arrival
-      - service: input_boolean.turn_off
+            tag: "towner-school"
+      - service: input_boolean.turn_on
         target:
-          entity_id: input_boolean.towner_expected_home
-    mode: single
-
-  - id: "notify_towner_left_home"
-    alias: "Notify: Towner left home"
-    trigger:
-      - platform: zone
-        entity_id: person.towner
-        zone: zone.home
-        event: leave
-    action:
-      - variables:
-          delay_seconds: "{{ states('input_number.towner_notification_delay_seconds') | int(30) }}"
-      - delay:
-          seconds: "{{ delay_seconds }}"
-      - condition: template
-        value_template: >
-          {{ not ((states('person.towner') | lower) == 'home') }}
-      - service: notify.all_mobile_devices
-        data:
-          title: "Towner — Left Home"
-          message: "Towner left home at {{ now().strftime('%-I:%M %p') }}."
-          data:
-            tag: "towner-left-home"
+          entity_id: input_boolean.towner_left_for_school_today
     mode: single
 
   - id: "notify_towner_arrived_school"
-    alias: "Notify: Towner arrived La Vista Middle School"
-    description: "Notify when Towner enters La Vista Middle School zone"
+    alias: "Notify: Towner arrived at school"
+    description: "Notify when Towner arrives at La Vista Middle School"
     trigger:
-      - platform: zone
+      - platform: state
         entity_id: person.towner
-        zone: zone.la_vista_middle_school
-        event: enter
+        to: "La Vista Middle School"
+    condition:
+      - condition: state
+        entity_id: input_boolean.towner_left_for_school_today
+        state: "on"
     action:
-      - variables:
-          delay_seconds: "{{ states('input_number.towner_notification_delay_seconds') | int(30) }}"
-          start_raw: "{{ states('input_datetime.towner_school_window_start_time') }}" 
-          end_raw: "{{ states('input_datetime.towner_school_window_end_time') }}"
-      - delay:
-          seconds: "{{ delay_seconds }}"
-      # Verify still in the school zone
-      - condition: template
-        value_template: >
-          {{ (states('person.towner') | lower) == 'la vista middle school' }}
-      # Check that person was away from school for at least delay_seconds before this arrival
-      - condition: template
-        value_template: >
-          {% set last_changed = states.person.towner.last_changed %}
-          {% set now_ts = as_timestamp(now()) %}
-          {% set changed_ts = as_timestamp(last_changed) %}
-          {% set time_since_change = now_ts - changed_ts %}
-          {{ time_since_change >= delay_seconds }}
-      # Scheduling & weekday
-      - condition: template
-        value_template: >
-          {%- set s = start_raw if start_raw not in ['unknown', 'unavailable', ''] else '00:00:00' -%}
-          {%- set e = end_raw if end_raw not in ['unknown', 'unavailable', ''] else '23:59:59' -%}
-          {%- set fmt = '%Y-%m-%d %H:%M:%S' -%}
-          {%- set today = now().strftime('%Y-%m-%d') -%}
-          {%- set start_dt = strptime(today ~ ' ' ~  s, fmt) -%}
-          {%- set end_dt = strptime(today ~ ' ' ~ e, fmt) -%}
-          {%- set now_ts = as_timestamp(now()) -%}
-          {%- set start_ts = as_timestamp(start_dt) -%}
-          {%- set end_ts = as_timestamp(end_dt) -%}
-          {%- set weekday_ok = now().weekday() < 5 -%}
-          {%- set school_day_ok = is_state('input_boolean.towner_school_day_enabled','on') -%}
-          {%- if start_ts <= end_ts -%}
-            {{ school_day_ok and weekday_ok and (now_ts >= start_ts) and (now_ts <=end_ts) }}
-          {%- else -%}
-            {# window crosses midnight; accept if now >= start or now <= end #}
-            {{ school_day_ok and weekday_ok and ((now_ts >= start_ts) or (now_ts <= end_ts)) }}
-          {%- endif -%}
       - service: notify.all_mobile_devices
         data:
-          title: "Towner — Arrived School"
+          title: "Towner — Arrived at School"
           message: "Towner arrived at La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
           data:
-            tag: "towner-arrived-school"
+            tag: "towner-school"
     mode: single
 
   - id: "notify_towner_left_school"
-    alias: "Notify: Towner left La Vista Middle School"
-    description: "Notify when Towner leaves La Vista Middle School zone"
+    alias: "Notify: Towner left school"
+    description: "Notify when Towner leaves La Vista Middle School"
     trigger:
-      - platform: zone
+      - platform: state
         entity_id: person.towner
-        zone: zone.la_vista_middle_school
-        event: leave
+        from: "La Vista Middle School"
+        for: "00:01:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.towner_left_for_school_today
+        state: "on"
     action:
-      - variables:
-          delay_seconds: "{{ states('input_number.towner_notification_delay_seconds') | int(30) }}"
-          start_raw: "{{ states('input_datetime.towner_school_window_start_time') }}"
-          end_raw: "{{ states('input_datetime.towner_school_window_end_time') }}"
-          school_day_on: "{{ is_state('input_boolean.towner_school_day_enabled','on') }}"
-      - delay:
-          seconds: "{{ delay_seconds }}"
-      # Verify not in school zone
-      - condition: template
-        value_template: >
-          {{ not ((states('person.towner') | lower) == 'la vista middle school') }}
-      # Scheduling & weekday (same robust check as above)
-      - condition: template
-        value_template: >
-          {%- set s = start_raw if start_raw not in ['unknown','unavailable',''] else '00:00:00' -%}
-          {%- set e = end_raw if end_raw not in ['unknown','unavailable',''] else '23:59:59' -%}
-          {%- set fmt = '%Y-%m-%d %H:%M:%S' -%}
-          {%- set today = now().strftime('%Y-%m-%d') -%}
-          {%- set start_dt = strptime(today ~ ' ' ~ s, fmt) -%}
-          {%- set end_dt = strptime(today ~ ' ' ~ e, fmt) -%}
-          {%- set now_ts = as_timestamp(now()) -%}
-          {%- set start_ts = as_timestamp(start_dt) -%}
-          {%- set end_ts = as_timestamp(end_dt) -%}
-          {%- set weekday_ok = now().weekday() < 5 -%}
-          {%- set school_day_ok = is_state('input_boolean.towner_school_day_enabled','on') -%}
-          {%- if start_ts <= end_ts -%}
-            {{ school_day_ok and weekday_ok and (now_ts >= start_ts) and (now_ts <= end_ts) }}
-          {%- else -%}
-            {{ school_day_ok and weekday_ok and ((now_ts >= start_ts) or (now_ts <= end_ts)) }}
-          {%- endif -%}
-      # Send departure notification
       - service: notify.all_mobile_devices
         data:
           title: "Towner — Left School"
           message: "Towner left La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
           data:
-            tag: "towner-left-school"
-      # If school_day toggle ON, set expected-home flag
-      - if:
-          - condition: template
-            value_template: "{{ school_day_on }}"
-        then:
-          - service: input_boolean.turn_on
-            target:
-              entity_id: input_boolean.towner_expected_home
+            tag: "towner-school"
     mode: single
 
-  - id: "towner_expected_home_daily_reset"
-    alias: "Towner expected-home daily reset"
+  - id: "notify_towner_home_from_school"
+    alias: "Notify: Towner arrived home from school"
+    description: "Notify when Towner arrives home from school (first time since leaving)"
+    trigger:
+      - platform: state
+        entity_id: person.towner
+        to: "home"
+    condition:
+      - condition: state
+        entity_id: input_boolean.towner_left_for_school_today
+        state: "on"
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          title: "Towner — Home from School"
+          message: "Towner arrived home from school at {{ now().strftime('%-I:%M %p') }}."
+          data:
+            tag: "towner-school"
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.towner_left_for_school_today
+    mode: single
+
+  - id: "towner_school_flag_daily_reset"
+    alias: "Reset Towner school flag daily"
+    description: "Reset the left-for-school flag each morning"
     trigger:
       - platform: time
-        at: "02:00:00"
+        at: "06:00:00"
     action:
       - service: input_boolean.turn_off
         target:
-          entity_id: input_boolean.towner_expected_home
+          entity_id: input_boolean.towner_left_for_school_today
     mode: single

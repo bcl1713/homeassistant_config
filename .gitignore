@@ -51,6 +51,7 @@ ha_export_*.txt
 
 # Temporary script files
 scripts/*.tmp
+scripts/*.txt
 scripts/*.log
 
 # Custom Components
