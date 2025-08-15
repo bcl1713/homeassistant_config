@@ -1,74 +1,117 @@
-# packages/quick_notifications.yaml
+# packages/towner_notifications.yaml
 #
-# Quick notifications for Towner zone transitions:
-# - Arrive/leave home
-# - Arrive/leave La Vista Middle School
+# Simple Towner school notifications
+# - Morning: notify when leaving for school (6:30-9:00 AM on weekdays)
+# - Afternoon: notify when arriving home from school (first arrival home since leaving)
+
+input_boolean:
+  towner_left_for_school_today:
+    name: "Towner Left for School Today"
+    icon: mdi:school
+    initial: false
 
 automation:
-  - id: "notify_towner_arrived_home"
-    alias: "Notify: Towner arrived home"
-    description: "Notify when Towner enters home zone"
+  - id: "notify_towner_left_for_school"
+    alias: "Notify: Towner left for school"
+    description: "Notify when Towner leaves home for school in the morning"
     trigger:
-      - platform: zone
+      - platform: state
         entity_id: person.towner
-        zone: zone.home
-        event: enter
+        from: "home"
+    condition:
+      - condition: time
+        after: "06:30:00"
+        before: "09:00:00"
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
     action:
       - service: notify.all_mobile_devices
         data:
-          title: "Towner — Arrived Home"
-          message: "Towner arrived home at {{ now().strftime('%-I:%M %p') }}."
+          title: "Towner — Left for School"
+          message: "Towner left home for school at {{ now().strftime('%-I:%M %p') }}."
           data:
-            tag: "towner-arrived-home"
-    mode: single
-
-  - id: "notify_towner_left_home"
-    alias: "Notify: Towner left home"
-    description: "Notify when Towner leaves home zone"
-    trigger:
-      - platform: zone
-        entity_id: person.towner
-        zone: zone.home
-        event: leave
-    action:
-      - service: notify.all_mobile_devices
-        data:
-          title: "Towner — Left Home"
-          message: "Towner left home at {{ now().strftime('%-I:%M %p') }}."
-          data:
-            tag: "towner-left-home"
+            tag: "towner-school"
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.towner_left_for_school_today
     mode: single
 
   - id: "notify_towner_arrived_school"
-    alias: "Notify: Towner arrived La Vista Middle School"
-    description: "Notify when Towner enters La Vista Middle School zone"
+    alias: "Notify: Towner arrived at school"
+    description: "Notify when Towner arrives at La Vista Middle School"
     trigger:
-      - platform: zone
+      - platform: state
         entity_id: person.towner
-        zone: zone.la_vista_middle_school
-        event: enter
+        to: "La Vista Middle School"
+    condition:
+      - condition: state
+        entity_id: input_boolean.towner_left_for_school_today
+        state: "on"
     action:
       - service: notify.all_mobile_devices
         data:
-          title: "Towner — Arrived School"
+          title: "Towner — Arrived at School"
           message: "Towner arrived at La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
           data:
-            tag: "towner-arrived-school"
+            tag: "towner-school"
     mode: single
 
   - id: "notify_towner_left_school"
-    alias: "Notify: Towner left La Vista Middle School"
-    description: "Notify when Towner leaves La Vista Middle School zone"
+    alias: "Notify: Towner left school"
+    description: "Notify when Towner leaves La Vista Middle School"
     trigger:
-      - platform: zone
+      - platform: state
         entity_id: person.towner
-        zone: zone.la_vista_middle_school
-        event: leave
+        from: "La Vista Middle School"
+        for: "00:01:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.towner_left_for_school_today
+        state: "on"
     action:
       - service: notify.all_mobile_devices
         data:
           title: "Towner — Left School"
           message: "Towner left La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
           data:
-            tag: "towner-left-school"
+            tag: "towner-school"
+    mode: single
+
+  - id: "notify_towner_home_from_school"
+    alias: "Notify: Towner arrived home from school"
+    description: "Notify when Towner arrives home from school (first time since leaving)"
+    trigger:
+      - platform: state
+        entity_id: person.towner
+        to: "home"
+    condition:
+      - condition: state
+        entity_id: input_boolean.towner_left_for_school_today
+        state: "on"
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          title: "Towner — Home from School"
+          message: "Towner arrived home from school at {{ now().strftime('%-I:%M %p') }}."
+          data:
+            tag: "towner-school"
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.towner_left_for_school_today
+    mode: single
+
+  - id: "towner_school_flag_daily_reset"
+    alias: "Reset Towner school flag daily"
+    description: "Reset the left-for-school flag each morning"
+    trigger:
+      - platform: time
+        at: "06:00:00"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.towner_left_for_school_today
     mode: single
