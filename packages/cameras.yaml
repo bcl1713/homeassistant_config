@@ -9,7 +9,7 @@ automation:
     condition:
       - condition: template
         value_template: >
-          {% set camera = trigger.payload_json['after']['camera'] %}
+          {% set camera = trigger.payload_json.get('after', {}).get('camera', 'unknown') %}
           {% if camera in ['living_room'] %}
             {{ is_state('input_boolean.notification_camera_indoor', 'on') }}
           {% elif camera in ['front_drive', 'back_door', 'front_doorbell'] %}
@@ -19,15 +19,15 @@ automation:
       - variables:
           base_url: "https://home.hblucas.org/api/frigate/notifications/"
           event: "{{ trigger.payload_json }}"
-          detections: "{{ event['after']['data']['detections'] }}"
-          review_id: "{{event['after']['id']}}"
-          id: "{{ detections[0] }}"
-          objects: "{{ event['after']['data']['objects'] }}"
-          sub_labels: "{{ event['after']['data']['sub_labels'] }}"
+          detections: "{{ event.get('after', {}).get('data', {}).get('detections', []) }}"
+          review_id: "{{ event.get('after', {}).get('id', 'unknown') }}"
+          id: "{{ detections[0] if detections|length > 0 else 'unknown' }}"
+          objects: "{{ event.get('after', {}).get('data', {}).get('objects', []) }}"
+          sub_labels: "{{ event.get('after', {}).get('data', {}).get('sub_labels', []) }}"
           label: "{{ objects | list | join(', ') | title }}"
-          camera: "{{ event['after']['camera'] }}"
+          camera: "{{ event.get('after', {}).get('camera', 'unknown') }}"
           camera_name: "{{ camera | replace('_', ' ') | title}}"
-          start_time: "{{ event['after']['start_time'] | int }}"
+          start_time: "{{ event.get('after', {}).get('start_time', now().timestamp()) | int }}"
           notification_tag: "frigate_{{id}}"
       - service: notify.all_mobile_devices
         data:
