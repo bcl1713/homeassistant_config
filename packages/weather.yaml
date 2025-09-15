@@ -49,7 +49,7 @@ automation:
     condition:
       # Only notify during reasonable hours
       - condition: time
-        after: "07:00:00"
+        after: "05:00:00"
         before: "22:00:00"
       # Avoid spam - only if no recent notification
       - condition: template
