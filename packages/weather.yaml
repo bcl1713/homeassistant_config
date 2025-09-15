@@ -19,20 +19,59 @@ input_number:
     initial: 30
 
 automation:
-  - alias: "notification_rain_forecast"
+  - alias: "Rain Forecast Alert"
     id: "notification_rain_forecast"
-    description: "Rain forecast notification"
+    description: "Multi-source rain detection and notification"
     trigger:
+      # Primary: Precipitation amount sensor
+      - platform: numeric_state
+        entity_id: sensor.precipitation_forecast_next_hour
+        above: 0.1
+        id: "precipitation_trigger"
+      # Backup: Condition-based detection
       - platform: state
-        entity_id:
-          - sensor.weather_forecast_condition_next_hour
-        to: rainy
-    condition: []
+        entity_id: sensor.condition_forecast_next_hour
+        to:
+          - "rainy"
+          - "pouring"
+          - "snowy"
+          - "snowy-rainy"
+        id: "condition_trigger"
+      # Fallback: Main weather entity
+      - platform: state
+        entity_id: weather.forecast_home
+        to:
+          - "rainy"
+          - "pouring"
+          - "snowy"
+          - "snowy-rainy"
+        id: "weather_fallback"
+    condition:
+      # Only notify during reasonable hours
+      - condition: time
+        after: "05:00:00"
+        before: "22:00:00"
+      # Avoid spam - only if no recent notification
+      - condition: template
+        value_template: >
+          {% set last_triggered = state_attr('automation.notification_rain_forecast', 'last_triggered') %}
+          {% if last_triggered is none %}
+            true
+          {% else %}
+            {{ (now() - last_triggered).total_seconds() > 3600 }}
+          {% endif %}
     action:
       - action: notify.mobile_app_brian_phone
-        metadata: {}
         data:
-          message: It's likely going to rain soon.
+          message: >
+            {% if trigger.id == 'precipitation_trigger' %}
+              ☔ Rain expected in the next hour: {{ states('sensor.precipitation_forecast_next_hour') }}mm
+            {% elif trigger.id == 'condition_trigger' %}
+              ☔ {{ states('sensor.condition_forecast_next_hour') | title }} weather expected in the next hour
+            {% else %}
+              ☔ {{ states('weather.forecast_home') | title }} weather conditions expected
+            {% endif %}
+          title: "Rain Alert"
     mode: single
   - alias: "weather_data_refresh"
     id: "weather_data_refresh"
