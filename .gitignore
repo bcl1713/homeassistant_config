@@ -4,6 +4,7 @@ SERVICE_ACCOUNT.json
 *.db
 *.db-shm
 *.db-wal
+.env
 
 # Home Assistant storage files
 .storage/
