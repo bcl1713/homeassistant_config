@@ -197,9 +197,6 @@ script:
           garbage_data:
             has_pickup_tomorrow: "{{ garbage_tomorrow | length > 0 }}"
             pickup_events: "{{ garbage_tomorrow }}"
-            debug_tomorrow_calc: "{{ (now() + timedelta(days=1)).strftime('%Y-%m-%d') }}"
-            debug_now: "{{ now() }}"
-            debug_events_raw: "{{ garbage_events }}"
             relevant: >
               {% set has_pickup = garbage_tomorrow | length > 0 %}
               {% set time_to_remind = is_evening or now().hour >= 20 %}
