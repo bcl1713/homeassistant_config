@@ -174,17 +174,19 @@ script:
               {% for event in event_list.events %}
                 {# Parse event start date #}
                 {% if 'T' in event.start %}
-                  {% set event_date = strptime(event.start.split('T')[0], '%Y-%m-%d').date() %}
+                  {% set event_date_str = event.start.split('T')[0] %}
                 {% else %}
-                  {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
+                  {% set event_date_str = event.start %}
                 {% endif %}
                 
-                {# Since this is the trash calendar, all events are garbage-related #}
+                {# Get tomorrow's date as string in YYYY-MM-DD format #}
+                {% set tomorrow_str = (now() + timedelta(days=1)).strftime('%Y-%m-%d') %}
+                
                 {# Check if pickup is tomorrow #}
-                {% if event_date == tomorrow %}
+                {% if event_date_str == tomorrow_str %}
                   {% set ns.garbage_events = ns.garbage_events + [{
                     'summary': event.summary,
-                    'date': event_date.isoformat(),
+                    'date': event_date_str,
                     'type': 'garbage_and_recycling' if 'recycling' in event.summary.lower() else 'garbage_only'
                   }] %}
                 {% endif %}
@@ -195,6 +197,9 @@ script:
           garbage_data:
             has_pickup_tomorrow: "{{ garbage_tomorrow | length > 0 }}"
             pickup_events: "{{ garbage_tomorrow }}"
+            debug_tomorrow_calc: "{{ (now() + timedelta(days=1)).strftime('%Y-%m-%d') }}"
+            debug_now: "{{ now() }}"
+            debug_events_raw: "{{ garbage_events }}"
             relevant: >
               {% set has_pickup = garbage_tomorrow | length > 0 %}
               {% set time_to_remind = is_evening or now().hour >= 20 %}
