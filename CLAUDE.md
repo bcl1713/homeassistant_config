@@ -4,180 +4,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a **Home Assistant development workflow system** that provides AI-assisted development, automated branch testing, and safe production deployment. The system uses a dual-repository structure:
+This is a **Home Assistant configuration repository** organized using the packages pattern for modular functionality. The system manages a smart home with comprehensive automation, security, and notification capabilities.
 
-- **Main repository** (`homeassistant-dev/`) - Development workflow scripts and tools
-- **Config repository** (`homeassistant-dev/config/`) - Home Assistant configuration using packages pattern
+## Development Workflow
 
-## Working with Dual-Repository Structure
+### Standard Development Process
 
-### Important Git Workflow Considerations
+1. **Create feature branch**: `git checkout -b feature/descriptive-name`
+2. **Make changes**: Edit YAML files in packages or other directories
+3. **Commit frequently**: `git add . && git commit -m "feat: description"`
+4. **Push for CI validation**: `git push origin feature/descriptive-name`
+5. **Deploy to production for testing**: Deploy branch to Home Assistant
+6. **Create PR**: After testing, create PR for review
+7. **Merge**: Squash merge to main after approval
 
-**Zoxide Compatibility Issues:**
-- The local system uses `zoxide` which overrides `cd` command behavior
-- **NEVER use `cd` commands on the local machine** - they will fail due to zoxide integration
-- **Use `-C` flag instead locally**: `git -C config <command>`
-- **For complex directory changes locally**: Use absolute paths like `/home/brian/Projects/homeassistant-dev/config`
-- **Remote SSH commands**: `cd` works normally on the server (e.g., `ssh root@$HAOS_IP "cd /config && git checkout main"`)
+### Home Assistant Commands
 
-**Repository-Specific Operations:**
 ```bash
-# CORRECT: Working with config repository locally
-git -C config checkout -b feature/branch-name
-git -C config add packages/weather.yaml
-git -C config commit -m "fix: description"
-git -C config push origin feature/branch-name
+# Deploy branch to production for testing
+ssh root@$HAOS_IP "cd /config && git fetch origin && git checkout feature-branch && git pull origin feature-branch"
 
-# WRONG: Will fail on local machine due to zoxide
-cd config  # This will fail locally!
-git checkout -b feature/branch-name
+# Validate configuration
+ssh root@$HAOS_IP "ha core check"
 
-# CORRECT: Remote server operations
-ssh root@$HAOS_IP "cd /config && git checkout branch-name"  # Works fine on server
-```
-
-**Branch Management Gotchas:**
-- **Main repo branches** ≠ **Config repo branches**
-- Always create feature branches in the **config repository** for HA configuration changes
-- The `./scripts/deploy-branch.sh` script deploys based on current directory context
-- **Manual deployment** for config branches: `ssh root@$HAOS_IP "cd /config && git checkout branch-name"`
-
-**GitHub CLI Operations:**
-```bash
-# CORRECT: Create PR from config repo with explicit repo specification
-gh pr create --repo bcl1713/homeassistant_config --head feature/branch --base main --title "Title" --body "Body"
-
-# WRONG: Running from main repo directory without repo specification
-gh pr create --title "Title"  # Creates PR in wrong repository!
-```
-
-**Home Assistant API Authentication:**
-```bash
-# ALWAYS source environment first for API calls
+# Reload services (source .env first for API calls)
 source .env && curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/automation/reload"
+source .env && curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/script/reload"
+source .env && curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/homeassistant/reload_all"
 
-# Environment variables may not be available without explicit sourcing
-```
-
-### Complete Config Change Workflow
-
-1. **Create feature branch in config repo:**
-   ```bash
-   git -C config checkout -b fix/descriptive-name
-   ```
-
-2. **Make changes and commit:**
-   ```bash
-   git -C config add packages/changed-file.yaml
-   git -C config commit -m "fix: description"
-   ```
-
-3. **Push branch:**
-   ```bash
-   git -C config push origin fix/descriptive-name
-   ```
-
-4. **Deploy for testing:**
-   ```bash
-   ssh root@$HAOS_IP "cd /config && git fetch origin && git checkout fix/descriptive-name && git pull origin fix/descriptive-name"
-   ssh root@$HAOS_IP "ha core check"  # Validate
-   source .env && curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/automation/reload"
-   ```
-
-5. **Create and merge PR:**
-   ```bash
-   gh pr create --repo bcl1713/homeassistant_config --head fix/descriptive-name --base main --title "Title" --body "Description"
-   gh pr merge PR_NUMBER --repo bcl1713/homeassistant_config --squash
-   ```
-
-6. **Deploy merged changes:**
-   ```bash
-   ssh root@$HAOS_IP "cd /config && git checkout main && git pull origin main"
-   source .env && curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/automation/reload"
-   ```
-
-## Development Commands
-
-### Core Workflow Scripts
-```bash
-# Get fresh AI context from production HA instance
-./scripts/get-ai-context.sh
-
-# Deploy current branch to production for testing
-./scripts/deploy-branch.sh  
-
-# Rollback to main branch (emergency recovery)
-./scripts/rollback.sh
-```
-
-### Configuration Management
-The Home Assistant configuration uses standard HA commands via SSH:
-```bash
-# Configuration validation
-ssh $HAOS_USER@$HAOS_IP "ha core check"
-
-# Service reloads (via API)
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/homeassistant/reload_all"
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/automation/reload"
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/script/reload"
+# Rollback to main if needed
+ssh root@$HAOS_IP "cd /config && git checkout main && git pull origin main"
 
 # Full restart (if needed)
-ssh $HAOS_USER@$HAOS_IP "ha core restart"
+ssh root@$HAOS_IP "ha core restart"
 ```
 
 ### GitHub Integration
+
 ```bash
-# Issue management (configured in .claude/settings.local.json)
+# Issue management
 gh issue list
 gh issue create --title "Feature Name" --body "Description..." --label "enhancement"
 
-# Branch and PR workflow
-git checkout -b feature/descriptive-name
-git push origin feature-name
+# Pull request workflow
 gh pr create --title "Feature: Description" --body "Closes #ISSUE_NUMBER" --base main
+gh pr merge PR_NUMBER --squash
 ```
-
-## Architecture
-
-### Development Workflow Structure
-- **`scripts/`** - Automation scripts for deployment, context generation, and rollback
-- **`config/`** - Git submodule containing Home Assistant configuration
-- **`context/`** - AI context files generated from production HA instance (gitignored)
-- **`.env`** - Environment configuration (HA connection details, tokens)
-
-### Home Assistant Configuration Architecture
-The `config/` directory uses Home Assistant's packages pattern:
-
-- **`packages/`** - Modular feature packages (cameras, presence, notifications, security, etc.)
-- **`configuration.yaml`** - Main config with package imports and core settings
-- **`automation/`** - Additional automation files via `!include_dir_merge_list`
-- **`input_boolean/`** - Boolean controls via `!include_dir_merge_named`
-- **`.github/workflows/validate.yaml`** - CI validation using Home Assistant container
-
-### Key Configuration Patterns
-```yaml
-# Package structure (packages/*.yaml)
-automation:
-  - alias: "Descriptive Name" 
-    description: "Clear purpose description"
-    trigger: [triggers]
-    condition: [conditions]
-    action: [actions]
-
-script:
-  script_name:
-    alias: "Script Name" 
-    sequence: [steps]
-```
-
-### Notification System
-Multi-device notifications configured in `configuration.yaml`:
-- `notify.all_mobile_devices` - Group service for Brian and Hester's phones
-- Individual services: `mobile_app_brian_phone`, `mobile_app_hester_phone`
 
 ## Environment Setup
 
 ### Required Environment Variables (.env)
+
 ```bash
 # Home Assistant connection
 HAOS_IP=192.168.1.XXX
@@ -185,52 +62,143 @@ HAOS_USER=root
 HA_TOKEN=your_long_lived_access_token_here
 
 # Project paths
-PROJECT_DIR=/home/USERNAME/Projects/homeassistant-dev
+PROJECT_DIR=/home/USERNAME/Projects/homeassistant-dev/config
 ```
 
 ### Prerequisites
+
 - Home Assistant OS instance with SSH access
-- GitHub repository for HA configuration 
+- GitHub repository for HA configuration
 - Home Assistant long-lived access token
 - Modified export script on HAOS: `/config/scripts/export-ha-data-fixed.sh`
 
-## Development Process
+## Architecture Overview
 
-### Standard Workflow (90-second cycle)
-1. **Get AI Context**: `./scripts/get-ai-context.sh` → Upload `context/ai-context.txt` to AI
-2. **Develop**: Create/edit YAML configurations with AI assistance
-3. **Commit**: `git add . && git commit -m "feat: description"`
-4. **CI Validation**: `git push` triggers GitHub Actions validation
-5. **Test on Production**: `./scripts/deploy-branch.sh` after CI passes
-6. **Finalize**: Merge PR or `./scripts/rollback.sh` if issues
+### Core Structure
+
+- **`packages/`** - Modular feature packages containing related automations, scripts, and entities
+- **`configuration.yaml`** - Main configuration file that imports packages and core settings
+- **`automation/`** - Additional automation files loaded via `!include_dir_merge_list`
+- **`input_boolean/`** - Boolean switches for user control and automation state
+- **`blueprints/`** - Reusable automation templates
+
+### Key Packages
+
+**Core Infrastructure:**
+
+- `cameras.yaml` - Frigate camera integration with motion detection notifications
+- `presence.yaml` - Presence detection and location-based automations
+- `notifications.yaml` - Multi-device notification system management
+- `security_lights.yaml` - Security-focused lighting automations
+- `weather.yaml` - Weather data processing and event monitoring
+
+**Daily Living:**
+
+- `chores.yaml` - Household chore rotation and tracking system
+- `light_groups.yaml` - Logical grouping of lights for easier control
+- `routines.yaml` - Common household routines (Good Night, morning wake-up, etc.)
+- `remotes.yaml` - Z-Wave remote control configuration
+
+**Advanced Features:**
+
+- `brief/` - AI-powered daily briefing system with modular data collection
+- `towner_notifications.yaml` - Zone-based notifications for specific areas
+- `device_health.yaml` - Device monitoring and health checks
+- `garage_door_monitoring.yaml` - Garage door state tracking and alerts
+
+### Package Architecture Pattern
+
+Each package follows a consistent structure:
+
+```yaml
+# Header comment describing purpose and features
+automation:
+  - alias: "Descriptive Name"
+    description: "Clear purpose description"
+    trigger: [triggers]
+    condition: [conditions]
+    action: [actions]
+
+script:
+  script_name:
+    alias: "Script Name"
+    sequence: [steps]
+# Additional components (sensors, input_boolean, etc.)
+```
+
+### Configuration Loading Strategy
+
+The configuration uses Home Assistant's modular loading:
+
+- `packages: !include_dir_named packages` - Loads all package files
+- `automation: !include_dir_merge_list automation` - Merges automation files
+- `input_boolean: !include_dir_merge_named input_boolean` - Loads boolean controls
+
+### Notification System
+
+Multi-device notifications configured in `configuration.yaml`:
+
+- `notify.all_mobile_devices` - Group notification service for Brian and Hester's phones
+- Individual mobile app services: `mobile_app_brian_phone`, `mobile_app_hester_phone`
+
+### Development Standards
+
+- **YAML Formatting**: 2-space indentation, consistent quoting
+- **Entity Naming**: Descriptive names with underscores, domain prefixes
+- **Package Organization**: Group related functionality, use meaningful file names
+- **Automation Design**: Clear aliases, detailed descriptions, proper error handling
+- **Template Usage**: Leverage Jinja2 templates for dynamic content and logic
+- **Commit Strategy**: Frequent commits for each feature/change for tracking
 
 ### Branch Strategy
+
 - Feature branches: `feature/descriptive-name`
 - Bug fixes: `fix/descriptive-name`
 - CI validation required before production testing
 - Squash merge to main after testing
 
-### Claude Code Permissions
-The `.claude/settings.local.json` configures allowed GitHub CLI operations:
-- `gh issue view:*`, `gh issue create:*`, `gh issue comment:*`
-- Default mode: `acceptEdits`
+### Testing Workflow
 
-## Special Features
+1. **CI Validation**: Push triggers GitHub Actions validation
+2. **Production Testing**: Deploy branch to Home Assistant for real-world testing
+3. **Iterate**: Make changes based on testing feedback
+4. **Finalize**: Create PR and merge after successful testing
 
-### AI Context Generation
+### Special Features
+
+**AI Context Generation**:
+
 - Exports comprehensive HA state, entities, and configurations
 - Generated via remote script execution on production instance
 - Provides full context for AI-assisted development
 
-### Safe Production Testing  
+**Safe Production Testing**:
+
 - Git-based deployment to production HA instance
 - Configuration validation before reload
 - API-based reloads (no full restarts needed)
 - Instant rollback capability
 
-### CI Integration
+**CI Integration**:
+
 - GitHub Actions validate configuration using HA container
 - Creates dummy service account file for Google Assistant integration
 - Continues on expected errors to allow deployment testing
-- config is a separate git repository.  make sure you are branching the right repository
-- I use zoxide, so cd commands will give you trouble
+
+**Daily Briefing System (`packages/brief/`)**:
+
+- Modular data collection from various home systems
+- AI-generated briefings via MQTT integration
+- Structured as subpackage with multiple YAML files
+
+**Security Integration**:
+
+- Frigate camera system with motion detection
+- Zone-based notification system for different areas
+- Security lighting responsive to presence and events
+
+**Presence Detection**:
+
+- Multiple presence sensors and zones
+- Automated responses to home/away states
+- Integration with lighting, security, and climate systems
