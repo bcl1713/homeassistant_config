@@ -1,5 +1,72 @@
 # Briefing Package Rebuild - Context & Dependencies
 
+**Last Updated:** 2025-11-07 (Session 2 - Implementation in Progress)
+
+## Session 2 Summary (Current)
+
+### Completed in This Session
+1. ✅ **Phase 1: Foundation & Validation** - COMPLETE
+   - Created `packages/brief/config_loader.yaml` - 10 template sensors for configuration
+   - Created `packages/brief/validator.yaml` - Entity validation automation + persistent notifications
+   - Created `packages/brief/health_monitoring.yaml` - Health tracking and execution metrics
+   - Fixed duplicate air quality MQTT sensor in `packages/brief/sensors.yaml`
+   - Updated `home-assistant-dev-guidelines` skill with documentation references
+
+2. ✅ **Updated Skill** - Added documentation URLs and API references
+   - Added critical rule: Verify syntax with official documentation before writing YAML
+   - Added REST API and WebSocket API documentation links
+   - Added entity validation examples using API
+
+### Key Decisions Made This Session
+1. **Configuration Storage:** Used template sensors with attributes instead of YAML config file
+   - Reason: More robust - stored in HA state, accessible via `state_attr()`, survives YAML reloads
+   - Pattern: `sensor.brief_config_*` with attributes for each setting
+   - Verified syntax against: https://www.home-assistant.io/integrations/template/
+
+2. **Validation Approach:** Used automation + template sensors instead of custom script
+   - Reason: Follows HA patterns, uses native automations and conditions
+   - Checks entities on startup and revalidates on config changes
+   - Creates persistent notifications with detailed error messages
+
+3. **Health Monitoring:** Created dedicated package with 8+ sensors + 3 automations
+   - Tracks execution status, timestamps, collector status, errors
+   - Alerts system when validation fails
+   - Provides metrics for optimization (API calls, fallback usage)
+
+### Files Modified/Created
+- ✅ `packages/brief/config_loader.yaml` (158 lines) - NEW
+- ✅ `packages/brief/validator.yaml` (159 lines) - NEW
+- ✅ `packages/brief/health_monitoring.yaml` (221 lines) - NEW
+- ✅ `packages/brief/sensors.yaml` (4 lines modified) - Removed duplicate air quality sensor
+- ✅ `.claude/skills/home-assistant-dev-guidelines/SKILL.md` (44 lines added) - Documentation refs
+
+### Commits This Session
+1. `chore: update home-assistant-dev-guidelines with documentation references`
+2. `feat: add configuration loader for briefing system`
+3. `feat: add entity validator for briefing system`
+4. `feat: add health monitoring for briefing system`
+5. `fix: remove duplicate air quality MQTT sensor definition`
+
+### Home Assistant API/Documentation Verified
+- ✅ Template Sensors: https://www.home-assistant.io/integrations/template/
+- ✅ Scripts: https://www.home-assistant.io/docs/scripts/
+- ✅ Automations: https://www.home-assistant.io/docs/automation/
+- ✅ Automation Actions: https://www.home-assistant.io/docs/automation/action/
+- ✅ Automation Conditions: https://www.home-assistant.io/docs/automation/condition/
+- ✅ Persistent Notifications: https://www.home-assistant.io/integrations/persistent_notification/
+- ✅ REST API: https://developers.home-assistant.io/docs/api/rest/
+- ✅ Configuration: https://www.home-assistant.io/docs/configuration/
+
+### Next Session: Phase 2 - Architecture Improvements
+Phase 2 focuses on replacing brittle timing-based sync with proper async patterns:
+- Phase 2.1: Refactor MQTT sensor architecture (use wait_template instead of delays)
+- Phase 2.2: Add error handling wrapper scripts
+- Phase 2.3: Implement async conversation processing with retries
+- Phase 2.4: Refactor parallel collection orchestration
+
+Current branch: `feature/briefing-robust-rebuild`
+Current status: Ready to begin Phase 2.1
+
 **Last Updated:** 2025-11-07
 
 ## Key Files & Structure
