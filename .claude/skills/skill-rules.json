@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "skills": {
+    "home-assistant-dev-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "promptTriggers": {
+        "keywords": [
+          "automation",
+          "trigger",
+          "condition",
+          "action",
+          "script",
+          "template",
+          "jinja",
+          "package",
+          "entity",
+          "service",
+          "state",
+          "briefing",
+          "notification",
+          "presence",
+          "sensor",
+          "binary_sensor",
+          "yaml",
+          "home assistant"
+        ]
+      }
+    },
+    "skill-developer": {
+      "type": "meta",
+      "enforcement": "suggest",
+      "priority": "low",
+      "promptTriggers": {
+        "keywords": [
+          "create skill",
+          "write skill",
+          "develop skill",
+          "build skill",
+          "skill development",
+          "custom skill",
+          "extend claude",
+          "hook",
+          "automation trigger"
+        ]
+      }
+    }
+  }
+}

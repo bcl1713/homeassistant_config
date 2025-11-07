@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source .env)",
+      "Bash(curl:*)",
+      "Bash(git:*)",
+      "Bash(ssh:*)",
+      "Edit:*",
+      "Write:*",
+      "MultiEdit:*"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/skill-activation-prompt.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-tracker.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
