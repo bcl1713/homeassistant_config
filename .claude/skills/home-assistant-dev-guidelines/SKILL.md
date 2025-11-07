@@ -12,22 +12,65 @@ This skill activates when you're:
 - Managing notifications or presence detection
 - Working with Home Assistant YAML configuration
 
+## Critical Rule: Verify Syntax with Official Documentation
+
+**BEFORE writing any Home Assistant YAML:**
+1. Check official Home Assistant documentation for the specific component/integration
+2. Verify YAML syntax and structure matches current HA version
+3. Test syntax understanding by asking questions if unsure
+4. Reference the exact documentation URL when writing code
+
+**Official Documentation URLs:**
+- Template Sensors: https://www.home-assistant.io/integrations/template/
+- Scripts: https://www.home-assistant.io/docs/scripts/
+- Automations: https://www.home-assistant.io/docs/automation/
+- YAML: https://www.home-assistant.io/docs/configuration/yaml/
+- Packages: https://www.home-assistant.io/docs/configuration/packages/
+- Configuration: https://www.home-assistant.io/docs/configuration/
+- Conditions: https://www.home-assistant.io/docs/automation/condition/
+
+**API Documentation:**
+- REST API: https://developers.home-assistant.io/docs/api/rest/
+- WebSocket API: https://developers.home-assistant.io/docs/api/websocket/
+
+**Never assume syntax.** If you're uncertain about YAML structure, attribute names, or patterns, fetch and read the documentation first.
+
+**For Entity Validation:** Use the REST API `GET /api/states` endpoint to verify entity existence:
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://YOUR_HA_IP:8123/api/states
+```
+
 ## Key Resources
 
 ### Core Architecture
 - **Packages Pattern**: Modular organization of related automations, scripts, and entities
+  - https://www.home-assistant.io/docs/configuration/packages/
 - **Configuration Loading**: YAML includes and package structure
-- **Entity Management**: Naming conventions and organization
+  - https://www.home-assistant.io/docs/configuration/
+- **Entity Management**: Finding and validating entity IDs
+  - Use Developer Tools > States, or REST API GET /api/states
 
 ### Automation Development
 - **Triggers**: Event, state, time-based triggers with templates
+  - https://www.home-assistant.io/docs/automation/trigger/
 - **Conditions**: State conditions, templates, and complex logic
+  - https://www.home-assistant.io/docs/automation/condition/
 - **Actions**: Service calls, script execution, notifications
+  - https://www.home-assistant.io/docs/automation/action/
 
 ### Advanced Topics
 - **Jinja2 Templates**: Dynamic values, filters, state access
+  - https://www.home-assistant.io/docs/automation/templating/
+- **Template Sensors**: State, attributes, availability
+  - https://www.home-assistant.io/integrations/template/
+- **Scripts**: Detailed syntax, response variables, variables
+  - https://www.home-assistant.io/docs/scripts/
+- **MQTT**: Sensors, switches, configuration
+  - https://www.home-assistant.io/integrations/mqtt/
 - **Security Integration**: Presence detection, security automations
 - **Notification System**: Multi-device notifications, grouping
+  - https://www.home-assistant.io/integrations/notify/
 - **Error Handling**: Safe template defaults, error prevention
 
 ## Development Standards
