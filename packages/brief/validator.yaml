@@ -21,15 +21,24 @@ template:
       - name: "Brief: Validation Status"
         unique_id: brief_validation_status
         state: >
-          {%- set conversation_agent = state_attr('sensor.brief_config_entities', 'conversation_agent') -%}
-          {%- set weather = state_attr('sensor.brief_config_entities', 'weather') -%}
-          {%- set notification_service = state_attr('sensor.brief_config_entities', 'notification_service') -%}
-          {%- if states(conversation_agent) not in ['unknown', 'unavailable'] and
-                 states(weather) not in ['unknown', 'unavailable'] and
-                 states(notification_service) not in ['unknown', 'unavailable'] -%}
-            valid
+          {%- set config_entities = states('sensor.brief_config_entities') -%}
+          {%- if config_entities in ['unknown', 'unavailable'] -%}
+            pending
           {%- else -%}
-            invalid
+            {%- set conversation_agent = state_attr('sensor.brief_config_entities', 'conversation_agent') -%}
+            {%- set weather = state_attr('sensor.brief_config_entities', 'weather') -%}
+            {%- set notification_service = state_attr('sensor.brief_config_entities', 'notification_service') -%}
+            {%- if conversation_agent and weather and notification_service -%}
+              {%- if states(conversation_agent) not in ['unknown', 'unavailable'] and
+                     states(weather) not in ['unknown', 'unavailable'] and
+                     states(notification_service) not in ['unknown', 'unavailable'] -%}
+                valid
+              {%- else -%}
+                invalid
+              {%- endif -%}
+            {%- else -%}
+              pending
+            {%- endif -%}
           {%- endif -%}
 
       # ====================================================================
@@ -39,23 +48,28 @@ template:
       - name: "Brief: Validation Errors"
         unique_id: brief_validation_errors
         state: >
-          {%- set conversation_agent = state_attr('sensor.brief_config_entities', 'conversation_agent') -%}
-          {%- set weather = state_attr('sensor.brief_config_entities', 'weather') -%}
-          {%- set notification_service = state_attr('sensor.brief_config_entities', 'notification_service') -%}
-          {%- set errors = [] -%}
-          {%- if conversation_agent and states(conversation_agent) in ['unknown', 'unavailable'] -%}
-            {%- set errors = errors + [conversation_agent ~ ' (conversation agent)'] -%}
-          {%- endif -%}
-          {%- if weather and states(weather) in ['unknown', 'unavailable'] -%}
-            {%- set errors = errors + [weather ~ ' (weather)'] -%}
-          {%- endif -%}
-          {%- if notification_service and states(notification_service) in ['unknown', 'unavailable'] -%}
-            {%- set errors = errors + [notification_service ~ ' (notification service)'] -%}
-          {%- endif -%}
-          {%- if errors | length > 0 -%}
-            {{ errors | join(', ') }}
+          {%- set config_entities = states('sensor.brief_config_entities') -%}
+          {%- if config_entities in ['unknown', 'unavailable'] -%}
+            Config entities not yet loaded
           {%- else -%}
-            None
+            {%- set conversation_agent = state_attr('sensor.brief_config_entities', 'conversation_agent') -%}
+            {%- set weather = state_attr('sensor.brief_config_entities', 'weather') -%}
+            {%- set notification_service = state_attr('sensor.brief_config_entities', 'notification_service') -%}
+            {%- set errors = [] -%}
+            {%- if conversation_agent and states(conversation_agent) in ['unknown', 'unavailable'] -%}
+              {%- set errors = errors + [conversation_agent ~ ' (conversation agent)'] -%}
+            {%- endif -%}
+            {%- if weather and states(weather) in ['unknown', 'unavailable'] -%}
+              {%- set errors = errors + [weather ~ ' (weather)'] -%}
+            {%- endif -%}
+            {%- if notification_service and states(notification_service) in ['unknown', 'unavailable'] -%}
+              {%- set errors = errors + [notification_service ~ ' (notification service)'] -%}
+            {%- endif -%}
+            {%- if errors | length > 0 -%}
+              {{ errors | join(', ') }}
+            {%- else -%}
+              None
+            {%- endif -%}
           {%- endif -%}
 
 automation:
