@@ -31,8 +31,7 @@ template:
       # Timestamp of when briefing last ran
       - name: "Brief: Last Execution Time"
         unique_id: brief_last_execution_time
-        state: "Never"
-        unit_of_measurement: "timestamp"
+        state: "{{ as_timestamp(now()) }}"
         attributes:
           friendly: >
             {%- set last_brief = states('sensor.ai_brief') -%}
