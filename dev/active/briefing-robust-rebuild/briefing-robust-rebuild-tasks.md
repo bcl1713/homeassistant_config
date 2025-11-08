@@ -835,5 +835,28 @@ Project is complete when:
 
 ---
 
-**Last Updated:** 2025-11-07
-**Next Review:** When Phase 1 complete
+**Last Updated:** 2025-11-08 Session 14
+**Status:** Phase 3.8 complete, Collectors refactored, Manual testing passed
+**Next Phase:** Phase 4 - Testing & Documentation
+
+## Session 14 Summary (2025-11-08)
+
+### What Was Done
+- ✅ Identified redundant config logic in all 8 collector scripts
+- ✅ Removed config_enabled checks from collectors (orchestration is the gatekeeper)
+- ✅ Simplified collector architecture: focus on data collection + fallback
+- ✅ Manual testing: 6/8 collectors verified working
+- ✅ Code committed: `20aa346` - Comprehensive refactor
+
+### Test Results
+- ✅ Calendar collector - 6 events returned
+- ✅ Device health - 5 warning batteries, proper thresholds
+- ✅ Meals - Proper empty state, calendars detected
+- ✅ Commute - Weekend relevance detection working
+- ✅ Air Quality - AQI/CO2/VOC/trend values correct
+- ✅ Chores - Enabled via input_boolean, executed successfully
+
+### Key Decision Made
+- Collectors should NOT check enable/disable (that's orchestration's job)
+- Single responsibility: orchestration routes, collectors collect
+- Simplifies testing, debugging, and understanding the system
