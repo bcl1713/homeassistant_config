@@ -359,7 +359,13 @@ script:
                 {% set ns.sections = ns.sections + ['- ' + devices_data.battery_count|string + ' devices with low battery'] %}
               {% endif %}
               {% if devices_data.get('offline_count', 0) > 0 %}
-                {% set ns.sections = ns.sections + ['- ' + devices_data.offline_count|string + ' critical devices offline'] %}
+                {% set offline_devices = devices_data.get('offline_devices', []) %}
+                {% if offline_devices | length > 0 %}
+                  {% set device_names = offline_devices | map(attribute='name') | list %}
+                  {% set ns.sections = ns.sections + ['- Critical devices offline: ' + device_names | join(', ')] %}
+                {% else %}
+                  {% set ns.sections = ns.sections + ['- ' + devices_data.offline_count|string + ' critical devices offline'] %}
+                {% endif %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
