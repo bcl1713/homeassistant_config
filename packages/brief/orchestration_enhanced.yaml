@@ -473,7 +473,7 @@ script:
 
             {{ ns.sections | join('\n') }}
 
-      # Store built prompt
+      # Determine status for each collector based on validation_status attribute
       - variables:
           # Parse devices_data string back to dict for context
           devices_dict: >
@@ -483,6 +483,27 @@ script:
             {%- else -%}
               {{ d }}
             {%- endif -%}
+
+          # Collect status from MQTT sensors
+          chores_status: "{{ state_attr('sensor.brief_data_chores', 'validation_status') | default('skipped') }}"
+          appliances_status: "{{ state_attr('sensor.brief_data_appliances', 'validation_status') | default('skipped') }}"
+          meals_status: "{{ state_attr('sensor.brief_data_meals', 'validation_status') | default('skipped') }}"
+          commute_status: "{{ state_attr('sensor.brief_data_commute', 'validation_status') | default('skipped') }}"
+          devices_status: "{{ state_attr('sensor.brief_data_devices', 'validation_status') | default('skipped') }}"
+          calendar_status: "{{ state_attr('sensor.brief_data_calendar', 'validation_status') | default('skipped') }}"
+          garbage_status: "{{ state_attr('sensor.brief_data_garbage', 'validation_status') | default('skipped') }}"
+          air_quality_status: "{{ state_attr('sensor.brief_data_air_quality', 'validation_status') | default('skipped') }}"
+
+          # Build collector status object
+          collector_status:
+            chores: "{{ 'success' if chores_enabled and chores_status in ['success', 'partial'] else 'skipped' if not chores_enabled else chores_status }}"
+            appliances: "{{ 'success' if appliances_enabled and appliances_status in ['success', 'partial'] else 'skipped' if not appliances_enabled else appliances_status }}"
+            meals: "{{ 'success' if meals_enabled and meals_status in ['success', 'partial'] else 'skipped' if not meals_enabled else meals_status }}"
+            commute: "{{ 'success' if commute_enabled and commute_status in ['success', 'partial'] else 'skipped' if not commute_enabled else commute_status }}"
+            devices: "{{ 'success' if devices_enabled and devices_status in ['success', 'partial'] else 'skipped' if not devices_enabled else devices_status }}"
+            calendar: "{{ 'success' if calendar_enabled and calendar_status in ['success', 'partial'] else 'skipped' if not calendar_enabled else calendar_status }}"
+            garbage: "{{ 'success' if garbage_enabled and garbage_status in ['success', 'partial'] else 'skipped' if not garbage_enabled else garbage_status }}"
+            air_quality: "{{ 'success' if air_quality_enabled and air_quality_status in ['success', 'partial'] else 'skipped' if not air_quality_enabled else air_quality_status }}"
 
       - service: mqtt.publish
         data:
@@ -506,10 +527,18 @@ script:
                   "calendar": calendar_enabled,
                   "garbage": garbage_enabled,
                   "air_quality": air_quality_enabled
-                }
+                },
+                "collector_status": collector_status
               } | tojson
             }}
 
-      # Return the built prompt
+      # Return structured result with prompt and status
       - variables:
-          result: "{{ prompt_sections }}"
+          result:
+            prompt: "{{ prompt_sections }}"
+            status: "{{ collector_status }}"
+            timestamp: "{{ now().isoformat() }}"
+            context:
+              is_morning: "{{ is_morning }}"
+              is_weekday: "{{ is_weekday }}"
+              has_issues: "{{ devices_dict.get('has_issues', false) if devices_dict is mapping else false }}"
