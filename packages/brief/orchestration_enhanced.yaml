@@ -196,30 +196,42 @@ script:
       - variables:
           # Read all collected MQTT data
           chores_data: >
-            {%- set raw_data = state_attr('sensor.brief_data_chores', None) | default({}) -%}
-            {%- if raw_data is string -%}
-              {%- set data = raw_data | from_json -%}
-            {%- else -%}
-              {%- set data = raw_data -%}
-            {%- endif -%}
-            {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
-              {{ data }}
-            {%- else -%}
+            {%- set raw_data = state_attr('sensor.brief_data_chores', None) -%}
+            {%- if raw_data is none -%}
               {}
+            {%- elif raw_data is string -%}
+              {%- set data = raw_data | from_json -%}
+              {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
+                {{ data }}
+              {%- else -%}
+                {}
+              {%- endif -%}
+            {%- else -%}
+              {%- if raw_data.get('validation_status') == 'success' or raw_data.get('validation_status') == 'partial' -%}
+                {{ raw_data }}
+              {%- else -%}
+                {}
+              {%- endif -%}
             {%- endif -%}
 
           appliances_data: >
             {%- if appliances_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_appliances', None) | default({}) -%}
-              {%- if raw_data is string -%}
-                {%- set data = raw_data | from_json -%}
-              {%- else -%}
-                {%- set data = raw_data -%}
-              {%- endif -%}
-              {%- if data and data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
-                {{ data }}
-              {%- else -%}
+              {%- set raw_data = state_attr('sensor.brief_data_appliances', None) -%}
+              {%- if raw_data is none -%}
                 {}
+              {%- elif raw_data is string -%}
+                {%- set data = raw_data | from_json -%}
+                {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
+                  {{ data }}
+                {%- else -%}
+                  {}
+                {%- endif -%}
+              {%- else -%}
+                {%- if raw_data.get('validation_status') == 'success' or raw_data.get('validation_status') == 'partial' -%}
+                  {{ raw_data }}
+                {%- else -%}
+                  {}
+                {%- endif -%}
               {%- endif -%}
             {%- else -%}
               {}
@@ -227,16 +239,22 @@ script:
 
           meals_data: >
             {%- if meals_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_meals', None) | default({}) -%}
-              {%- if raw_data is string -%}
-                {%- set data = raw_data | from_json -%}
-              {%- else -%}
-                {%- set data = raw_data -%}
-              {%- endif -%}
-              {%- if data and (data.get('validation_status') == 'success' or data.get('validation_status') == 'partial') -%}
-                {{ data }}
-              {%- else -%}
+              {%- set raw_data = state_attr('sensor.brief_data_meals', None) -%}
+              {%- if raw_data is none -%}
                 {}
+              {%- elif raw_data is string -%}
+                {%- set data = raw_data | from_json -%}
+                {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
+                  {{ data }}
+                {%- else -%}
+                  {}
+                {%- endif -%}
+              {%- else -%}
+                {%- if raw_data.get('validation_status') == 'success' or raw_data.get('validation_status') == 'partial' -%}
+                  {{ raw_data }}
+                {%- else -%}
+                  {}
+                {%- endif -%}
               {%- endif -%}
             {%- else -%}
               {}
@@ -244,16 +262,22 @@ script:
 
           commute_data: >
             {%- if commute_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_commute', None) | default({}) -%}
-              {%- if raw_data is string -%}
-                {%- set data = raw_data | from_json -%}
-              {%- else -%}
-                {%- set data = raw_data -%}
-              {%- endif -%}
-              {%- if data and (data.get('validation_status') == 'success' or data.get('validation_status') == 'partial') -%}
-                {{ data }}
-              {%- else -%}
+              {%- set raw_data = state_attr('sensor.brief_data_commute', None) -%}
+              {%- if raw_data is none -%}
                 {}
+              {%- elif raw_data is string -%}
+                {%- set data = raw_data | from_json -%}
+                {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
+                  {{ data }}
+                {%- else -%}
+                  {}
+                {%- endif -%}
+              {%- else -%}
+                {%- if raw_data.get('validation_status') == 'success' or raw_data.get('validation_status') == 'partial' -%}
+                  {{ raw_data }}
+                {%- else -%}
+                  {}
+                {%- endif -%}
               {%- endif -%}
             {%- else -%}
               {}
@@ -261,16 +285,22 @@ script:
 
           devices_data: >
             {%- if devices_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_devices', None) | default({}) -%}
-              {%- if raw_data is string -%}
-                {%- set data = raw_data | from_json -%}
-              {%- else -%}
-                {%- set data = raw_data -%}
-              {%- endif -%}
-              {%- if data.get('validation_status') == 'success' -%}
-                {{ data }}
-              {%- else -%}
+              {%- set raw_data = state_attr('sensor.brief_data_devices', None) -%}
+              {%- if raw_data is none -%}
                 {}
+              {%- elif raw_data is string -%}
+                {%- set data = raw_data | from_json -%}
+                {%- if data.get('validation_status') == 'success' -%}
+                  {{ data }}
+                {%- else -%}
+                  {}
+                {%- endif -%}
+              {%- else -%}
+                {%- if raw_data.get('validation_status') == 'success' -%}
+                  {{ raw_data }}
+                {%- else -%}
+                  {}
+                {%- endif -%}
               {%- endif -%}
             {%- else -%}
               {}
@@ -278,8 +308,10 @@ script:
 
           calendar_data: >
             {%- if calendar_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_calendar', None) | default({}) -%}
-              {%- if raw_data is string -%}
+              {%- set raw_data = state_attr('sensor.brief_data_calendar', None) -%}
+              {%- if raw_data is none -%}
+                {}
+              {%- elif raw_data is string -%}
                 {{ raw_data | from_json }}
               {%- else -%}
                 {{ raw_data }}
@@ -290,8 +322,10 @@ script:
 
           garbage_data: >
             {%- if garbage_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_garbage', None) | default({}) -%}
-              {%- if raw_data is string -%}
+              {%- set raw_data = state_attr('sensor.brief_data_garbage', None) -%}
+              {%- if raw_data is none -%}
+                {}
+              {%- elif raw_data is string -%}
                 {{ raw_data | from_json }}
               {%- else -%}
                 {{ raw_data }}
@@ -302,8 +336,10 @@ script:
 
           air_quality_data: >
             {%- if air_quality_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_air_quality', None) | default({}) -%}
-              {%- if raw_data is string -%}
+              {%- set raw_data = state_attr('sensor.brief_data_air_quality', None) -%}
+              {%- if raw_data is none -%}
+                {}
+              {%- elif raw_data is string -%}
                 {{ raw_data | from_json }}
               {%- else -%}
                 {{ raw_data }}
