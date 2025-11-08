@@ -28,16 +28,20 @@ template:
             {%- set conversation_agent = state_attr('sensor.brief_config_entity_references', 'conversation_agent') -%}
             {%- set weather = state_attr('sensor.brief_config_entity_references', 'weather') -%}
             {%- set notification_service = state_attr('sensor.brief_config_entity_references', 'notification_service') -%}
-            {%- if conversation_agent and weather and notification_service -%}
-              {%- if states(conversation_agent) not in ['unknown', 'unavailable'] and
-                     states(weather) not in ['unknown', 'unavailable'] and
-                     states(notification_service) not in ['unknown', 'unavailable'] -%}
-                valid
-              {%- else -%}
-                invalid
-              {%- endif -%}
+            {%- set valid_count = 0 -%}
+            {%- if conversation_agent and states(conversation_agent) not in ['unknown', 'unavailable'] -%}
+              {%- set valid_count = valid_count + 1 -%}
+            {%- endif -%}
+            {%- if weather and states(weather) not in ['unknown', 'unavailable'] -%}
+              {%- set valid_count = valid_count + 1 -%}
+            {%- endif -%}
+            {%- if notification_service and states(notification_service) not in ['unknown', 'unavailable'] -%}
+              {%- set valid_count = valid_count + 1 -%}
+            {%- endif -%}
+            {%- if valid_count >= 1 -%}
+              valid
             {%- else -%}
-              pending
+              invalid
             {%- endif -%}
           {%- endif -%}
 
