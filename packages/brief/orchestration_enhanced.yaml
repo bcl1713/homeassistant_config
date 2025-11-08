@@ -325,6 +325,16 @@ script:
       # Build prompt sections
       - variables:
           prompt_sections: >
+            {# Parse data variables from JSON strings to dicts #}
+            {%- set chores = chores_data | from_json if chores_data is string else chores_data -%}
+            {%- set appliances = appliances_data | from_json if appliances_data is string else appliances_data -%}
+            {%- set meals = meals_data | from_json if meals_data is string else meals_data -%}
+            {%- set commute = commute_data | from_json if commute_data is string else commute_data -%}
+            {%- set devices = devices_data | from_json if devices_data is string else devices_data -%}
+            {%- set calendar = calendar_data | from_json if calendar_data is string else calendar_data -%}
+            {%- set garbage = garbage_data | from_json if garbage_data is string else garbage_data -%}
+            {%- set air_quality = air_quality_data | from_json if air_quality_data is string else air_quality_data -%}
+
             {% set ns = namespace(sections=[]) %}
 
             {# Base instructions with date/time context #}
@@ -351,42 +361,42 @@ script:
             {% endif %}
 
             {# Commute section (if enabled and relevant) #}
-            {% if commute_data.get('relevant', false) %}
+            {% if commute.get('relevant', false) %}
               {% set ns.sections = ns.sections + ['Commute times:'] %}
-              {% if commute_data.get('brian_time') != 'N/A' and commute_data.get('brian_time') %}
-                {% set ns.sections = ns.sections + ['- Brian to work: ' + (commute_data.brian_time | string) + ' minutes'] %}
+              {% if commute.get('brian_time') and commute.get('brian_time') != 'N/A' %}
+                {% set ns.sections = ns.sections + ['- Brian to work: ' + (commute.brian_time | string) + ' minutes'] %}
               {% endif %}
-              {% if commute_data.get('hester_time') != 'N/A' and commute_data.get('hester_time') %}
-                {% set ns.sections = ns.sections + ['- Hester to work: ' + (commute_data.hester_time | string) + ' minutes'] %}
+              {% if commute.get('hester_time') and commute.get('hester_time') != 'N/A' %}
+                {% set ns.sections = ns.sections + ['- Hester to work: ' + (commute.hester_time | string) + ' minutes'] %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
             {# Calendar events (if enabled and available) #}
-            {% if calendar_data.get('events', []) %}
+            {% if calendar.get('events', []) %}
               {% set ns.sections = ns.sections + ['Upcoming events:'] %}
-              {% for event in calendar_data.events %}
+              {% for event in calendar.events %}
                 {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' at ' + event.formatted_time] %}
               {% endfor %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
             {# Garbage reminders (if enabled and relevant) #}
-            {% if garbage_data.get('relevant', false) %}
-              {% set ns.sections = ns.sections + [garbage_data.get('reminder_message', '')] %}
+            {% if garbage.get('relevant', false) %}
+              {% set ns.sections = ns.sections + [garbage.get('reminder_message', '')] %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
             {# Meal planning (if enabled and available) #}
-            {% if meals_data.get('has_today', false) or meals_data.get('has_tomorrow', false) %}
+            {% if meals.get('has_today', false) or meals.get('has_tomorrow', false) %}
               {% set ns.sections = ns.sections + ['Meal planning:'] %}
-              {% if meals_data.get('has_today', false) and meals_data.get('today') %}
-                {% for meal_type, meal in meals_data.today.items() %}
+              {% if meals.get('has_today', false) and meals.get('today') %}
+                {% for meal_type, meal in meals.today.items() %}
                   {% set ns.sections = ns.sections + ['- Today ' + meal_type + ': ' + meal] %}
                 {% endfor %}
               {% endif %}
-              {% if meals_data.get('has_tomorrow', false) and meals_data.get('tomorrow') %}
-                {% for meal_type, meal in meals_data.tomorrow.items() %}
+              {% if meals.get('has_tomorrow', false) and meals.get('tomorrow') %}
+                {% for meal_type, meal in meals.tomorrow.items() %}
                   {% set ns.sections = ns.sections + ['- Tomorrow ' + meal_type + ': ' + meal] %}
                 {% endfor %}
               {% endif %}
@@ -394,52 +404,52 @@ script:
             {% endif %}
 
             {# Chores (if enabled) #}
-            {% if chores_data and chores_data.get('validation_status') != 'disabled' %}
+            {% if chores and chores.get('validation_status') != 'disabled' %}
               {# Daily dishwasher #}
-              {% if chores_data.get('daily', {}).get('dishwasher', {}).get('relevant', false) and not chores_data.get('daily', {}).get('dishwasher', {}).get('completed', false) %}
-                {% set ns.sections = ns.sections + ['- ' + chores_data.daily.dishwasher.assignee + ' needs to empty the dishwasher'] %}
+              {% if chores.get('daily', {}).get('dishwasher', {}).get('relevant', false) and not chores.get('daily', {}).get('dishwasher', {}).get('completed', false) %}
+                {% set ns.sections = ns.sections + ['- ' + chores.daily.dishwasher.assignee + ' needs to empty the dishwasher'] %}
               {% endif %}
               {# Weekend bathroom #}
-              {% if chores_data.get('weekend', {}).get('bathroom', {}).get('relevant', false) and not chores_data.get('weekend', {}).get('bathroom', {}).get('completed', false) %}
-                {% set ns.sections = ns.sections + ['- ' + chores_data.weekend.bathroom.assignee + ' needs to clean the bathroom'] %}
+              {% if chores.get('weekend', {}).get('bathroom', {}).get('relevant', false) and not chores.get('weekend', {}).get('bathroom', {}).get('completed', false) %}
+                {% set ns.sections = ns.sections + ['- ' + chores.weekend.bathroom.assignee + ' needs to clean the bathroom'] %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
             {# Appliances (if enabled) #}
-            {% if appliances_data and appliances_data.get('dishwasher', {}).get('maintenance', {}).get('relevant', false) %}
+            {% if appliances and appliances.get('dishwasher', {}).get('maintenance', {}).get('relevant', false) %}
               {% set ns.sections = ns.sections + ['Dishwasher maintenance needed:'] %}
-              {% if appliances_data.dishwasher.maintenance.get('needs_salt', false) %}
+              {% if appliances.dishwasher.maintenance.get('needs_salt', false) %}
                 {% set ns.sections = ns.sections + ['- Needs salt refill'] %}
               {% endif %}
-              {% if appliances_data.dishwasher.maintenance.get('needs_rinse_aid', false) %}
+              {% if appliances.dishwasher.maintenance.get('needs_rinse_aid', false) %}
                 {% set ns.sections = ns.sections + ['- Needs rinse aid refill'] %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
             {# Device issues (if enabled) #}
-            {% if devices_data.get('has_issues', false) %}
+            {% if devices.get('has_issues', false) %}
               {% set ns.sections = ns.sections + ['Device issues:'] %}
-              {% if devices_data.get('battery_count', 0) > 0 %}
-                {% set ns.sections = ns.sections + ['- ' + devices_data.battery_count|string + ' devices with low battery'] %}
+              {% if devices.get('battery_count', 0) > 0 %}
+                {% set ns.sections = ns.sections + ['- ' + devices.battery_count|string + ' devices with low battery'] %}
               {% endif %}
-              {% if devices_data.get('offline_count', 0) > 0 %}
-                {% set offline_devices = devices_data.get('offline_devices', []) %}
+              {% if devices.get('offline_count', 0) > 0 %}
+                {% set offline_devices = devices.get('offline_devices', []) %}
                 {% if offline_devices | length > 0 %}
                   {% set device_names = offline_devices | map(attribute='name') | list %}
                   {% set ns.sections = ns.sections + ['- Critical devices offline: ' + device_names | join(', ')] %}
                 {% else %}
-                  {% set ns.sections = ns.sections + ['- ' + devices_data.offline_count|string + ' critical devices offline'] %}
+                  {% set ns.sections = ns.sections + ['- ' + devices.offline_count|string + ' critical devices offline'] %}
                 {% endif %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
             {# Air quality (if enabled) #}
-            {% if air_quality_data.get('relevant', false) %}
-              {% set ns.sections = ns.sections + ['Indoor air quality: ' + air_quality_data.get('summary', '')] %}
-              {% if air_quality_data.get('trend') == 'worsening' %}
+            {% if air_quality.get('relevant', false) %}
+              {% set ns.sections = ns.sections + ['Indoor air quality: ' + air_quality.get('summary', '')] %}
+              {% if air_quality.get('trend') == 'worsening' %}
                 {% set ns.sections = ns.sections + ['- Trend: Declining, monitor closely'] %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
