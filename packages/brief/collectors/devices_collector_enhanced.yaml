@@ -66,8 +66,8 @@ script:
                 {%- for entity in states if entity.attributes.battery_level is defined -%}
                   {%- set level = entity.attributes.battery_level | float(-1) | int -%}
                   {%- if level >= 0 and level <= threshold_to_use -%}
-                    {%- set device_name = entity.name or entity.entity_id -%}
-                    {%- set friendly_name = device_name.replace('_', ' ').title() -%}
+                    {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                    {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
                     {%- set ns.batteries = ns.batteries + [{
                       'entity_id': entity.entity_id,
                       'name': friendly_name,
@@ -81,8 +81,8 @@ script:
                     {%- set level = entity.state | int -%}
                     {%- if 0 <= level <= threshold_to_use -%}
                       {%- if not entity.entity_id.startswith('sensor.device_health_') and not entity.entity_id.startswith('sensor.brief_') -%}
-                        {%- set device_name = entity.name or entity.entity_id -%}
-                        {%- set friendly_name = device_name.replace('_', ' ').title() -%}
+                        {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                        {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
                         {%- set ns.batteries = ns.batteries + [{
                           'entity_id': entity.entity_id,
                           'name': friendly_name,
@@ -100,14 +100,17 @@ script:
                 {%- set ns = namespace(devices=[]) -%}
                 {%- for entity in states if entity.state == 'unavailable' -%}
                   {%- if entity.domain in critical_domains -%}
-                    {%- set device_name = entity.name or entity.entity_id -%}
-                    {%- set friendly_name = device_name.replace('_', ' ').title() -%}
-                    {%- set ns.devices = ns.devices + [{
-                      'entity_id': entity.entity_id,
-                      'name': friendly_name,
-                      'domain': entity.domain,
-                      'device_id': entity.entity_id.split('.')[1]
-                    }] -%}
+                    {# Skip battery-related binary sensors, they're not really offline devices #}
+                    {%- if not ('low_battery' in entity.entity_id or 'battery_level' in entity.entity_id) -%}
+                      {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                      {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
+                      {%- set ns.devices = ns.devices + [{
+                        'entity_id': entity.entity_id,
+                        'name': friendly_name,
+                        'domain': entity.domain,
+                        'device_id': entity.entity_id.split('.')[1]
+                      }] -%}
+                    {%- endif -%}
                   {%- endif -%}
                 {%- endfor -%}
                 {{ ns.devices }}
