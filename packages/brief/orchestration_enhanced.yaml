@@ -180,7 +180,10 @@ script:
               - condition: template
                 value_template: "{{ air_quality_enabled }}"
             then:
-              - service: script.brief_collect_air_quality
+              - service: script.brief_collect_air_quality_safe
+                data:
+                  enabled: true
+                  timeout_seconds: "{{ collector_timeout }}"
               - service: script.brief_wait_for_mqtt_sensor
                 data:
                   sensor_name: "sensor.brief_data_air_quality"
