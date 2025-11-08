@@ -10,7 +10,7 @@ script:
     description: "Generates contextual status brief using modular data collection"
     sequence:
       # Build the contextual prompt using our modular system
-      - service: script.brief_build_prompt
+      - service: script.brief_build_prompt_safe
         response_variable: prompt_response
       
       # Get the built prompt from MQTT attributes
