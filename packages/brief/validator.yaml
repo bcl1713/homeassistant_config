@@ -114,14 +114,17 @@ automation:
         entity_id:
           - sensor.brief_config_entities
         attribute: conversation_agent
+        from: known
       - platform: state
         entity_id:
           - sensor.brief_config_entities
         attribute: weather
+        from: known
       - platform: state
         entity_id:
           - sensor.brief_config_entities
         attribute: notification_service
+        from: known
     action:
       - service: template.reload
 
