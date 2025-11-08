@@ -23,21 +23,6 @@
 template: !include brief/config_loader.yaml
 
 # =============================================================================
-# HEALTH MONITORING (Phase 1)
-# =============================================================================
-# Input booleans and sensors for tracking system health
-input_boolean:
-  brief_health_warning:
-    name: "Brief: Health Warning"
-    icon: mdi:alert-circle
-    initial: off
-
-  brief_validation_error:
-    name: "Brief: Validation Error"
-    icon: mdi:alert-octagon
-    initial: off
-
-# =============================================================================
 # VALIDATION SYSTEM (Phase 1)
 # =============================================================================
 automation: !include brief/validator.yaml
