@@ -152,7 +152,10 @@ script:
               - condition: template
                 value_template: "{{ calendar_enabled }}"
             then:
-              - service: script.brief_collect_calendar
+              - service: script.brief_collect_calendar_safe
+                data:
+                  enabled: true
+                  timeout_seconds: "{{ collector_timeout }}"
               - service: script.brief_wait_for_mqtt_sensor
                 data:
                   sensor_name: "sensor.brief_data_calendar"
