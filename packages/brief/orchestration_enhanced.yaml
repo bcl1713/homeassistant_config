@@ -13,29 +13,10 @@ script:
     mode: single
     variables:
       # Load configuration from config_loader (with null safety)
-      config_modules: >
-        {%- set raw = state_attr('sensor.brief_config_modules', None) -%}
-        {%- if raw is none -%}
-          {}
-        {%- elif raw is string -%}
-          {{ raw | from_json }}
-        {%- else -%}
-          {{ raw }}
-        {%- endif -%}
-      config_timeouts: >
-        {%- set raw = state_attr('sensor.brief_config_timeouts', None) -%}
-        {%- if raw is none -%}
-          {}
-        {%- elif raw is string -%}
-          {{ raw | from_json }}
-        {%- else -%}
-          {{ raw }}
-        {%- endif -%}
+      config_modules: "{{ state_attr('sensor.brief_config_modules', None) or {} }}"
+      config_timeouts: "{{ state_attr('sensor.brief_config_timeouts', None) or {} }}"
       collector_timeout: "{{ config_timeouts.get('collector_timeout', 15) }}"
       build_prompt_timeout: "{{ config_timeouts.get('build_prompt_timeout', 30) }}"
-
-      # DEBUG: Log raw config_modules for troubleshooting
-      debug_config_modules: "{{ config_modules }}"
 
       # Get enabled modules from config
       chores_enabled: "{{ config_modules.get('chores', true) }}"
@@ -63,7 +44,6 @@ script:
             {{
               {
                 "timestamp": now().isoformat(),
-                "debug_raw_config_modules": debug_config_modules,
                 "enabled_modules": {
                   "chores": chores_enabled,
                   "appliances": appliances_enabled,
