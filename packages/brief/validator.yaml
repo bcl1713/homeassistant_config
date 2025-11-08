@@ -66,11 +66,9 @@ automation:
       event: start
     action:
       - service: template.reload
-        description: "Ensure config and validation sensors are loaded"
 
       - delay:
           seconds: 2
-        description: "Wait for sensors to initialize"
 
       # Set validation flag based on status
       - if:
@@ -80,12 +78,10 @@ automation:
           - service: input_boolean.turn_on
             target:
               entity_id: input_boolean.brief_validation_passed
-            description: "All required entities exist"
         else:
           - service: input_boolean.turn_off
             target:
               entity_id: input_boolean.brief_validation_passed
-            description: "Some required entities are missing"
 
           # Create persistent notification with error details
           - service: persistent_notification.create
@@ -128,7 +124,6 @@ automation:
         attribute: notification_service
     action:
       - service: template.reload
-        description: "Reload validation sensors"
 
       - delay:
           seconds: 1

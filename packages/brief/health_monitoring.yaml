@@ -155,12 +155,10 @@ automation:
           - service: input_boolean.turn_on
             target:
               entity_id: input_boolean.brief_health_warning
-            description: "System validation failed"
         else:
           - service: input_boolean.turn_off
             target:
               entity_id: input_boolean.brief_health_warning
-            description: "System health is good"
 
   - alias: "Brief: Alert on Health Warning"
     description: "Notify if health check detects issues"
