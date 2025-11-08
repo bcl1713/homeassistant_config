@@ -123,29 +123,31 @@ script:
               # Build meal data from responses
               - variables:
                   today_meals_data: >
-                    {%- set meals = {} -%}
+                    {%- set breakfast_item = {} -%}
                     {%- if today_breakfast is defined and today_breakfast | length > 0 -%}
                       {%- for cal, events in today_breakfast.items() -%}
                         {%- if events.events -%}
-                          {%- set _ = meals.update({'breakfast': events.events[0].summary}) -%}
+                          {%- set breakfast_item = {'breakfast': events.events[0].summary} -%}
                         {%- endif -%}
                       {%- endfor -%}
                     {%- endif -%}
+                    {%- set lunch_item = {} -%}
                     {%- if today_lunch is defined and today_lunch | length > 0 -%}
                       {%- for cal, events in today_lunch.items() -%}
                         {%- if events.events -%}
-                          {%- set _ = meals.update({'lunch': events.events[0].summary}) -%}
+                          {%- set lunch_item = {'lunch': events.events[0].summary} -%}
                         {%- endif -%}
                       {%- endfor -%}
                     {%- endif -%}
+                    {%- set dinner_item = {} -%}
                     {%- if today_dinner is defined and today_dinner | length > 0 -%}
                       {%- for cal, events in today_dinner.items() -%}
                         {%- if events.events -%}
-                          {%- set _ = meals.update({'dinner': events.events[0].summary}) -%}
+                          {%- set dinner_item = {'dinner': events.events[0].summary} -%}
                         {%- endif -%}
                       {%- endfor -%}
                     {%- endif -%}
-                    {{ meals }}
+                    {{ breakfast_item | combine(lunch_item) | combine(dinner_item) }}
 
               # Get tomorrow's meals similarly
               - if:
@@ -189,29 +191,31 @@ script:
 
               - variables:
                   tomorrow_meals_data: >
-                    {%- set meals = {} -%}
+                    {%- set breakfast_item = {} -%}
                     {%- if tomorrow_breakfast is defined and tomorrow_breakfast | length > 0 -%}
                       {%- for cal, events in tomorrow_breakfast.items() -%}
                         {%- if events.events -%}
-                          {%- set _ = meals.update({'breakfast': events.events[0].summary}) -%}
+                          {%- set breakfast_item = {'breakfast': events.events[0].summary} -%}
                         {%- endif -%}
                       {%- endfor -%}
                     {%- endif -%}
+                    {%- set lunch_item = {} -%}
                     {%- if tomorrow_lunch is defined and tomorrow_lunch | length > 0 -%}
                       {%- for cal, events in tomorrow_lunch.items() -%}
                         {%- if events.events -%}
-                          {%- set _ = meals.update({'lunch': events.events[0].summary}) -%}
+                          {%- set lunch_item = {'lunch': events.events[0].summary} -%}
                         {%- endif -%}
                       {%- endfor -%}
                     {%- endif -%}
+                    {%- set dinner_item = {} -%}
                     {%- if tomorrow_dinner is defined and tomorrow_dinner | length > 0 -%}
                       {%- for cal, events in tomorrow_dinner.items() -%}
                         {%- if events.events -%}
-                          {%- set _ = meals.update({'dinner': events.events[0].summary}) -%}
+                          {%- set dinner_item = {'dinner': events.events[0].summary} -%}
                         {%- endif -%}
                       {%- endfor -%}
                     {%- endif -%}
-                    {{ meals }}
+                    {{ breakfast_item | combine(lunch_item) | combine(dinner_item) }}
 
               - variables:
                   meal_data:

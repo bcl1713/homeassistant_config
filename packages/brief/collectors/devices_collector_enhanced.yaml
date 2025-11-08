@@ -38,17 +38,16 @@ script:
       config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
       mqtt_topic: "{{ config_mqtt.get('devices', 'home/brief/data/devices') if config_mqtt else 'home/brief/data/devices' }}"
       fallback_payload: "Device status unavailable"
-      config_battery_threshold: "{{ battery_threshold }}"
 
       # Check if threshold sensor exists
       has_threshold_sensor: "{{ states('input_number.device_health_critical_threshold') not in ['unknown', 'unavailable'] }}"
 
-      # Use configured threshold or provided parameter
+      # Use configured threshold or default to 15
       threshold_to_use: >
         {%- if has_threshold_sensor -%}
-          {{ states('input_number.device_health_critical_threshold') | int(battery_threshold) }}
+          {{ states('input_number.device_health_critical_threshold') | int(15) }}
         {%- else -%}
-          {{ battery_threshold }}
+          {{ battery_threshold | default(15) }}
         {%- endif -%}
 
       # Domains to monitor for offline status
