@@ -1,2 +1,3 @@
 packages/brief.yaml
 packages/weather.yaml
+packages/brief

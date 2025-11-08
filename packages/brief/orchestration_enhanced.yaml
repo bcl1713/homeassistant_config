@@ -263,16 +263,16 @@ script:
           devices_data: >
             {%- if devices_enabled -%}
               {%- set has_issues = state_attr('sensor.brief_data_devices', 'has_issues') | default(false) -%}
-              {%- set battery_count = state_attr('sensor.brief_data_devices', 'battery_count') | default(0) -%}
-              {%- set offline_count = state_attr('sensor.brief_data_devices', 'offline_count') | default(0) -%}
               {%- set critical_batteries = state_attr('sensor.brief_data_devices', 'critical_batteries') | default([]) -%}
+              {%- set warning_batteries = state_attr('sensor.brief_data_devices', 'warning_batteries') | default([]) -%}
+              {%- set offline_count = state_attr('sensor.brief_data_devices', 'offline_count') | default(0) -%}
               {%- set offline_devices = state_attr('sensor.brief_data_devices', 'offline_devices') | default([]) -%}
               {%- if has_issues -%}
                 {{ {
                   'has_issues': has_issues,
-                  'battery_count': battery_count,
-                  'offline_count': offline_count,
                   'critical_batteries': critical_batteries,
+                  'warning_batteries': warning_batteries,
+                  'offline_count': offline_count,
                   'offline_devices': offline_devices
                 } | tojson }}
               {%- else -%}
@@ -433,15 +433,22 @@ script:
             {# Device issues (if enabled) #}
             {% if devices.get('has_issues', false) %}
               {% set ns.sections = ns.sections + ['Device issues:'] %}
-              {% if devices.get('battery_count', 0) > 0 %}
-                {% set battery_devices = devices.get('critical_batteries', []) %}
-                {% if battery_devices | length > 0 %}
-                  {% set battery_names = battery_devices | map(attribute='name') | list %}
-                  {% set ns.sections = ns.sections + ['- Low battery: ' + battery_names | join(', ')] %}
-                {% else %}
-                  {% set ns.sections = ns.sections + ['- ' + devices.battery_count|string + ' devices with low battery'] %}
-                {% endif %}
+
+              {# Critical batteries (most urgent) #}
+              {% set critical_devices = devices.get('critical_batteries', []) %}
+              {% if critical_devices | length > 0 %}
+                {% set battery_names = critical_devices | map(attribute='name') | list %}
+                {% set ns.sections = ns.sections + ['- Critical battery: ' + battery_names | join(', ')] %}
               {% endif %}
+
+              {# Warning batteries (monitor soon) #}
+              {% set warning_devices = devices.get('warning_batteries', []) %}
+              {% if warning_devices | length > 0 %}
+                {% set battery_names = warning_devices | map(attribute='name') | list %}
+                {% set ns.sections = ns.sections + ['- Low battery: ' + battery_names | join(', ')] %}
+              {% endif %}
+
+              {# Offline devices #}
               {% if devices.get('offline_count', 0) > 0 %}
                 {% set offline_devices = devices.get('offline_devices', []) %}
                 {% if offline_devices | length > 0 %}
@@ -451,6 +458,7 @@ script:
                   {% set ns.sections = ns.sections + ['- ' + devices.offline_count|string + ' critical devices offline'] %}
                 {% endif %}
               {% endif %}
+
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 

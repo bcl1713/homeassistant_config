@@ -42,12 +42,20 @@ script:
       # Check if threshold sensor exists
       has_threshold_sensor: "{{ states('input_number.device_health_critical_threshold') not in ['unknown', 'unavailable'] }}"
 
-      # Use configured threshold or default to 15
-      threshold_to_use: >
+      # Use configured thresholds or defaults
+      critical_threshold: >
         {%- if has_threshold_sensor -%}
           {{ states('input_number.device_health_critical_threshold') | int(15) }}
         {%- else -%}
           {{ battery_threshold | default(15) }}
+        {%- endif -%}
+
+      warning_threshold: >
+        {%- set warning_sensor = states('input_number.device_health_warning_threshold') -%}
+        {%- if warning_sensor not in ['unknown', 'unavailable'] -%}
+          {{ warning_sensor | int(30) }}
+        {%- else -%}
+          30
         {%- endif -%}
 
       # Domains to monitor for offline status
@@ -61,12 +69,12 @@ script:
         then:
           # Module is enabled, proceed with collection
           - variables:
-              # Find all devices with low battery
+              # Find all devices with critical battery (at or below critical threshold)
               critical_batteries: >
                 {%- set ns = namespace(batteries=[]) -%}
                 {%- for entity in states if entity.attributes.battery_level is defined -%}
                   {%- set level = entity.attributes.battery_level | float(-1) | int -%}
-                  {%- if level >= 0 and level <= threshold_to_use -%}
+                  {%- if level >= 0 and level <= critical_threshold -%}
                     {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
                     {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
                     {%- set ns.batteries = ns.batteries + [{
@@ -80,7 +88,42 @@ script:
                 {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
                   {%- if entity.state | string | regex_match('^[0-9.]+$') -%}
                     {%- set level = entity.state | int -%}
-                    {%- if 0 <= level <= threshold_to_use -%}
+                    {%- if 0 <= level <= critical_threshold -%}
+                      {%- if not entity.entity_id.startswith('sensor.device_health_') and not entity.entity_id.startswith('sensor.brief_') -%}
+                        {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                        {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
+                        {%- set ns.batteries = ns.batteries + [{
+                          'entity_id': entity.entity_id,
+                          'name': friendly_name,
+                          'level': level,
+                          'device_id': entity.entity_id.split('.')[1]
+                        }] -%}
+                      {%- endif -%}
+                    {%- endif -%}
+                  {%- endif -%}
+                {%- endfor -%}
+                {{ ns.batteries }}
+
+              # Find all devices with warning battery (above critical but at or below warning threshold)
+              warning_batteries: >
+                {%- set ns = namespace(batteries=[]) -%}
+                {%- for entity in states if entity.attributes.battery_level is defined -%}
+                  {%- set level = entity.attributes.battery_level | float(-1) | int -%}
+                  {%- if level > critical_threshold and level <= warning_threshold -%}
+                    {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                    {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
+                    {%- set ns.batteries = ns.batteries + [{
+                      'entity_id': entity.entity_id,
+                      'name': friendly_name,
+                      'level': level,
+                      'device_id': entity.entity_id.split('.')[1]
+                    }] -%}
+                  {%- endif -%}
+                {%- endfor -%}
+                {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+                  {%- if entity.state | string | regex_match('^[0-9.]+$') -%}
+                    {%- set level = entity.state | int -%}
+                    {%- if level > critical_threshold and level <= warning_threshold -%}
                       {%- if not entity.entity_id.startswith('sensor.device_health_') and not entity.entity_id.startswith('sensor.brief_') -%}
                         {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
                         {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
@@ -120,11 +163,14 @@ script:
           - variables:
               device_data:
                 critical_batteries: "{{ critical_batteries }}"
+                warning_batteries: "{{ warning_batteries }}"
                 offline_devices: "{{ offline_devices }}"
-                has_issues: "{{ (critical_batteries | length) + (offline_devices | length) > 0 }}"
-                battery_count: "{{ critical_batteries | length }}"
+                has_issues: "{{ (critical_batteries | length) + (warning_batteries | length) + (offline_devices | length) > 0 }}"
+                critical_battery_count: "{{ critical_batteries | length }}"
+                warning_battery_count: "{{ warning_batteries | length }}"
                 offline_count: "{{ offline_devices | length }}"
-                battery_threshold: "{{ threshold_to_use }}"
+                critical_threshold: "{{ critical_threshold }}"
+                warning_threshold: "{{ warning_threshold }}"
                 threshold_source: >
                   {%- if has_threshold_sensor -%}
                     input_number.device_health_critical_threshold

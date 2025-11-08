@@ -15,7 +15,7 @@ homeassistant:
   customize:
     package.node_anchors:
       critical_battery_threshold: &critical_threshold 15
-      warning_battery_threshold: &warning_threshold 25
+      warning_battery_threshold: &warning_threshold 30
       low_battery_threshold: &low_threshold 5
 
 input_boolean:
