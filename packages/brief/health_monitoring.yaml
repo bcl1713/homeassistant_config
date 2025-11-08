@@ -21,7 +21,7 @@ template:
       - name: "Brief: Execution Status"
         unique_id: brief_execution_status
         state: "idle"
-        icon: "{{ 'mdi:check-circle' if states('sensor.brief_execution_status') == 'ready' else 'mdi:alert-circle' }}"
+        icon: "mdi:check-circle"
         attributes:
           last_update: "{{ now().isoformat() }}"
 
