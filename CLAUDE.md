@@ -76,6 +76,7 @@ source .env && curl -s "http://$HAOS_IP:8123/api/states" \
 - Do NOT use shell `>&1` or pipes within a single curl command in bash scripts
 - Quotes must be properly escaped for shell variable expansion
 - Multi-line JSON should be on one line with escaped quotes
+- **Do NOT use `jq` for output parsing** - curl returns plain JSON that's readable as-is. Just use curl without pipes.
 
 **EXAMPLE - Correct:**
 ```bash
