@@ -110,21 +110,10 @@ automation:
   - alias: "Brief: Revalidate When Config Changes"
     description: "Re-check entities when configuration changes"
     trigger:
-      - platform: state
-        entity_id:
-          - sensor.brief_config_entities
-        attribute: conversation_agent
-        from: known
-      - platform: state
-        entity_id:
-          - sensor.brief_config_entities
-        attribute: weather
-        from: known
-      - platform: state
-        entity_id:
-          - sensor.brief_config_entities
-        attribute: notification_service
-        from: known
+      - platform: template
+        value_template: >
+          {% set sensor = states('sensor.brief_config_entities') %}
+          {{ sensor not in ['unknown', 'unavailable', 'unknown'] }}
     action:
       - service: template.reload
 
