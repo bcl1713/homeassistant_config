@@ -51,7 +51,8 @@ script:
         {%- endif -%}
 
       # Domains to monitor for offline status
-      critical_domains: ['camera', 'alarm_control_panel', 'lock', 'binary_sensor']
+      # Note: Excluding 'binary_sensor' as most battery-related sensors shouldn't be in "offline" list
+      critical_domains: ['camera', 'alarm_control_panel', 'lock']
 
     sequence:
       - if:
