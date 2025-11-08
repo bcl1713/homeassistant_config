@@ -180,7 +180,12 @@ script:
       - variables:
           # Read all collected MQTT data
           chores_data: >
-            {%- set data = state_attr('sensor.brief_data_chores', None) | default({}) -%}
+            {%- set raw_data = state_attr('sensor.brief_data_chores', None) | default({}) -%}
+            {%- if raw_data is string -%}
+              {%- set data = raw_data | from_json -%}
+            {%- else -%}
+              {%- set data = raw_data -%}
+            {%- endif -%}
             {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
               {{ data }}
             {%- else -%}
@@ -225,7 +230,12 @@ script:
 
           devices_data: >
             {%- if devices_enabled -%}
-              {%- set data = state_attr('sensor.brief_data_devices', None) | default({}) -%}
+              {%- set raw_data = state_attr('sensor.brief_data_devices', None) | default({}) -%}
+              {%- if raw_data is string -%}
+                {%- set data = raw_data | from_json -%}
+              {%- else -%}
+                {%- set data = raw_data -%}
+              {%- endif -%}
               {%- if data.get('validation_status') == 'success' -%}
                 {{ data }}
               {%- else -%}
