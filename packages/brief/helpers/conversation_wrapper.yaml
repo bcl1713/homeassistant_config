@@ -52,10 +52,21 @@ script:
         check the weather forecast, and let me know if you need more details about your schedule.
       max_attempts: "{{ max_retries + 1 }}"
     sequence:
+      # Initialize tracking variables
+      - variables:
+          response_found: false
+
       # Try to call conversation API with retries
       - repeat:
           count: "{{ max_attempts }}"
           sequence:
+            # Exit early if we already got a response
+            - if:
+                - condition: template
+                  value_template: "{{ response_found }}"
+              then:
+                - stop: "Response already obtained"
+
             - variables:
                 current_attempt: "{{ repeat.index }}"
 
@@ -84,8 +95,7 @@ script:
                     succeeded: true
                     used_fallback: false
                     final_attempts: "{{ repeat.index }}"
-                - repeat:
-                    break
+                    response_found: true
               else:
                 # Check if this is the last attempt
                 - if:
@@ -95,7 +105,7 @@ script:
                     # Not the last attempt, wait before retry with exponential backoff
                     - delay:
                         milliseconds: "{{ (1000 * (2 ** (repeat.index - 1))) | int }}"
-                      description: "Exponential backoff: wait {{ 2 ** (repeat.index - 1) }} seconds"
+                      description: "Exponential backoff before retry"
                   else:
                     # Last attempt failed, use fallback
                     - variables:
