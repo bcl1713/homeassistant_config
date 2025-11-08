@@ -25,11 +25,8 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader (safe with fallbacks)
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
-      config_enabled: "{{ config_modules.get('meals', true) if config_modules else true }}"
-      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
-      mqtt_topic: "{{ config_mqtt.get('meals', 'home/brief/data/meals') if config_mqtt else 'home/brief/data/meals' }}"
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/meals"
       fallback_payload: "No meal plan available"
 
       # Check if meal calendars exist
@@ -68,220 +65,200 @@ script:
       has_any_calendar: "{{ has_breakfast_calendar or has_lunch_calendar or has_dinner_calendar }}"
 
     sequence:
+      # Collect meals data - always runs when called by orchestration
       - if:
           - condition: template
-            value_template: "{{ config_enabled }}"
+            value_template: "{{ has_any_calendar }}"
         then:
-          # Module is enabled, proceed with collection
+          # At least one calendar available - try to collect meals
           - if:
               - condition: template
-                value_template: "{{ has_any_calendar }}"
+                value_template: "{{ has_breakfast_calendar }}"
             then:
-              # At least one calendar available - try to collect meals
-              - if:
-                  - condition: template
-                    value_template: "{{ has_breakfast_calendar }}"
-                then:
-                  # Try to get today's breakfast
-                  - service: calendar.get_events
-                    data:
-                      start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
-                      end_date_time: "{{ now().replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
-                    target:
-                      entity_id: calendar.mealie_breakfast
-                    response_variable: today_breakfast
-                    continue_on_error: true
-
-              - if:
-                  - condition: template
-                    value_template: "{{ has_lunch_calendar }}"
-                then:
-                  # Try to get today's lunch
-                  - service: calendar.get_events
-                    data:
-                      start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
-                      end_date_time: "{{ now().replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
-                    target:
-                      entity_id: calendar.mealie_lunch
-                    response_variable: today_lunch
-                    continue_on_error: true
-
-              - if:
-                  - condition: template
-                    value_template: "{{ has_dinner_calendar }}"
-                then:
-                  # Try to get today's dinner
-                  - service: calendar.get_events
-                    data:
-                      start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
-                      end_date_time: "{{ now().replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
-                    target:
-                      entity_id: calendar.mealie_dinner
-                    response_variable: today_dinner
-                    continue_on_error: true
-
-              # Build meal data from responses
-              - variables:
-                  today_meals_data: >
-                    {%- set breakfast_item = {} -%}
-                    {%- if today_breakfast is defined and today_breakfast | length > 0 -%}
-                      {%- for cal, events in today_breakfast.items() -%}
-                        {%- if events.events -%}
-                          {%- set breakfast_item = {'breakfast': events.events[0].summary} -%}
-                        {%- endif -%}
-                      {%- endfor -%}
-                    {%- endif -%}
-                    {%- set lunch_item = {} -%}
-                    {%- if today_lunch is defined and today_lunch | length > 0 -%}
-                      {%- for cal, events in today_lunch.items() -%}
-                        {%- if events.events -%}
-                          {%- set lunch_item = {'lunch': events.events[0].summary} -%}
-                        {%- endif -%}
-                      {%- endfor -%}
-                    {%- endif -%}
-                    {%- set dinner_item = {} -%}
-                    {%- if today_dinner is defined and today_dinner | length > 0 -%}
-                      {%- for cal, events in today_dinner.items() -%}
-                        {%- if events.events -%}
-                          {%- set dinner_item = {'dinner': events.events[0].summary} -%}
-                        {%- endif -%}
-                      {%- endfor -%}
-                    {%- endif -%}
-                    {{ breakfast_item | combine(lunch_item) | combine(dinner_item) }}
-
-              # Get tomorrow's meals similarly
-              - if:
-                  - condition: template
-                    value_template: "{{ has_breakfast_calendar }}"
-                then:
-                  - service: calendar.get_events
-                    data:
-                      start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
-                      end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
-                    target:
-                      entity_id: calendar.mealie_breakfast
-                    response_variable: tomorrow_breakfast
-                    continue_on_error: true
-
-              - if:
-                  - condition: template
-                    value_template: "{{ has_lunch_calendar }}"
-                then:
-                  - service: calendar.get_events
-                    data:
-                      start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
-                      end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
-                    target:
-                      entity_id: calendar.mealie_lunch
-                    response_variable: tomorrow_lunch
-                    continue_on_error: true
-
-              - if:
-                  - condition: template
-                    value_template: "{{ has_dinner_calendar }}"
-                then:
-                  - service: calendar.get_events
-                    data:
-                      start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
-                      end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
-                    target:
-                      entity_id: calendar.mealie_dinner
-                    response_variable: tomorrow_dinner
-                    continue_on_error: true
-
-              - variables:
-                  tomorrow_meals_data: >
-                    {%- set breakfast_item = {} -%}
-                    {%- if tomorrow_breakfast is defined and tomorrow_breakfast | length > 0 -%}
-                      {%- for cal, events in tomorrow_breakfast.items() -%}
-                        {%- if events.events -%}
-                          {%- set breakfast_item = {'breakfast': events.events[0].summary} -%}
-                        {%- endif -%}
-                      {%- endfor -%}
-                    {%- endif -%}
-                    {%- set lunch_item = {} -%}
-                    {%- if tomorrow_lunch is defined and tomorrow_lunch | length > 0 -%}
-                      {%- for cal, events in tomorrow_lunch.items() -%}
-                        {%- if events.events -%}
-                          {%- set lunch_item = {'lunch': events.events[0].summary} -%}
-                        {%- endif -%}
-                      {%- endfor -%}
-                    {%- endif -%}
-                    {%- set dinner_item = {} -%}
-                    {%- if tomorrow_dinner is defined and tomorrow_dinner | length > 0 -%}
-                      {%- for cal, events in tomorrow_dinner.items() -%}
-                        {%- if events.events -%}
-                          {%- set dinner_item = {'dinner': events.events[0].summary} -%}
-                        {%- endif -%}
-                      {%- endfor -%}
-                    {%- endif -%}
-                    {{ breakfast_item | combine(lunch_item) | combine(dinner_item) }}
-
-              - variables:
-                  meal_data:
-                    today: "{{ today_meals_data }}"
-                    tomorrow: "{{ tomorrow_meals_data }}"
-                    has_today: "{{ today_meals_data | length > 0 }}"
-                    has_tomorrow: "{{ tomorrow_meals_data | length > 0 }}"
-                    available_calendars: "{{ available_calendars }}"
-                    missing_calendars: "{{ missing_calendars }}"
-                    validation_status: >
-                      {%- if missing_calendars | length > 0 -%}
-                        partial
-                      {%- else -%}
-                        success
-                      {%- endif -%}
-
-              - service: mqtt.publish
+              # Try to get today's breakfast
+              - service: calendar.get_events
                 data:
-                  topic: "{{ mqtt_topic }}"
-                  payload: "{{ meal_data | tojson }}"
+                  start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+                  end_date_time: "{{ now().replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+                target:
+                  entity_id: calendar.mealie_breakfast
+                response_variable: today_breakfast
+                continue_on_error: true
 
-            else:
-              # No calendars available - publish error
-              - variables:
-                  meal_data:
-                    today: {}
-                    tomorrow: {}
-                    has_today: false
-                    has_tomorrow: false
-                    available_calendars: []
-                    missing_calendars: "{{ missing_calendars }}"
-                    validation_status: "failed"
-                    error_message: "No meal calendars available"
-                    fallback_message: "{{ fallback_payload }}"
-
-              - service: mqtt.publish
+          - if:
+              - condition: template
+                value_template: "{{ has_lunch_calendar }}"
+            then:
+              # Try to get today's lunch
+              - service: calendar.get_events
                 data:
-                  topic: "{{ mqtt_topic }}"
-                  payload: "{{ meal_data | tojson }}"
+                  start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+                  end_date_time: "{{ now().replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+                target:
+                  entity_id: calendar.mealie_lunch
+                response_variable: today_lunch
+                continue_on_error: true
 
-              # Log validation error
-              - service: mqtt.publish
+          - if:
+              - condition: template
+                value_template: "{{ has_dinner_calendar }}"
+            then:
+              # Try to get today's dinner
+              - service: calendar.get_events
                 data:
-                  topic: "home/brief/validation/meals"
-                  payload: >
-                    {{
-                      {
-                        "timestamp": now().isoformat(),
-                        "status": "validation_error",
-                        "missing_calendars": missing_calendars,
-                        "help": "Add Mealie integration calendar entities"
-                      } | tojson
-                    }}
+                  start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+                  end_date_time: "{{ now().replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+                target:
+                  entity_id: calendar.mealie_dinner
+                response_variable: today_dinner
+                continue_on_error: true
+
+          # Build meal data from responses
+          - variables:
+              today_meals_data: >
+                {%- set breakfast_item = {} -%}
+                {%- if today_breakfast is defined and today_breakfast | length > 0 -%}
+                  {%- for cal, events in today_breakfast.items() -%}
+                    {%- if events.events -%}
+                      {%- set breakfast_item = {'breakfast': events.events[0].summary} -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+                {%- set lunch_item = {} -%}
+                {%- if today_lunch is defined and today_lunch | length > 0 -%}
+                  {%- for cal, events in today_lunch.items() -%}
+                    {%- if events.events -%}
+                      {%- set lunch_item = {'lunch': events.events[0].summary} -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+                {%- set dinner_item = {} -%}
+                {%- if today_dinner is defined and today_dinner | length > 0 -%}
+                  {%- for cal, events in today_dinner.items() -%}
+                    {%- if events.events -%}
+                      {%- set dinner_item = {'dinner': events.events[0].summary} -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+                {{ breakfast_item | combine(lunch_item) | combine(dinner_item) }}
+
+          # Get tomorrow's meals similarly
+          - if:
+              - condition: template
+                value_template: "{{ has_breakfast_calendar }}"
+            then:
+              - service: calendar.get_events
+                data:
+                  start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+                  end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+                target:
+                  entity_id: calendar.mealie_breakfast
+                response_variable: tomorrow_breakfast
+                continue_on_error: true
+
+          - if:
+              - condition: template
+                value_template: "{{ has_lunch_calendar }}"
+            then:
+              - service: calendar.get_events
+                data:
+                  start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+                  end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+                target:
+                  entity_id: calendar.mealie_lunch
+                response_variable: tomorrow_lunch
+                continue_on_error: true
+
+          - if:
+              - condition: template
+                value_template: "{{ has_dinner_calendar }}"
+            then:
+              - service: calendar.get_events
+                data:
+                  start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+                  end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+                target:
+                  entity_id: calendar.mealie_dinner
+                response_variable: tomorrow_dinner
+                continue_on_error: true
+
+          - variables:
+              tomorrow_meals_data: >
+                {%- set breakfast_item = {} -%}
+                {%- if tomorrow_breakfast is defined and tomorrow_breakfast | length > 0 -%}
+                  {%- for cal, events in tomorrow_breakfast.items() -%}
+                    {%- if events.events -%}
+                      {%- set breakfast_item = {'breakfast': events.events[0].summary} -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+                {%- set lunch_item = {} -%}
+                {%- if tomorrow_lunch is defined and tomorrow_lunch | length > 0 -%}
+                  {%- for cal, events in tomorrow_lunch.items() -%}
+                    {%- if events.events -%}
+                      {%- set lunch_item = {'lunch': events.events[0].summary} -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+                {%- set dinner_item = {} -%}
+                {%- if tomorrow_dinner is defined and tomorrow_dinner | length > 0 -%}
+                  {%- for cal, events in tomorrow_dinner.items() -%}
+                    {%- if events.events -%}
+                      {%- set dinner_item = {'dinner': events.events[0].summary} -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+                {{ breakfast_item | combine(lunch_item) | combine(dinner_item) }}
+
+          - variables:
+              meal_data:
+                today: "{{ today_meals_data }}"
+                tomorrow: "{{ tomorrow_meals_data }}"
+                has_today: "{{ today_meals_data | length > 0 }}"
+                has_tomorrow: "{{ tomorrow_meals_data | length > 0 }}"
+                available_calendars: "{{ available_calendars }}"
+                missing_calendars: "{{ missing_calendars }}"
+                validation_status: >
+                  {%- if missing_calendars | length > 0 -%}
+                    partial
+                  {%- else -%}
+                    success
+                  {%- endif -%}
+
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: "{{ meal_data | tojson }}"
 
         else:
-          # Module is disabled - publish empty data
+          # No calendars available - publish error
           - variables:
               meal_data:
                 today: {}
                 tomorrow: {}
                 has_today: false
                 has_tomorrow: false
-                validation_status: "disabled"
-                disabled_by_config: true
+                available_calendars: []
+                missing_calendars: "{{ missing_calendars }}"
+                validation_status: "failed"
+                error_message: "No meal calendars available"
+                fallback_message: "{{ fallback_payload }}"
 
           - service: mqtt.publish
             data:
               topic: "{{ mqtt_topic }}"
               payload: "{{ meal_data | tojson }}"
+
+          # Log validation error
+          - service: mqtt.publish
+            data:
+              topic: "home/brief/validation/meals"
+              payload: >
+                {{
+                  {
+                    "timestamp": now().isoformat(),
+                    "status": "validation_error",
+                    "missing_calendars": missing_calendars,
+                    "help": "Add Mealie integration calendar entities"
+                  } | tojson
+                }}

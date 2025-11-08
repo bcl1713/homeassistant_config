@@ -26,11 +26,8 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader (safe with fallbacks)
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
-      config_enabled: "{{ config_modules.get('calendar', true) if config_modules else true }}"
-      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
-      mqtt_topic: "{{ config_mqtt.get('calendar', 'home/brief/data/calendar') if config_mqtt else 'home/brief/data/calendar' }}"
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/calendar"
       fallback_payload: "No events scheduled"
 
       # Label ID for filtering (configured in your HA instance)

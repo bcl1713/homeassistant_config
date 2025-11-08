@@ -25,11 +25,8 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader (safe with fallbacks)
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
-      config_enabled: "{{ config_modules.get('air_quality', true) if config_modules else true }}"
-      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
-      mqtt_topic: "{{ config_mqtt.get('air_quality', 'home/brief/data/air_quality') if config_mqtt else 'home/brief/data/air_quality' }}"
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/air_quality"
       fallback_payload: "Air quality data unavailable"
 
       # Check if required air quality sensors exist

@@ -26,11 +26,8 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader (safe with fallbacks)
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
-      config_enabled: "{{ config_modules.get('chores', false) if config_modules else false }}"
-      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
-      mqtt_topic: "{{ config_mqtt.get('chores', 'home/brief/data/chores') if config_mqtt else 'home/brief/data/chores' }}"
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/chores"
       fallback_payload: "No chores assigned"
 
       # Check if required entities exist
@@ -70,90 +67,73 @@ script:
         {%- endif -%}
         {{ missing }}
     sequence:
-      # Log validation check
+      # Collect chores data - always runs when called by orchestration
       - if:
           - condition: template
-            value_template: "{{ config_enabled }}"
+            value_template: "{{ all_required_present }}"
         then:
-          # Module is enabled, proceed with collection
-          - if:
-              - condition: template
-                value_template: "{{ all_required_present }}"
-            then:
-              # All required entities present - collect normally
-              - variables:
-                  is_weekend: "{{ is_state('binary_sensor.time_is_weekend', 'on') }}"
-                  dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') }}"
-                  dishwasher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
-                  bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
-                  bathroom_completed: "{{ is_state('input_boolean.chore_bathroom_completed', 'on') }}"
+          # All required entities present - collect normally
+          - variables:
+              is_weekend: "{{ is_state('binary_sensor.time_is_weekend', 'on') }}"
+              dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') }}"
+              dishwasher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
+              bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
+              bathroom_completed: "{{ is_state('input_boolean.chore_bathroom_completed', 'on') }}"
 
-              - variables:
-                  chores_data:
-                    daily:
-                      dishwasher:
-                        assignee: "{{ dishwasher_assignee }}"
-                        completed: "{{ dishwasher_completed }}"
-                        relevant: true
-                    weekend:
-                      bathroom:
-                        assignee: "{{ bathroom_assignee }}"
-                        completed: "{{ bathroom_completed }}"
-                        relevant: "{{ is_weekend }}"
-                    validation_status: "success"
-                    missing_entities: []
-
-              - service: mqtt.publish
-                data:
-                  topic: "{{ mqtt_topic }}"
-                  payload: "{{ chores_data | tojson }}"
-
-            else:
-              # Some required entities missing - publish error state with fallback
-              - variables:
-                  chores_data:
-                    validation_status: "partial"
-                    error_message: "Missing entities: {{ missing_entities | join(', ') }}"
-                    missing_entities: "{{ missing_entities }}"
-                    fallback_message: "{{ fallback_payload }}"
-                    daily:
-                      dishwasher:
-                        assignee: "unknown"
-                        completed: false
-                        relevant: true
-                    weekend:
-                      bathroom:
-                        assignee: "unknown"
-                        completed: false
-                        relevant: false
-
-              - service: mqtt.publish
-                data:
-                  topic: "{{ mqtt_topic }}"
-                  payload: "{{ chores_data | tojson }}"
-
-              # Log validation error to health sensors
-              - service: mqtt.publish
-                data:
-                  topic: "home/brief/validation/chores"
-                  payload: >
-                    {{
-                      {
-                        "timestamp": now().isoformat(),
-                        "status": "validation_error",
-                        "missing_entities": missing_entities,
-                        "help": "Check entity IDs in Developer Tools > States"
-                      } | tojson
-                    }}
-
-        else:
-          # Module is disabled - publish empty data
           - variables:
               chores_data:
-                validation_status: "disabled"
-                disabled_by_config: true
+                daily:
+                  dishwasher:
+                    assignee: "{{ dishwasher_assignee }}"
+                    completed: "{{ dishwasher_completed }}"
+                    relevant: true
+                weekend:
+                  bathroom:
+                    assignee: "{{ bathroom_assignee }}"
+                    completed: "{{ bathroom_completed }}"
+                    relevant: "{{ is_weekend }}"
+                validation_status: "success"
+                missing_entities: []
 
           - service: mqtt.publish
             data:
               topic: "{{ mqtt_topic }}"
               payload: "{{ chores_data | tojson }}"
+
+        else:
+          # Some required entities missing - publish error state with fallback
+          - variables:
+              chores_data:
+                validation_status: "partial"
+                error_message: "Missing entities: {{ missing_entities | join(', ') }}"
+                missing_entities: "{{ missing_entities }}"
+                fallback_message: "{{ fallback_payload }}"
+                daily:
+                  dishwasher:
+                    assignee: "unknown"
+                    completed: false
+                    relevant: true
+                weekend:
+                  bathroom:
+                    assignee: "unknown"
+                    completed: false
+                    relevant: false
+
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: "{{ chores_data | tojson }}"
+
+          # Log validation error to health sensors
+          - service: mqtt.publish
+            data:
+              topic: "home/brief/validation/chores"
+              payload: >
+                {{
+                  {
+                    "timestamp": now().isoformat(),
+                    "status": "validation_error",
+                    "missing_entities": missing_entities,
+                    "help": "Check entity IDs in Developer Tools > States"
+                  } | tojson
+                }}

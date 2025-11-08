@@ -25,11 +25,8 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader (safe with fallbacks)
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
-      config_enabled: "{{ config_modules.get('commute', true) if config_modules else true }}"
-      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
-      mqtt_topic: "{{ config_mqtt.get('commute', 'home/brief/data/commute') if config_mqtt else 'home/brief/data/commute' }}"
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/commute"
       fallback_payload: "Travel times unavailable"
 
       # Time context
@@ -66,116 +63,99 @@ script:
       has_data_when_relevant: "{{ is_relevant and (has_brian_time or has_hester_time) }}"
 
     sequence:
+      # Collect commute data - always runs when called by orchestration
       - if:
           - condition: template
-            value_template: "{{ config_enabled }}"
+            value_template: "{{ is_relevant }}"
         then:
-          # Module is enabled, proceed with collection
+          # It's a weekday morning - collect commute data
           - if:
               - condition: template
-                value_template: "{{ is_relevant }}"
+                value_template: "{{ has_brian_time or has_hester_time }}"
             then:
-              # It's a weekday morning - collect commute data
-              - if:
-                  - condition: template
-                    value_template: "{{ has_brian_time or has_hester_time }}"
-                then:
-                  # At least one travel time sensor available - collect what we have
-                  - variables:
-                      brian_time: >
-                        {%- if has_brian_time -%}
-                          {{ states('sensor.travel_time_to_brian_s_work') }}
-                        {%- else -%}
-                          N/A
-                        {%- endif -%}
-                      hester_time: >
-                        {%- if has_hester_time -%}
-                          {{ states('sensor.travel_time_to_hester_s_work') }}
-                        {%- else -%}
-                          N/A
-                        {%- endif -%}
+              # At least one travel time sensor available - collect what we have
+              - variables:
+                  brian_time: >
+                    {%- if has_brian_time -%}
+                      {{ states('sensor.travel_time_to_brian_s_work') }}
+                    {%- else -%}
+                      N/A
+                    {%- endif -%}
+                  hester_time: >
+                    {%- if has_hester_time -%}
+                      {{ states('sensor.travel_time_to_hester_s_work') }}
+                    {%- else -%}
+                      N/A
+                    {%- endif -%}
 
-                  - variables:
-                      commute_data:
-                        relevant: true
-                        time_context: "weekday_morning"
-                        brian_time: "{{ brian_time }}"
-                        hester_time: "{{ hester_time }}"
-                        available_sensors: "{{ available_entities }}"
-                        missing_sensors: "{{ missing_entities }}"
-                        validation_status: >
-                          {%- if missing_entities | length > 0 -%}
-                            partial
-                          {%- else -%}
-                            success
-                          {%- endif -%}
-
-                  - service: mqtt.publish
-                    data:
-                      topic: "{{ mqtt_topic }}"
-                      payload: "{{ commute_data | tojson }}"
-
-                else:
-                  # No travel time sensors available - publish error
-                  - variables:
-                      commute_data:
-                        relevant: true
-                        time_context: "weekday_morning"
-                        brian_time: "N/A"
-                        hester_time: "N/A"
-                        available_sensors: []
-                        missing_sensors: "{{ missing_entities }}"
-                        validation_status: "failed"
-                        error_message: "No travel time sensors available"
-                        fallback_message: "{{ fallback_payload }}"
-
-                  - service: mqtt.publish
-                    data:
-                      topic: "{{ mqtt_topic }}"
-                      payload: "{{ commute_data | tojson }}"
-
-                  # Log validation error
-                  - service: mqtt.publish
-                    data:
-                      topic: "home/brief/validation/commute"
-                      payload: >
-                        {{
-                          {
-                            "timestamp": now().isoformat(),
-                            "status": "validation_error",
-                            "missing_entities": missing_entities,
-                            "help": "Add travel time sensors in Waze integration"
-                          } | tojson
-                        }}
-
-            else:
-              # Not a weekday morning - collect but mark as not relevant
               - variables:
                   commute_data:
-                    relevant: false
-                    time_context: >
-                      {%- if now().weekday() >= 5 -%}
-                        weekend
+                    relevant: true
+                    time_context: "weekday_morning"
+                    brian_time: "{{ brian_time }}"
+                    hester_time: "{{ hester_time }}"
+                    available_sensors: "{{ available_entities }}"
+                    missing_sensors: "{{ missing_entities }}"
+                    validation_status: >
+                      {%- if missing_entities | length > 0 -%}
+                        partial
                       {%- else -%}
-                        evening
+                        success
                       {%- endif -%}
-                    brian_time: "N/A"
-                    hester_time: "N/A"
-                    reason: "Commute not relevant at this time"
-                    validation_status: "success"
 
               - service: mqtt.publish
                 data:
                   topic: "{{ mqtt_topic }}"
                   payload: "{{ commute_data | tojson }}"
 
+            else:
+              # No travel time sensors available - publish error
+              - variables:
+                  commute_data:
+                    relevant: true
+                    time_context: "weekday_morning"
+                    brian_time: "N/A"
+                    hester_time: "N/A"
+                    available_sensors: []
+                    missing_sensors: "{{ missing_entities }}"
+                    validation_status: "failed"
+                    error_message: "No travel time sensors available"
+                    fallback_message: "{{ fallback_payload }}"
+
+              - service: mqtt.publish
+                data:
+                  topic: "{{ mqtt_topic }}"
+                  payload: "{{ commute_data | tojson }}"
+
+              # Log validation error
+              - service: mqtt.publish
+                data:
+                  topic: "home/brief/validation/commute"
+                  payload: >
+                    {{
+                      {
+                        "timestamp": now().isoformat(),
+                        "status": "validation_error",
+                        "missing_entities": missing_entities,
+                        "help": "Add travel time sensors in Waze integration"
+                      } | tojson
+                    }}
+
         else:
-          # Module is disabled - publish empty data
+          # Not a weekday morning - collect but mark as not relevant
           - variables:
               commute_data:
                 relevant: false
-                validation_status: "disabled"
-                disabled_by_config: true
+                time_context: >
+                  {%- if now().weekday() >= 5 -%}
+                    weekend
+                  {%- else -%}
+                    evening
+                  {%- endif -%}
+                brian_time: "N/A"
+                hester_time: "N/A"
+                reason: "Commute not relevant at this time"
+                validation_status: "success"
 
           - service: mqtt.publish
             data:

@@ -26,11 +26,8 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader (safe with fallbacks)
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
-      config_enabled: "{{ config_modules.get('garbage', true) if config_modules else true }}"
-      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
-      mqtt_topic: "{{ config_mqtt.get('garbage', 'home/brief/data/garbage') if config_mqtt else 'home/brief/data/garbage' }}"
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/garbage"
       fallback_payload: "Garbage schedule unavailable"
 
       # Label ID for filtering garbage/trash calendar events

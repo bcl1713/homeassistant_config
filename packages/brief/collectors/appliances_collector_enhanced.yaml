@@ -25,11 +25,8 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader (safe with fallbacks)
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
-      config_enabled: "{{ config_modules.get('appliances', false) if config_modules else false }}"
-      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
-      mqtt_topic: "{{ config_mqtt.get('appliances', 'home/brief/data/appliances') if config_mqtt else 'home/brief/data/appliances' }}"
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/appliances"
       fallback_payload: "Appliance status unavailable"
 
       # Check if required entities exist
@@ -49,104 +46,88 @@ script:
         {{ has_salt_nearly_empty or has_salt_empty or has_rinse_nearly_empty or has_rinse_empty }}
 
     sequence:
+      # Collect appliances data - always runs when called by orchestration
       - if:
           - condition: template
-            value_template: "{{ config_enabled }}"
+            value_template: "{{ all_required_present }}"
         then:
-          # Module is enabled, proceed with collection
-          - if:
-              - condition: template
-                value_template: "{{ all_required_present }}"
-            then:
-              # Required entity present - collect normally
-              - variables:
-                  dishwasher_state: "{{ states('sensor.dishwasher_state') }}"
-                  dishwasher_available: >
-                    {{ not is_state('sensor.dishwasher_state', 'unavailable') and
-                       not is_state('sensor.dishwasher_state', 'unknown') }}
-                  dishwasher_running: >
-                    {{ dishwasher_available and
-                       states('sensor.dishwasher_state') == "BSH.Common.EnumType.OperationState.Run" }}
+          # Required entity present - collect normally
+          - variables:
+              dishwasher_state: "{{ states('sensor.dishwasher_state') }}"
+              dishwasher_available: >
+                {{ not is_state('sensor.dishwasher_state', 'unavailable') and
+                   not is_state('sensor.dishwasher_state', 'unknown') }}
+              dishwasher_running: >
+                {{ dishwasher_available and
+                   states('sensor.dishwasher_state') == "BSH.Common.EnumType.OperationState.Run" }}
 
-              - variables:
-                  needs_salt: >
-                    {%- if has_salt_nearly_empty or has_salt_empty -%}
-                      {{ is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_saltnearlyempty', 'on') or
-                         is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_saltempty', 'on') }}
-                    {%- else -%}
-                      false
-                    {%- endif -%}
-                  needs_rinse_aid: >
-                    {%- if has_rinse_nearly_empty or has_rinse_empty -%}
-                      {{ is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidnearlyempty', 'on') or
-                         is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidempty', 'on') }}
-                    {%- else -%}
-                      false
-                    {%- endif -%}
+          - variables:
+              needs_salt: >
+                {%- if has_salt_nearly_empty or has_salt_empty -%}
+                  {{ is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_saltnearlyempty', 'on') or
+                     is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_saltempty', 'on') }}
+                {%- else -%}
+                  false
+                {%- endif -%}
+              needs_rinse_aid: >
+                {%- if has_rinse_nearly_empty or has_rinse_empty -%}
+                  {{ is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidnearlyempty', 'on') or
+                     is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidempty', 'on') }}
+                {%- else -%}
+                  false
+                {%- endif -%}
 
-              - variables:
-                  appliance_data:
-                    dishwasher:
-                      state: "{{ dishwasher_state }}"
-                      available: "{{ dishwasher_available }}"
-                      running: "{{ dishwasher_running }}"
-                      maintenance:
-                        needs_salt: "{{ needs_salt }}"
-                        needs_rinse_aid: "{{ needs_rinse_aid }}"
-                        relevant: "{{ needs_salt or needs_rinse_aid }}"
-                        sensors_available: "{{ has_maintenance_sensors }}"
-                    validation_status: "success"
-
-              - service: mqtt.publish
-                data:
-                  topic: "{{ mqtt_topic }}"
-                  payload: "{{ appliance_data | tojson }}"
-
-            else:
-              # Required entity missing - publish error state
-              - variables:
-                  appliance_data:
-                    validation_status: "failed"
-                    error_message: "Missing required entity: sensor.dishwasher_state"
-                    missing_entities: ["sensor.dishwasher_state"]
-                    fallback_message: "{{ fallback_payload }}"
-                    dishwasher:
-                      state: "unknown"
-                      available: false
-                      running: false
-                      maintenance:
-                        needs_salt: false
-                        needs_rinse_aid: false
-                        relevant: false
-                        sensors_available: false
-
-              - service: mqtt.publish
-                data:
-                  topic: "{{ mqtt_topic }}"
-                  payload: "{{ appliance_data | tojson }}"
-
-              # Log validation error
-              - service: mqtt.publish
-                data:
-                  topic: "home/brief/validation/appliances"
-                  payload: >
-                    {{
-                      {
-                        "timestamp": now().isoformat(),
-                        "status": "validation_error",
-                        "missing_entities": ["sensor.dishwasher_state"],
-                        "help": "Check entity ID in Developer Tools > States"
-                      } | tojson
-                    }}
-
-        else:
-          # Module is disabled - publish empty data
           - variables:
               appliance_data:
-                validation_status: "disabled"
-                disabled_by_config: true
+                dishwasher:
+                  state: "{{ dishwasher_state }}"
+                  available: "{{ dishwasher_available }}"
+                  running: "{{ dishwasher_running }}"
+                  maintenance:
+                    needs_salt: "{{ needs_salt }}"
+                    needs_rinse_aid: "{{ needs_rinse_aid }}"
+                    relevant: "{{ needs_salt or needs_rinse_aid }}"
+                    sensors_available: "{{ has_maintenance_sensors }}"
+                validation_status: "success"
 
           - service: mqtt.publish
             data:
               topic: "{{ mqtt_topic }}"
               payload: "{{ appliance_data | tojson }}"
+
+        else:
+          # Required entity missing - publish error state
+          - variables:
+              appliance_data:
+                validation_status: "failed"
+                error_message: "Missing required entity: sensor.dishwasher_state"
+                missing_entities: ["sensor.dishwasher_state"]
+                fallback_message: "{{ fallback_payload }}"
+                dishwasher:
+                  state: "unknown"
+                  available: false
+                  running: false
+                  maintenance:
+                    needs_salt: false
+                    needs_rinse_aid: false
+                    relevant: false
+                    sensors_available: false
+
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: "{{ appliance_data | tojson }}"
+
+          # Log validation error
+          - service: mqtt.publish
+            data:
+              topic: "home/brief/validation/appliances"
+              payload: >
+                {{
+                  {
+                    "timestamp": now().isoformat(),
+                    "status": "validation_error",
+                    "missing_entities": ["sensor.dishwasher_state"],
+                    "help": "Check entity ID in Developer Tools > States"
+                  } | tojson
+                }}
