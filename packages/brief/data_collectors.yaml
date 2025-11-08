@@ -113,11 +113,13 @@ script:
                   {% set include_event = true %}
                 {% elif event_datetime %}
                   {# For future timed events beyond tomorrow, check if within next 4 hours #}
-                  {% set event_timestamp = event_datetime.timestamp() %}
-                  {% set current_timestamp = now().timestamp() %}
-                  {% set four_hours_later = current_timestamp + (4 * 3600) %}
-                  {% if event_timestamp <= four_hours_later %}
-                    {% set include_event = true %}
+                  {% if event_datetime is not none and event_datetime is not string %}
+                    {% set event_timestamp = event_datetime.timestamp() %}
+                    {% set current_timestamp = now().timestamp() %}
+                    {% set four_hours_later = current_timestamp + (4 * 3600) %}
+                    {% if event_timestamp <= four_hours_later %}
+                      {% set include_event = true %}
+                    {% endif %}
                   {% endif %}
                 {% elif event_date > today_date %}
                   {# Include future all-day events within the next few days #}

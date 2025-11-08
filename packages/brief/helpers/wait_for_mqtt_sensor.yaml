@@ -47,10 +47,14 @@ script:
       - variables:
           end_time: "{{ now() }}"
           waited_duration: >
-            {%- set start_ts = start_time.timestamp() -%}
-            {%- set end_ts = end_time.timestamp() -%}
-            {%- set duration = (end_ts - start_ts) | round(2) -%}
-            {{ duration }}
+            {%- if start_time is not none and start_time is not string and end_time is not none and end_time is not string -%}
+              {%- set start_ts = start_time.timestamp() -%}
+              {%- set end_ts = end_time.timestamp() -%}
+              {%- set duration = (end_ts - start_ts) | round(2) -%}
+              {{ duration }}
+            {%- else -%}
+              0
+            {%- endif -%}
           final_state: "{{ states(sensor_name) }}"
           has_valid_data: "{{ final_state not in ['unknown', 'unavailable', 'none'] }}"
 
