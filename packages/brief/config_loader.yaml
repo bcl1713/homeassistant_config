@@ -27,7 +27,7 @@ template:
           calendar: true
           weather: true
           device_health: true
-          meals: true
+          meals: false
           commute: true
           chores: false
           appliances: false
