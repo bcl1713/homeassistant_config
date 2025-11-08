@@ -21,13 +21,13 @@ template:
       - name: "Brief: Validation Status"
         unique_id: brief_validation_status
         state: >
-          {%- set config_entities = states('sensor.brief_config_entities') -%}
+          {%- set config_entities = states('sensor.brief_config_entity_references') -%}
           {%- if config_entities in ['unknown', 'unavailable'] -%}
             pending
           {%- else -%}
-            {%- set conversation_agent = state_attr('sensor.brief_config_entities', 'conversation_agent') -%}
-            {%- set weather = state_attr('sensor.brief_config_entities', 'weather') -%}
-            {%- set notification_service = state_attr('sensor.brief_config_entities', 'notification_service') -%}
+            {%- set conversation_agent = state_attr('sensor.brief_config_entity_references', 'conversation_agent') -%}
+            {%- set weather = state_attr('sensor.brief_config_entity_references', 'weather') -%}
+            {%- set notification_service = state_attr('sensor.brief_config_entity_references', 'notification_service') -%}
             {%- if conversation_agent and weather and notification_service -%}
               {%- if states(conversation_agent) not in ['unknown', 'unavailable'] and
                      states(weather) not in ['unknown', 'unavailable'] and
@@ -48,13 +48,13 @@ template:
       - name: "Brief: Validation Errors"
         unique_id: brief_validation_errors
         state: >
-          {%- set config_entities = states('sensor.brief_config_entities') -%}
+          {%- set config_entities = states('sensor.brief_config_entity_references') -%}
           {%- if config_entities in ['unknown', 'unavailable'] -%}
             Config entities not yet loaded
           {%- else -%}
-            {%- set conversation_agent = state_attr('sensor.brief_config_entities', 'conversation_agent') -%}
-            {%- set weather = state_attr('sensor.brief_config_entities', 'weather') -%}
-            {%- set notification_service = state_attr('sensor.brief_config_entities', 'notification_service') -%}
+            {%- set conversation_agent = state_attr('sensor.brief_config_entity_references', 'conversation_agent') -%}
+            {%- set weather = state_attr('sensor.brief_config_entity_references', 'weather') -%}
+            {%- set notification_service = state_attr('sensor.brief_config_entity_references', 'notification_service') -%}
             {%- set errors = [] -%}
             {%- if conversation_agent and states(conversation_agent) in ['unknown', 'unavailable'] -%}
               {%- set errors = errors + [conversation_agent ~ ' (conversation agent)'] -%}
@@ -126,7 +126,7 @@ automation:
     trigger:
       - platform: template
         value_template: >
-          {% set sensor = states('sensor.brief_config_entities') %}
+          {% set sensor = states('sensor.brief_config_entity_references') %}
           {{ sensor not in ['unknown', 'unavailable', 'unknown'] }}
     action:
       - service: template.reload

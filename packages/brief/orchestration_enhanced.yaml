@@ -171,7 +171,7 @@ script:
         data:
           type: hourly
         target:
-          entity_id: "{{ state_attr('sensor.brief_config_entities', 'weather') | default('weather.forecast_home') }}"
+          entity_id: "{{ state_attr('sensor.brief_config_entity_references', 'weather') | default('weather.forecast_home') }}"
         response_variable: hourly_forecast
 
       # ====================================================================
