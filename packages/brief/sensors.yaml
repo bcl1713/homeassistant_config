@@ -58,6 +58,13 @@ mqtt:
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/brief/prompt"
 
+    # Collector errors log - stores array of last 10 errors
+    - name: "Brief Collector Errors"
+      state_topic: "home/brief/errors"
+      value_template: "{{ value_json.error_count | default(0) }}"
+      unit_of_measurement: "errors"
+      json_attributes_topic: "home/brief/errors"
+
 template:
   sensor:
     # Convenience sensors for accessing data
@@ -105,3 +112,23 @@ template:
             {% set sources = sources + ['air_quality'] %}
           {% endif %}
           {{ sources | join(', ') }}
+
+    # Error log display - shows recent errors in readable format
+    - name: "Brief Recent Errors"
+      unique_id: brief_recent_errors
+      state: >
+        {%- set errors = state_attr('sensor.brief_collector_errors', 'recent_errors') -%}
+        {%- if errors and errors | length > 0 -%}
+          {{ errors | length }} recent error(s)
+        {%- else -%}
+          No errors
+        {%- endif -%}
+      attributes:
+        errors: >
+          {%- set errors = state_attr('sensor.brief_collector_errors', 'recent_errors') -%}
+          {%- if errors -%}
+            {{ errors | list }}
+          {%- else -%}
+            []
+          {%- endif -%}
+        note: "Updated by collector scripts when errors occur"

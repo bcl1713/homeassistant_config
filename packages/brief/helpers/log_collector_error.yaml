@@ -1,0 +1,72 @@
+# packages/brief/helpers/log_collector_error.yaml
+#
+# Error Logger for Collectors
+# Logs collector failures to MQTT with rolling history (last 10 errors)
+# Based on: https://www.home-assistant.io/docs/scripts/
+#
+# Usage:
+#   - service: script.brief_log_collector_error
+#     data:
+#       collector_name: "chores"
+#       error_message: "Failed to collect chores data"
+#       error_details: "Timeout after 15 seconds"
+#
+# MQTT Topic: home/brief/errors
+# Payload: {"error_count": N, "recent_errors": [{timestamp, collector, message, details}, ...]}
+#
+# Last Updated: 2025-11-08
+
+script:
+  brief_log_collector_error:
+    alias: "Log Collector Error"
+    description: "Records collector failures to MQTT error log with rolling history"
+    mode: parallel
+    fields:
+      collector_name:
+        description: "Name of the collector that failed (e.g., chores, devices, calendar)"
+        example: "chores"
+      error_message:
+        description: "Brief error message"
+        example: "Failed to collect chores data"
+      error_details:
+        description: "Detailed error information (optional)"
+        example: "Timeout after 15 seconds"
+        default: ""
+    sequence:
+      # Get current error log from MQTT
+      - variables:
+          current_errors: >
+            {%- set mqtt_sensor = state_attr('sensor.brief_collector_errors', 'recent_errors') -%}
+            {%- if mqtt_sensor is not none -%}
+              {{ mqtt_sensor }}
+            {%- else -%}
+              []
+            {%- endif -%}
+          new_error:
+            timestamp: "{{ now().isoformat() }}"
+            collector: "{{ collector_name }}"
+            message: "{{ error_message }}"
+            details: "{{ error_details if error_details else 'N/A' }}"
+
+      # Create new error list: prepend new error, keep only last 10
+      - variables:
+          updated_errors: >
+            {%- set errors = [new_error] + (current_errors | list) -%}
+            {%- if errors | length > 10 -%}
+              {{ errors[0:10] }}
+            {%- else -%}
+              {{ errors }}
+            {%- endif -%}
+
+      # Publish to MQTT
+      - service: mqtt.publish
+        data:
+          topic: "home/brief/errors"
+          payload: >
+            {
+              "error_count": {{ updated_errors | length }},
+              "recent_errors": {{ updated_errors | tojson }},
+              "last_error_timestamp": "{{ now().isoformat() }}",
+              "last_error_collector": "{{ collector_name }}"
+            }
+          retain: true
