@@ -11,6 +11,7 @@ script:
     alias: "Collect Commute (Safe with Validation)"
     description: "Gathers commute data with entity validation and graceful fallback"
     mode: parallel
+    fields:
       timeout_seconds:
         description: "Timeout for collection (from config_loader)"
         default: 15
