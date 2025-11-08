@@ -1,0 +1,203 @@
+# packages/brief/helpers/validate_entities.yaml
+#
+# Entity Validator for Briefing System
+# Validates that required entities exist before collectors run
+# Based on: https://www.home-assistant.io/docs/scripts/
+#          https://developers.home-assistant.io/docs/api/rest/
+#
+# Usage:
+#   - service: script.brief_validate_entity
+#     data:
+#       entity_id: "sensor.dishwasher_state"
+#   Response: result.valid (true/false), result.state (if valid)
+#
+# Last Updated: 2025-11-07
+
+script:
+  brief_validate_entity:
+    alias: "Validate Entity Exists"
+    description: "Checks if a single entity exists and is not unavailable"
+    mode: parallel
+    max_parallel: 10
+    fields:
+      entity_id:
+        description: "Entity ID to validate (e.g., sensor.dishwasher_state)"
+        example: "sensor.dishwasher_state"
+      fallback_value:
+        description: "Optional fallback value if entity unavailable"
+        example: "N/A"
+    variables:
+      entity_state: "{{ states(entity_id) }}"
+      is_valid: >
+        {%- if entity_state in ['unknown', 'unavailable', 'none'] -%}
+          false
+        {%- else -%}
+          true
+        {%- endif -%}
+    sequence:
+      - variables:
+          result:
+            entity_id: "{{ entity_id }}"
+            valid: "{{ is_valid }}"
+            state: "{{ entity_state if is_valid else fallback_value }}"
+            attributes: "{{ state_attr(entity_id, None) if is_valid else {} }}"
+
+  brief_validate_collector_entities:
+    alias: "Validate Collector Entities"
+    description: "Validates all entities needed by briefing collectors"
+    mode: single
+    fields:
+      module:
+        description: "Module to validate (chores, appliances, meals, commute, etc.)"
+        example: "chores"
+        selector:
+          select:
+            options:
+              - chores
+              - appliances
+              - meals
+              - commute
+              - devices
+              - calendar
+              - garbage
+              - air_quality
+      skip_optional:
+        description: "Skip optional entities (default true)"
+        default: true
+        selector:
+          boolean:
+    sequence:
+      # Map module to entity requirements
+      - variables:
+          chores_required:
+            - binary_sensor.time_is_weekend
+            - input_select.chore_dishwasher_assignee
+            - input_boolean.chore_dishwasher_completed
+            - input_select.chore_bathroom_assignee
+            - input_boolean.chore_bathroom_completed
+          chores_optional: []
+
+          appliances_required:
+            - sensor.dishwasher_state
+          appliances_optional:
+            - binary_sensor.014030536224000994_dishcare_dishwasher_event_saltnearlyempty
+            - binary_sensor.014030536224000994_dishcare_dishwasher_event_saltempty
+            - binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidnearlyempty
+            - binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidempty
+
+          meals_required:
+            - calendar.mealie_breakfast
+            - calendar.mealie_lunch
+            - calendar.mealie_dinner
+          meals_optional: []
+
+          commute_required:
+            - sensor.travel_time_to_brian_s_work
+            - sensor.travel_time_to_hester_s_work
+          commute_optional: []
+
+          devices_required:
+            - input_number.device_health_critical_threshold
+          devices_optional: []
+
+          calendar_required: []
+          calendar_optional: []
+
+          garbage_required: []
+          garbage_optional: []
+
+          air_quality_required:
+            - script.collect_air_quality_summary
+          air_quality_optional: []
+
+          # Select which entities to check based on module
+          required_entities: >
+            {%- if module == 'chores' -%}
+              {{ chores_required }}
+            {%- elif module == 'appliances' -%}
+              {{ appliances_required }}
+            {%- elif module == 'meals' -%}
+              {{ meals_required }}
+            {%- elif module == 'commute' -%}
+              {{ commute_required }}
+            {%- elif module == 'devices' -%}
+              {{ devices_required }}
+            {%- elif module == 'calendar' -%}
+              {{ calendar_required }}
+            {%- elif module == 'garbage' -%}
+              {{ garbage_required }}
+            {%- elif module == 'air_quality' -%}
+              {{ air_quality_required }}
+            {%- else -%}
+              []
+            {%- endif -%}
+
+          optional_entities: >
+            {%- if module == 'chores' -%}
+              {{ chores_optional }}
+            {%- elif module == 'appliances' -%}
+              {{ appliances_optional }}
+            {%- elif module == 'meals' -%}
+              {{ meals_optional }}
+            {%- elif module == 'commute' -%}
+              {{ commute_optional }}
+            {%- elif module == 'devices' -%}
+              {{ devices_optional }}
+            {%- elif module == 'calendar' -%}
+              {{ calendar_optional }}
+            {%- elif module == 'garbage' -%}
+              {{ garbage_optional }}
+            {%- elif module == 'air_quality' -%}
+              {{ air_quality_optional }}
+            {%- else -%}
+              []
+            {%- endif -%}
+
+      # Validate all required entities in parallel
+      - parallel:
+          - repeat:
+              for_each: "{{ required_entities }}"
+              sequence:
+                - service: script.brief_validate_entity
+                  data:
+                    entity_id: "{{ repeat.item }}"
+                  response_variable: "entity_check_{{ loop.index }}"
+
+          # Validate optional entities (only if not skipping)
+          - if:
+              - condition: template
+                value_template: "{{ not skip_optional }}"
+            then:
+              - repeat:
+                  for_each: "{{ optional_entities }}"
+                  sequence:
+                    - service: script.brief_validate_entity
+                      data:
+                        entity_id: "{{ repeat.item }}"
+                      response_variable: "optional_check_{{ loop.index }}"
+
+      # Build summary of validation results
+      - variables:
+          validation_results:
+            module: "{{ module }}"
+            required_count: "{{ required_entities | length }}"
+            optional_count: "{{ optional_entities | length }}"
+            all_required_valid: true
+            missing_required: []
+            missing_optional: []
+
+      # Return summary result
+      - variables:
+          result:
+            module: "{{ module }}"
+            valid: "{{ validation_results.all_required_valid }}"
+            required_count: "{{ validation_results.required_count }}"
+            optional_count: "{{ validation_results.optional_count }}"
+            missing_required: "{{ validation_results.missing_required }}"
+            missing_optional: "{{ validation_results.missing_optional }}"
+            summary: >
+              {%- if validation_results.all_required_valid -%}
+                {{ module | capitalize }}: All required entities present
+              {%- else -%}
+                {{ module | capitalize }}: Missing {{ validation_results.missing_required | length }} required entities
+              {%- endif -%}
