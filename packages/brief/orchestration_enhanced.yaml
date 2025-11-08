@@ -201,11 +201,11 @@ script:
             {%- set weekend = state_attr('sensor.brief_data_chores', 'weekend') | default({}) -%}
             {%- set validation_status = state_attr('sensor.brief_data_chores', 'validation_status') | default('none') -%}
             {%- if validation_status in ['success', 'partial'] -%}
-              {
-                'daily': {{ daily }},
-                'weekend': {{ weekend }},
-                'validation_status': '{{ validation_status }}'
-              }
+              {{ {
+                'daily': daily,
+                'weekend': weekend,
+                'validation_status': validation_status
+              } | tojson }}
             {%- else -%}
               {}
             {%- endif -%}
@@ -214,7 +214,7 @@ script:
             {%- if appliances_enabled -%}
               {%- set dishwasher = state_attr('sensor.brief_data_appliances', 'dishwasher') | default({}) -%}
               {%- if dishwasher -%}
-                { 'dishwasher': {{ dishwasher }} }
+                {{ { 'dishwasher': dishwasher } | tojson }}
               {%- else -%}
                 {}
               {%- endif -%}
@@ -229,12 +229,12 @@ script:
               {%- set has_today = state_attr('sensor.brief_data_meals', 'has_today') | default(false) -%}
               {%- set has_tomorrow = state_attr('sensor.brief_data_meals', 'has_tomorrow') | default(false) -%}
               {%- if has_today or has_tomorrow -%}
-                {
-                  'today': {{ today }},
-                  'tomorrow': {{ tomorrow }},
-                  'has_today': {{ has_today | lower }},
-                  'has_tomorrow': {{ has_tomorrow | lower }}
-                }
+                {{ {
+                  'today': today,
+                  'tomorrow': tomorrow,
+                  'has_today': has_today,
+                  'has_tomorrow': has_tomorrow
+                } | tojson }}
               {%- else -%}
                 {}
               {%- endif -%}
@@ -248,11 +248,11 @@ script:
               {%- set brian_time = state_attr('sensor.brief_data_commute', 'brian_time') -%}
               {%- set hester_time = state_attr('sensor.brief_data_commute', 'hester_time') -%}
               {%- if relevant -%}
-                {
-                  'relevant': true,
-                  'brian_time': '{{ brian_time }}',
-                  'hester_time': '{{ hester_time }}'
-                }
+                {{ {
+                  'relevant': relevant,
+                  'brian_time': brian_time,
+                  'hester_time': hester_time
+                } | tojson }}
               {%- else -%}
                 {}
               {%- endif -%}
@@ -267,12 +267,12 @@ script:
               {%- set offline_count = state_attr('sensor.brief_data_devices', 'offline_count') | default(0) -%}
               {%- set offline_devices = state_attr('sensor.brief_data_devices', 'offline_devices') | default([]) -%}
               {%- if has_issues -%}
-                {
-                  'has_issues': true,
-                  'battery_count': {{ battery_count }},
-                  'offline_count': {{ offline_count }},
-                  'offline_devices': {{ offline_devices | tojson }}
-                }
+                {{ {
+                  'has_issues': has_issues,
+                  'battery_count': battery_count,
+                  'offline_count': offline_count,
+                  'offline_devices': offline_devices
+                } | tojson }}
               {%- else -%}
                 {}
               {%- endif -%}
@@ -283,7 +283,7 @@ script:
           calendar_data: >
             {%- set events = state_attr('sensor.brief_data_calendar', 'events') | default([]) -%}
             {%- if events -%}
-              { 'events': {{ events | tojson }} }
+              {{ { 'events': events } | tojson }}
             {%- else -%}
               {}
             {%- endif -%}
@@ -293,10 +293,10 @@ script:
               {%- set relevant = state_attr('sensor.brief_data_garbage', 'relevant') | default(false) -%}
               {%- set reminder = state_attr('sensor.brief_data_garbage', 'reminder_message') -%}
               {%- if relevant -%}
-                {
-                  'relevant': true,
-                  'reminder_message': '{{ reminder }}'
-                }
+                {{ {
+                  'relevant': relevant,
+                  'reminder_message': reminder
+                } | tojson }}
               {%- else -%}
                 {}
               {%- endif -%}
@@ -310,11 +310,11 @@ script:
               {%- set summary = state_attr('sensor.brief_data_air_quality', 'summary') -%}
               {%- set trend = state_attr('sensor.brief_data_air_quality', 'trend') -%}
               {%- if relevant -%}
-                {
-                  'relevant': true,
-                  'summary': '{{ summary }}',
-                  'trend': '{{ trend }}'
-                }
+                {{ {
+                  'relevant': relevant,
+                  'summary': summary,
+                  'trend': trend
+                } | tojson }}
               {%- else -%}
                 {}
               {%- endif -%}
