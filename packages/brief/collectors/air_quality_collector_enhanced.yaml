@@ -12,11 +12,6 @@ script:
     description: "Gathers air quality data with entity validation and graceful fallback"
     mode: parallel
     fields:
-      enabled:
-        description: "Whether this module is enabled (from config_loader)"
-        default: true
-        selector:
-          boolean:
       timeout_seconds:
         description: "Timeout for collection (from config_loader)"
         default: 15
@@ -64,7 +59,7 @@ script:
 
           # Step 3: Build air quality summary
           - variables:
-              relevant_conditions: ['poor', 'moderate']
+              relevant_conditions: ["poor", "moderate"]
               is_relevant: >
                 {{ current_status in relevant_conditions or trend == 'worsening' }}
               summary_text: >

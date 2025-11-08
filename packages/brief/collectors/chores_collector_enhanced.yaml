@@ -13,11 +13,6 @@ script:
     description: "Gathers chore status with entity validation and error handling"
     mode: parallel
     fields:
-      enabled:
-        description: "Whether this module is enabled (from config_loader)"
-        default: true
-        selector:
-          boolean:
       timeout_seconds:
         description: "Timeout for collection (from config_loader)"
         default: 15

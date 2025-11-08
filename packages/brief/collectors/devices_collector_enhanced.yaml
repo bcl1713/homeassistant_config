@@ -12,11 +12,6 @@ script:
     description: "Gathers device health with battery and offline monitoring"
     mode: parallel
     fields:
-      enabled:
-        description: "Whether this module is enabled (from config_loader)"
-        default: true
-        selector:
-          boolean:
       timeout_seconds:
         description: "Timeout for collection (from config_loader)"
         default: 15
@@ -57,7 +52,7 @@ script:
 
       # Domains to monitor for offline status
       # Note: Excluding 'binary_sensor' as most battery-related sensors shouldn't be in "offline" list
-      critical_domains: ['camera', 'alarm_control_panel', 'lock']
+      critical_domains: ["camera", "alarm_control_panel", "lock"]
 
     sequence:
       # Collect device health data - always runs when called by orchestration
