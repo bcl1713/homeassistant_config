@@ -18,15 +18,15 @@ script:
       collector_timeout: "{{ config_timeouts.get('collector_timeout', 15) }}"
       build_prompt_timeout: "{{ config_timeouts.get('build_prompt_timeout', 30) }}"
 
-      # Get enabled modules from config
-      chores_enabled: "{{ config_modules.get('chores', true) }}"
-      appliances_enabled: "{{ config_modules.get('appliances', false) }}"
-      meals_enabled: "{{ config_modules.get('meals', true) }}"
-      commute_enabled: "{{ config_modules.get('commute', true) }}"
-      devices_enabled: "{{ config_modules.get('device_health', true) }}"
-      calendar_enabled: "{{ config_modules.get('calendar', true) }}"
-      garbage_enabled: "{{ config_modules.get('garbage', true) }}"
-      air_quality_enabled: "{{ config_modules.get('air_quality', true) }}"
+      # Get enabled modules from config (convert string booleans to actual booleans)
+      chores_enabled: "{{ config_modules.get('chores', true) | string | lower == 'true' }}"
+      appliances_enabled: "{{ config_modules.get('appliances', false) | string | lower == 'true' }}"
+      meals_enabled: "{{ config_modules.get('meals', true) | string | lower == 'true' }}"
+      commute_enabled: "{{ config_modules.get('commute', true) | string | lower == 'true' }}"
+      devices_enabled: "{{ config_modules.get('device_health', true) | string | lower == 'true' }}"
+      calendar_enabled: "{{ config_modules.get('calendar', true) | string | lower == 'true' }}"
+      garbage_enabled: "{{ config_modules.get('garbage', true) | string | lower == 'true' }}"
+      air_quality_enabled: "{{ config_modules.get('air_quality', true) | string | lower == 'true' }}"
 
       # Context variables
       is_morning: "{{ now().hour < 12 }}"
