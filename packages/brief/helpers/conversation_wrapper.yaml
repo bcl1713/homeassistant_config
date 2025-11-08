@@ -105,7 +105,6 @@ script:
                     # Not the last attempt, wait before retry with exponential backoff
                     - delay:
                         milliseconds: "{{ (1000 * (2 ** (repeat.index - 1))) | int }}"
-                      description: "Exponential backoff before retry"
                   else:
                     # Last attempt failed, use fallback
                     - variables:
