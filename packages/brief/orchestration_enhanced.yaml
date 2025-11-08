@@ -265,12 +265,14 @@ script:
               {%- set has_issues = state_attr('sensor.brief_data_devices', 'has_issues') | default(false) -%}
               {%- set battery_count = state_attr('sensor.brief_data_devices', 'battery_count') | default(0) -%}
               {%- set offline_count = state_attr('sensor.brief_data_devices', 'offline_count') | default(0) -%}
+              {%- set critical_batteries = state_attr('sensor.brief_data_devices', 'critical_batteries') | default([]) -%}
               {%- set offline_devices = state_attr('sensor.brief_data_devices', 'offline_devices') | default([]) -%}
               {%- if has_issues -%}
                 {{ {
                   'has_issues': has_issues,
                   'battery_count': battery_count,
                   'offline_count': offline_count,
+                  'critical_batteries': critical_batteries,
                   'offline_devices': offline_devices
                 } | tojson }}
               {%- else -%}
@@ -432,7 +434,13 @@ script:
             {% if devices.get('has_issues', false) %}
               {% set ns.sections = ns.sections + ['Device issues:'] %}
               {% if devices.get('battery_count', 0) > 0 %}
-                {% set ns.sections = ns.sections + ['- ' + devices.battery_count|string + ' devices with low battery'] %}
+                {% set battery_devices = devices.get('critical_batteries', []) %}
+                {% if battery_devices | length > 0 %}
+                  {% set battery_names = battery_devices | map(attribute='name') | list %}
+                  {% set ns.sections = ns.sections + ['- Low battery: ' + battery_names | join(', ')] %}
+                {% else %}
+                  {% set ns.sections = ns.sections + ['- ' + devices.battery_count|string + ' devices with low battery'] %}
+                {% endif %}
               {% endif %}
               {% if devices.get('offline_count', 0) > 0 %}
                 {% set offline_devices = devices.get('offline_devices', []) %}
