@@ -86,11 +86,6 @@ automation:
       - platform: state
         entity_id: weather.forecast_home
         attribute: weather_alert
-      # When someone arrives home (might want weather info)
-      - platform: numeric_state
-        entity_id: zone.home
-        value_template: "{{ trigger.to_state.state | int - trigger.from_state.state | int }}"
-        above: 0  # This will trigger when the count increases (someone arrives)
     condition:
       # Only update if enough time has passed according to the user setting
       - condition: template
@@ -209,7 +204,7 @@ template:
           {% if forecast is not none and forecast | length > 0 and forecast[0].temperature is defined %}
             {{ forecast[0].temperature }}
           {% else %}
-            {{ states('weather.forecast_home').temperature }}
+            {{ state_attr('weather.forecast_home', 'temperature') | default('') }}
           {% endif %}
         unit_of_measurement: "°C"
         device_class: temperature
