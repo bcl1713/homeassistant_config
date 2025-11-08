@@ -18,7 +18,6 @@ script:
     alias: "Validate Entity Exists"
     description: "Checks if a single entity exists and is not unavailable"
     mode: parallel
-    max_parallel: 10
     fields:
       entity_id:
         description: "Entity ID to validate (e.g., sensor.dishwasher_state)"

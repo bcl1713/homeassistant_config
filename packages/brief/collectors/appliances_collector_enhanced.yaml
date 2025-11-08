@@ -11,7 +11,6 @@ script:
     alias: "Collect Appliances (Safe with Validation)"
     description: "Gathers appliance status with entity validation and error handling"
     mode: parallel
-    max_parallel: 1
     fields:
       enabled:
         description: "Whether this module is enabled (from config_loader)"

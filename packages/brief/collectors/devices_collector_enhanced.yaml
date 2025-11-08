@@ -11,7 +11,6 @@ script:
     alias: "Collect Device Status (Safe with Validation)"
     description: "Gathers device health with battery and offline monitoring"
     mode: parallel
-    max_parallel: 1
     fields:
       enabled:
         description: "Whether this module is enabled (from config_loader)"

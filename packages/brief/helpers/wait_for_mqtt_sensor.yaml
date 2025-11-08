@@ -21,7 +21,6 @@ script:
     alias: "Wait for MQTT Sensor Data"
     description: "Waits for an MQTT sensor to update (replaces arbitrary delays)"
     mode: parallel
-    max_parallel: 8
     fields:
       sensor_name:
         description: "Entity ID of the sensor to wait for (e.g., sensor.brief_data_chores)"
