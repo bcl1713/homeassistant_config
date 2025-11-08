@@ -101,7 +101,8 @@ script:
                 {%- for entity in states if entity.state == 'unavailable' -%}
                   {%- if entity.domain in critical_domains -%}
                     {# Skip battery-related binary sensors, they're not really offline devices #}
-                    {%- if not ('low_battery' in entity.entity_id or 'battery_level' in entity.entity_id) -%}
+                    {%- set is_battery_sensor = entity.entity_id | regex_match('^.*(_low_battery|_battery_level)') -%}
+                    {%- if not is_battery_sensor -%}
                       {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
                       {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
                       {%- set ns.devices = ns.devices + [{
