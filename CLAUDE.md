@@ -20,24 +20,84 @@ This is a **Home Assistant configuration repository** organized using the packag
 
 ### Home Assistant Commands
 
+#### Git Deployment
+
 ```bash
 # Deploy branch to production for testing
-ssh root@$HAOS_IP "cd /config && git fetch origin && git checkout feature-branch && git pull origin feature-branch"
-
-# Validate configuration
-ssh root@$HAOS_IP "ha core check"
-
-# Reload services (source .env first for API calls)
-source .env && curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/automation/reload"
-source .env && curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/script/reload"
-source .env && curl -X POST -H "Authorization: Bearer $HA_TOKEN" "http://$HAOS_IP:8123/api/services/homeassistant/reload_all"
+source .env && ssh root@$HAOS_IP "cd /config && git fetch origin && git checkout feature-branch && git pull origin feature-branch"
 
 # Rollback to main if needed
-ssh root@$HAOS_IP "cd /config && git checkout main && git pull origin main"
-
-# Full restart (if needed)
-ssh root@$HAOS_IP "ha core restart"
+source .env && ssh root@$HAOS_IP "cd /config && git checkout main && git pull origin main"
 ```
+
+#### Configuration Validation
+
+**Note:** `ha core check` does not work reliably with this configuration and should be skipped.
+
+#### API Calls - Service Reloads
+
+All API calls require:
+- Bearer token authentication
+- Sourcing .env file first
+- `-s` flag for silent output (optional but recommended)
+
+**WORKING COMMANDS:**
+
+```bash
+# Reload all services (most reliable way to load config changes)
+source .env && curl -s -X POST -H "Authorization: Bearer $HA_TOKEN" \
+  "http://$HAOS_IP:8123/api/services/homeassistant/reload_all"
+
+# Reload specific service domains
+source .env && curl -s -X POST -H "Authorization: Bearer $HA_TOKEN" \
+  "http://$HAOS_IP:8123/api/services/script/reload"
+
+source .env && curl -s -X POST -H "Authorization: Bearer $HA_TOKEN" \
+  "http://$HAOS_IP:8123/api/services/automation/reload"
+
+# Call a specific script
+source .env && curl -s -X POST -H "Authorization: Bearer $HA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"collector_name":"test","error_message":"Test"}' \
+  "http://$HAOS_IP:8123/api/services/script/script_name"
+
+# Query entity state
+source .env && curl -s "http://$HAOS_IP:8123/api/states/sensor.entity_name" \
+  -H "Authorization: Bearer $HA_TOKEN"
+
+# Query all entity states
+source .env && curl -s "http://$HAOS_IP:8123/api/states" \
+  -H "Authorization: Bearer $HA_TOKEN"
+```
+
+**IMPORTANT CURL FORMATTING NOTES:**
+- Use `-s` flag for silent/quiet output
+- Use `-d` for JSON payloads (not multiline strings)
+- Do NOT use shell `>&1` or pipes within a single curl command in bash scripts
+- Quotes must be properly escaped for shell variable expansion
+- Multi-line JSON should be on one line with escaped quotes
+
+**EXAMPLE - Correct:**
+```bash
+curl -s -X POST -H "Authorization: Bearer $HA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"value"}' \
+  "http://$HAOS_IP:8123/api/services/script/test"
+```
+
+**EXAMPLE - Incorrect (will fail):**
+```bash
+curl -X POST -H "Authorization: Bearer $HA_TOKEN" \
+  "http://$HAOS_IP:8123/api/services/script/test" > /dev/null  # ❌ Fails with curl option error
+```
+
+#### Full System Restart (if needed)
+
+```bash
+source .env && ssh root@$HAOS_IP "ha core restart"
+```
+
+**WARNING:** Full restart clears template cache and should only be used when simple reloads fail.
 
 ### GitHub Integration
 
