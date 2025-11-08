@@ -26,10 +26,12 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader
-      config_enabled: "{{ state_attr('sensor.brief_config_modules', 'chores') | default(true) }}"
-      fallback_payload: "{{ state_attr('sensor.brief_config_fallback_text', 'chores') | default('No chores assigned') }}"
-      mqtt_topic: "{{ state_attr('sensor.brief_config_mqtt', 'chores') | default('home/brief/data/chores') }}"
+      # Get configuration from config_loader (safe with fallbacks)
+      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
+      config_enabled: "{{ config_modules.get('chores', false) if config_modules else false }}"
+      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
+      mqtt_topic: "{{ config_mqtt.get('chores', 'home/brief/data/chores') if config_mqtt else 'home/brief/data/chores' }}"
+      fallback_payload: "No chores assigned"
 
       # Check if required entities exist
       has_weekend_sensor: "{{ states('binary_sensor.time_is_weekend') not in ['unknown', 'unavailable'] }}"

@@ -32,11 +32,13 @@ script:
             min: 1
             max: 100
     variables:
-      # Get configuration from config_loader
-      config_enabled: "{{ state_attr('sensor.brief_config_modules', 'device_health') | default(true) }}"
-      fallback_payload: "{{ state_attr('sensor.brief_config_fallback_text', 'devices') | default('Device status unavailable') }}"
-      mqtt_topic: "{{ state_attr('sensor.brief_config_mqtt', 'devices') | default('home/brief/data/devices') }}"
-      config_battery_threshold: "{{ state_attr('sensor.brief_config_timeouts', 'battery_threshold') | default(battery_threshold) }}"
+      # Get configuration from config_loader (safe with fallbacks)
+      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
+      config_enabled: "{{ config_modules.get('device_health', true) if config_modules else true }}"
+      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
+      mqtt_topic: "{{ config_mqtt.get('devices', 'home/brief/data/devices') if config_mqtt else 'home/brief/data/devices' }}"
+      fallback_payload: "Device status unavailable"
+      config_battery_threshold: "{{ battery_threshold }}"
 
       # Check if threshold sensor exists
       has_threshold_sensor: "{{ states('input_number.device_health_critical_threshold') not in ['unknown', 'unavailable'] }}"

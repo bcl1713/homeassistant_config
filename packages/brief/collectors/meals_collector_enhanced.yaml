@@ -25,10 +25,12 @@ script:
             min: 1
             max: 60
     variables:
-      # Get configuration from config_loader
-      config_enabled: "{{ state_attr('sensor.brief_config_modules', 'meals') | default(true) }}"
-      fallback_payload: "{{ state_attr('sensor.brief_config_fallback_text', 'meals') | default('No meal plan available') }}"
-      mqtt_topic: "{{ state_attr('sensor.brief_config_mqtt', 'meals') | default('home/brief/data/meals') }}"
+      # Get configuration from config_loader (safe with fallbacks)
+      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
+      config_enabled: "{{ config_modules.get('meals', true) if config_modules else true }}"
+      config_mqtt: "{{ state_attr('sensor.brief_config_mqtt', None) | default({}) }}"
+      mqtt_topic: "{{ config_mqtt.get('meals', 'home/brief/data/meals') if config_mqtt else 'home/brief/data/meals' }}"
+      fallback_payload: "No meal plan available"
 
       # Check if meal calendars exist
       has_breakfast_calendar: "{{ states('calendar.mealie_breakfast') not in ['unknown', 'unavailable'] }}"
