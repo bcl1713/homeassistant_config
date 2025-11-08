@@ -166,7 +166,10 @@ script:
               - condition: template
                 value_template: "{{ garbage_enabled }}"
             then:
-              - service: script.brief_collect_garbage
+              - service: script.brief_collect_garbage_safe
+                data:
+                  enabled: true
+                  timeout_seconds: "{{ collector_timeout }}"
               - service: script.brief_wait_for_mqtt_sensor
                 data:
                   sensor_name: "sensor.brief_data_garbage"
