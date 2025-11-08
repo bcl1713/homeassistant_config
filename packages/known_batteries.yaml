@@ -98,19 +98,19 @@ template:
 
       - name: "Battery Towner Phone"
         unique_id: battery_towner_phone
-        state: "{{ states('sensor.towner_phone_battery_level_2') }}"
+        state: "{{ states('sensor.tk_galaxy_a16_battery_level') }}"
         unit_of_measurement: "%"
         device_class: battery
         state_class: measurement
         icon: mdi:cellphone
         attributes:
-          entity_id: "sensor.towner_phone_battery_level_2"
+          entity_id: "sensor.tk_galaxy_a16_battery_level"
           friendly_name: "Towner's Phone"
-          domain: "{{ states.sensor.towner_phone_battery_level_2.domain }}"
-          is_charging: "{{ state_attr('sensor.towner_phone_battery_level_2', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.towner_phone_battery_level_2', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.towner_phone_battery_level_2', 'battery_cycle_count') or 'unknown' }}"
-          last_updated: "{{ states.sensor.towner_phone_battery_level_2.last_updated }}"
+          domain: "{{ states.sensor.tk_galaxy_a16_battery_level.domain }}"
+          is_charging: "{{ state_attr('sensor.tk_galaxy_a16_battery_level', 'is_charging') or false }}"
+          battery_health: "{{ state_attr('sensor.tk_galaxy_a16_battery_level', 'battery_health') or 'unknown' }}"
+          cycle_count: "{{ state_attr('sensor.tk_galaxy_a16_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          last_updated: "{{ states.sensor.tk_galaxy_a16_battery_level.last_updated }}"
 
       # Security & Access
       - name: "Battery Front Door"
