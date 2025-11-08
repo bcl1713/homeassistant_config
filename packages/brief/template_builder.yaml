@@ -15,20 +15,52 @@ script:
       is_weekday: "{{ now().weekday() < 5 }}"
       current_time: "{{ now().strftime('%H:%M') }}"
     sequence:
-      # Collect all the data modules
+      # Collect all the data modules in parallel
       - parallel:
           - service: script.brief_collect_chores
-          - service: script.brief_collect_appliances  
+          - service: script.brief_collect_appliances
           - service: script.brief_collect_calendar
           - service: script.brief_collect_garbage
           - service: script.brief_collect_meals
           - service: script.brief_collect_devices
           - service: script.brief_collect_commute
           - service: script.brief_collect_air_quality
-      
-      # Wait a moment for MQTT messages to be processed
-      - delay:
-          seconds: 2
+
+      # Wait for all MQTT sensors to receive data (replaces arbitrary 2-second delay)
+      # These wait helpers will complete as soon as data arrives, or timeout after 15 seconds
+      - parallel:
+          - service: script.brief_wait_for_mqtt_sensor
+            data:
+              sensor_name: "sensor.brief_data_chores"
+              timeout_seconds: 15
+          - service: script.brief_wait_for_mqtt_sensor
+            data:
+              sensor_name: "sensor.brief_data_appliances"
+              timeout_seconds: 15
+          - service: script.brief_wait_for_mqtt_sensor
+            data:
+              sensor_name: "sensor.brief_data_calendar"
+              timeout_seconds: 15
+          - service: script.brief_wait_for_mqtt_sensor
+            data:
+              sensor_name: "sensor.brief_data_garbage"
+              timeout_seconds: 15
+          - service: script.brief_wait_for_mqtt_sensor
+            data:
+              sensor_name: "sensor.brief_data_meals"
+              timeout_seconds: 15
+          - service: script.brief_wait_for_mqtt_sensor
+            data:
+              sensor_name: "sensor.brief_data_devices"
+              timeout_seconds: 15
+          - service: script.brief_wait_for_mqtt_sensor
+            data:
+              sensor_name: "sensor.brief_data_commute"
+              timeout_seconds: 15
+          - service: script.brief_wait_for_mqtt_sensor
+            data:
+              sensor_name: "sensor.brief_data_air_quality"
+              timeout_seconds: 15
       
       # Get weather forecast
       - service: weather.get_forecasts
