@@ -494,19 +494,25 @@ script:
           garbage_status: "{{ state_attr('sensor.brief_data_garbage', 'validation_status') | default('skipped') }}"
           air_quality_status: "{{ state_attr('sensor.brief_data_air_quality', 'validation_status') | default('skipped') }}"
 
-          # Build collector status object
-          collector_status: >
-            {
-              "chores": "{{'success' if chores_enabled and chores_status in ['success', 'partial'] else 'skipped' if not chores_enabled else chores_status}}",
-              "appliances": "{{'success' if appliances_enabled and appliances_status in ['success', 'partial'] else 'skipped' if not appliances_enabled else appliances_status}}",
-              "meals": "{{'success' if meals_enabled and meals_status in ['success', 'partial'] else 'skipped' if not meals_enabled else meals_status}}",
-              "commute": "{{'success' if commute_enabled and commute_status in ['success', 'partial'] else 'skipped' if not commute_enabled else commute_status}}",
-              "devices": "{{'success' if devices_enabled and devices_status in ['success', 'partial'] else 'skipped' if not devices_enabled else devices_status}}",
-              "calendar": "{{'success' if calendar_enabled and calendar_status in ['success', 'partial'] else 'skipped' if not calendar_enabled else calendar_status}}",
-              "garbage": "{{'success' if garbage_enabled and garbage_status in ['success', 'partial'] else 'skipped' if not garbage_enabled else garbage_status}}",
-              "air_quality": "{{'success' if air_quality_enabled and air_quality_status in ['success', 'partial'] else 'skipped' if not air_quality_enabled else air_quality_status}}"
-            }
-            | from_json
+          # Build collector status object - evaluate templates inline
+          chores_final_status: "{{ 'success' if chores_enabled and chores_status in ['success', 'partial'] else 'skipped' if not chores_enabled else chores_status }}"
+          appliances_final_status: "{{ 'success' if appliances_enabled and appliances_status in ['success', 'partial'] else 'skipped' if not appliances_enabled else appliances_status }}"
+          meals_final_status: "{{ 'success' if meals_enabled and meals_status in ['success', 'partial'] else 'skipped' if not meals_enabled else meals_status }}"
+          commute_final_status: "{{ 'success' if commute_enabled and commute_status in ['success', 'partial'] else 'skipped' if not commute_enabled else commute_status }}"
+          devices_final_status: "{{ 'success' if devices_enabled and devices_status in ['success', 'partial'] else 'skipped' if not devices_enabled else devices_status }}"
+          calendar_final_status: "{{ 'success' if calendar_enabled and calendar_status in ['success', 'partial'] else 'skipped' if not calendar_enabled else calendar_status }}"
+          garbage_final_status: "{{ 'success' if garbage_enabled and garbage_status in ['success', 'partial'] else 'skipped' if not garbage_enabled else garbage_status }}"
+          air_quality_final_status: "{{ 'success' if air_quality_enabled and air_quality_status in ['success', 'partial'] else 'skipped' if not air_quality_enabled else air_quality_status }}"
+
+          collector_status:
+            chores: "{{ chores_final_status }}"
+            appliances: "{{ appliances_final_status }}"
+            meals: "{{ meals_final_status }}"
+            commute: "{{ commute_final_status }}"
+            devices: "{{ devices_final_status }}"
+            calendar: "{{ calendar_final_status }}"
+            garbage: "{{ garbage_final_status }}"
+            air_quality: "{{ air_quality_final_status }}"
 
       - service: mqtt.publish
         data:
