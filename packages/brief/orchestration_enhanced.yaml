@@ -194,44 +194,32 @@ script:
       # PHASE 3: Build Prompt from Collected Data
       # ====================================================================
       - variables:
-          # Read all collected MQTT data
+          # Read all collected MQTT data from sensor attributes
+          # Build dict from sensor attributes since MQTT flattens JSON
           chores_data: >
-            {%- set raw_data = state_attr('sensor.brief_data_chores', None) -%}
-            {%- if raw_data is none -%}
-              {}
-            {%- elif raw_data is string -%}
-              {%- set data = raw_data | from_json -%}
-              {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
-                {{ data }}
-              {%- else -%}
-                {}
-              {%- endif -%}
+            {%- set sensor_data = {
+              'daily': state_attr('sensor.brief_data_chores', 'daily') | default({}),
+              'weekend': state_attr('sensor.brief_data_chores', 'weekend') | default({}),
+              'validation_status': state_attr('sensor.brief_data_chores', 'validation_status') | default('none'),
+              'error_message': state_attr('sensor.brief_data_chores', 'error_message'),
+              'missing_entities': state_attr('sensor.brief_data_chores', 'missing_entities') | default([]),
+              'fallback_message': state_attr('sensor.brief_data_chores', 'fallback_message')
+            } -%}
+            {%- if sensor_data.get('validation_status') in ['success', 'partial'] -%}
+              {{ sensor_data | reject('value', none) | dict }}
             {%- else -%}
-              {%- if raw_data.get('validation_status') == 'success' or raw_data.get('validation_status') == 'partial' -%}
-                {{ raw_data }}
-              {%- else -%}
-                {}
-              {%- endif -%}
+              {}
             {%- endif -%}
 
           appliances_data: >
             {%- if appliances_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_appliances', None) -%}
-              {%- if raw_data is none -%}
-                {}
-              {%- elif raw_data is string -%}
-                {%- set data = raw_data | from_json -%}
-                {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
-                  {{ data }}
-                {%- else -%}
-                  {}
-                {%- endif -%}
+              {%- set sensor_data = {
+                'dishwasher': state_attr('sensor.brief_data_appliances', 'dishwasher') | default({})
+              } -%}
+              {%- if sensor_data.dishwasher -%}
+                {{ sensor_data | reject('value', {}) | dict }}
               {%- else -%}
-                {%- if raw_data.get('validation_status') == 'success' or raw_data.get('validation_status') == 'partial' -%}
-                  {{ raw_data }}
-                {%- else -%}
-                  {}
-                {%- endif -%}
+                {}
               {%- endif -%}
             {%- else -%}
               {}
@@ -239,22 +227,17 @@ script:
 
           meals_data: >
             {%- if meals_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_meals', None) -%}
-              {%- if raw_data is none -%}
-                {}
-              {%- elif raw_data is string -%}
-                {%- set data = raw_data | from_json -%}
-                {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
-                  {{ data }}
-                {%- else -%}
-                  {}
-                {%- endif -%}
+              {%- set sensor_data = {
+                'today': state_attr('sensor.brief_data_meals', 'today') | default({}),
+                'tomorrow': state_attr('sensor.brief_data_meals', 'tomorrow') | default({}),
+                'has_today': state_attr('sensor.brief_data_meals', 'has_today') | default(false),
+                'has_tomorrow': state_attr('sensor.brief_data_meals', 'has_tomorrow') | default(false),
+                'validation_status': state_attr('sensor.brief_data_meals', 'validation_status') | default('none')
+              } -%}
+              {%- if sensor_data.get('validation_status') in ['success', 'partial'] or sensor_data.has_today or sensor_data.has_tomorrow -%}
+                {{ sensor_data | reject('value', {}) | reject('value', false) | dict }}
               {%- else -%}
-                {%- if raw_data.get('validation_status') == 'success' or raw_data.get('validation_status') == 'partial' -%}
-                  {{ raw_data }}
-                {%- else -%}
-                  {}
-                {%- endif -%}
+                {}
               {%- endif -%}
             {%- else -%}
               {}
@@ -262,22 +245,16 @@ script:
 
           commute_data: >
             {%- if commute_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_commute', None) -%}
-              {%- if raw_data is none -%}
-                {}
-              {%- elif raw_data is string -%}
-                {%- set data = raw_data | from_json -%}
-                {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
-                  {{ data }}
-                {%- else -%}
-                  {}
-                {%- endif -%}
+              {%- set sensor_data = {
+                'relevant': state_attr('sensor.brief_data_commute', 'relevant') | default(false),
+                'brian_time': state_attr('sensor.brief_data_commute', 'brian_time'),
+                'hester_time': state_attr('sensor.brief_data_commute', 'hester_time'),
+                'validation_status': state_attr('sensor.brief_data_commute', 'validation_status') | default('none')
+              } -%}
+              {%- if sensor_data.relevant or sensor_data.get('validation_status') in ['success', 'partial'] -%}
+                {{ sensor_data | reject('value', none) | dict }}
               {%- else -%}
-                {%- if raw_data.get('validation_status') == 'success' or raw_data.get('validation_status') == 'partial' -%}
-                  {{ raw_data }}
-                {%- else -%}
-                  {}
-                {%- endif -%}
+                {}
               {%- endif -%}
             {%- else -%}
               {}
@@ -285,22 +262,17 @@ script:
 
           devices_data: >
             {%- if devices_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_devices', None) -%}
-              {%- if raw_data is none -%}
-                {}
-              {%- elif raw_data is string -%}
-                {%- set data = raw_data | from_json -%}
-                {%- if data.get('validation_status') == 'success' -%}
-                  {{ data }}
-                {%- else -%}
-                  {}
-                {%- endif -%}
+              {%- set sensor_data = {
+                'has_issues': state_attr('sensor.brief_data_devices', 'has_issues') | default(false),
+                'battery_count': state_attr('sensor.brief_data_devices', 'battery_count') | default(0),
+                'offline_count': state_attr('sensor.brief_data_devices', 'offline_count') | default(0),
+                'offline_devices': state_attr('sensor.brief_data_devices', 'offline_devices') | default([]),
+                'validation_status': state_attr('sensor.brief_data_devices', 'validation_status') | default('none')
+              } -%}
+              {%- if sensor_data.has_issues or sensor_data.get('validation_status') == 'success' -%}
+                {{ sensor_data | reject('value', 0) | reject('value', false) | reject('value', []) | dict }}
               {%- else -%}
-                {%- if raw_data.get('validation_status') == 'success' -%}
-                  {{ raw_data }}
-                {%- else -%}
-                  {}
-                {%- endif -%}
+                {}
               {%- endif -%}
             {%- else -%}
               {}
@@ -308,13 +280,13 @@ script:
 
           calendar_data: >
             {%- if calendar_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_calendar', None) -%}
-              {%- if raw_data is none -%}
-                {}
-              {%- elif raw_data is string -%}
-                {{ raw_data | from_json }}
+              {%- set sensor_data = {
+                'events': state_attr('sensor.brief_data_calendar', 'events') | default([])
+              } -%}
+              {%- if sensor_data.events -%}
+                {{ sensor_data | reject('value', []) | dict }}
               {%- else -%}
-                {{ raw_data }}
+                {}
               {%- endif -%}
             {%- else -%}
               {}
@@ -322,13 +294,14 @@ script:
 
           garbage_data: >
             {%- if garbage_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_garbage', None) -%}
-              {%- if raw_data is none -%}
-                {}
-              {%- elif raw_data is string -%}
-                {{ raw_data | from_json }}
+              {%- set sensor_data = {
+                'relevant': state_attr('sensor.brief_data_garbage', 'relevant') | default(false),
+                'reminder_message': state_attr('sensor.brief_data_garbage', 'reminder_message')
+              } -%}
+              {%- if sensor_data.relevant -%}
+                {{ sensor_data | reject('value', false) | dict }}
               {%- else -%}
-                {{ raw_data }}
+                {}
               {%- endif -%}
             {%- else -%}
               {}
@@ -336,13 +309,15 @@ script:
 
           air_quality_data: >
             {%- if air_quality_enabled -%}
-              {%- set raw_data = state_attr('sensor.brief_data_air_quality', None) -%}
-              {%- if raw_data is none -%}
-                {}
-              {%- elif raw_data is string -%}
-                {{ raw_data | from_json }}
+              {%- set sensor_data = {
+                'relevant': state_attr('sensor.brief_data_air_quality', 'relevant') | default(false),
+                'summary': state_attr('sensor.brief_data_air_quality', 'summary'),
+                'trend': state_attr('sensor.brief_data_air_quality', 'trend')
+              } -%}
+              {%- if sensor_data.relevant -%}
+                {{ sensor_data | reject('value', false) | dict }}
               {%- else -%}
-                {{ raw_data }}
+                {}
               {%- endif -%}
             {%- else -%}
               {}
