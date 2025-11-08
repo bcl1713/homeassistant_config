@@ -1,0 +1,48 @@
+# Brief System Module Toggles
+# Control which data collectors are enabled/disabled
+# Based on: https://www.home-assistant.io/integrations/input_boolean/
+
+brief_calendar_enabled:
+  name: "Brief: Calendar Enabled"
+  initial: true
+  icon: mdi:calendar
+
+brief_weather_enabled:
+  name: "Brief: Weather Enabled"
+  initial: true
+  icon: mdi:weather-cloudy
+
+brief_device_health_enabled:
+  name: "Brief: Device Health Enabled"
+  initial: true
+  icon: mdi:heart-pulse
+
+brief_meals_enabled:
+  name: "Brief: Meals Enabled"
+  initial: true
+  icon: mdi:food
+
+brief_commute_enabled:
+  name: "Brief: Commute Enabled"
+  initial: true
+  icon: mdi:car
+
+brief_chores_enabled:
+  name: "Brief: Chores Enabled"
+  initial: false
+  icon: mdi:broom
+
+brief_appliances_enabled:
+  name: "Brief: Appliances Enabled"
+  initial: false
+  icon: mdi:dishwasher
+
+brief_garbage_enabled:
+  name: "Brief: Garbage Enabled"
+  initial: false
+  icon: mdi:trash-can
+
+brief_air_quality_enabled:
+  name: "Brief: Air Quality Enabled"
+  initial: true
+  icon: mdi:air-filter
