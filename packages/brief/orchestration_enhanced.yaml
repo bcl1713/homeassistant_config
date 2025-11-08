@@ -531,7 +531,7 @@ script:
                   "garbage": garbage_enabled,
                   "air_quality": air_quality_enabled
                 },
-                "collector_status": (collector_status if collector_status is mapping else (collector_status | from_json))
+                "collector_status": collector_status
               } | tojson
             }}
 
