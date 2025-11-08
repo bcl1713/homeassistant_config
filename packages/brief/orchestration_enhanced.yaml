@@ -458,6 +458,16 @@ script:
             {{ ns.sections | join('\n') }}
 
       # Store built prompt
+      - variables:
+          # Parse devices_data string back to dict for context
+          devices_dict: >
+            {%- set d = devices_data | from_json if devices_data is string and devices_data != '{}' else devices_data -%}
+            {%- if d is string -%}
+              {}
+            {%- else -%}
+              {{ d }}
+            {%- endif -%}
+
       - service: mqtt.publish
         data:
           topic: "home/brief/prompt"
@@ -469,7 +479,7 @@ script:
                 "context": {
                   "is_morning": is_morning,
                   "is_weekday": is_weekday,
-                  "has_issues": devices_data.get('has_issues', false)
+                  "has_issues": devices_dict.get('has_issues', false) if devices_dict is mapping else false
                 },
                 "enabled_modules": {
                   "chores": chores_enabled,
