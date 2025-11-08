@@ -29,7 +29,7 @@ template:
           device_health: true
           meals: true
           commute: true
-          chores: true
+          chores: false
           appliances: false
           garbage: false
 
