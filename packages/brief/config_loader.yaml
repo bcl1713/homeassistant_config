@@ -28,7 +28,7 @@ template:
           weather: true
           device_health: true
           meals: false
-          commute: true
+          commute: false
           chores: false
           appliances: false
           garbage: false
