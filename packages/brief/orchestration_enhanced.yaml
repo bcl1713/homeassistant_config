@@ -12,9 +12,25 @@ script:
     description: "Orchestrates data collection with configuration validation"
     mode: single
     variables:
-      # Load configuration from config_loader
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) | default({}) }}"
-      config_timeouts: "{{ state_attr('sensor.brief_config_timeouts', None) | default({}) }}"
+      # Load configuration from config_loader (with null safety)
+      config_modules: >
+        {%- set raw = state_attr('sensor.brief_config_modules', None) -%}
+        {%- if raw is none -%}
+          {}
+        {%- elif raw is string -%}
+          {{ raw | from_json }}
+        {%- else -%}
+          {{ raw }}
+        {%- endif -%}
+      config_timeouts: >
+        {%- set raw = state_attr('sensor.brief_config_timeouts', None) -%}
+        {%- if raw is none -%}
+          {}
+        {%- elif raw is string -%}
+          {{ raw | from_json }}
+        {%- else -%}
+          {{ raw }}
+        {%- endif -%}
       collector_timeout: "{{ config_timeouts.get('collector_timeout', 15) }}"
       build_prompt_timeout: "{{ config_timeouts.get('build_prompt_timeout', 30) }}"
 
@@ -194,8 +210,13 @@ script:
 
           appliances_data: >
             {%- if appliances_enabled -%}
-              {%- set data = state_attr('sensor.brief_data_appliances', None) | default({}) -%}
-              {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
+              {%- set raw_data = state_attr('sensor.brief_data_appliances', None) | default({}) -%}
+              {%- if raw_data is string -%}
+                {%- set data = raw_data | from_json -%}
+              {%- else -%}
+                {%- set data = raw_data -%}
+              {%- endif -%}
+              {%- if data and data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
                 {{ data }}
               {%- else -%}
                 {}
@@ -206,8 +227,13 @@ script:
 
           meals_data: >
             {%- if meals_enabled -%}
-              {%- set data = state_attr('sensor.brief_data_meals', None) | default({}) -%}
-              {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
+              {%- set raw_data = state_attr('sensor.brief_data_meals', None) | default({}) -%}
+              {%- if raw_data is string -%}
+                {%- set data = raw_data | from_json -%}
+              {%- else -%}
+                {%- set data = raw_data -%}
+              {%- endif -%}
+              {%- if data and (data.get('validation_status') == 'success' or data.get('validation_status') == 'partial') -%}
                 {{ data }}
               {%- else -%}
                 {}
@@ -218,8 +244,13 @@ script:
 
           commute_data: >
             {%- if commute_enabled -%}
-              {%- set data = state_attr('sensor.brief_data_commute', None) | default({}) -%}
-              {%- if data.get('validation_status') == 'success' or data.get('validation_status') == 'partial' -%}
+              {%- set raw_data = state_attr('sensor.brief_data_commute', None) | default({}) -%}
+              {%- if raw_data is string -%}
+                {%- set data = raw_data | from_json -%}
+              {%- else -%}
+                {%- set data = raw_data -%}
+              {%- endif -%}
+              {%- if data and (data.get('validation_status') == 'success' or data.get('validation_status') == 'partial') -%}
                 {{ data }}
               {%- else -%}
                 {}
@@ -247,21 +278,36 @@ script:
 
           calendar_data: >
             {%- if calendar_enabled -%}
-              {{ state_attr('sensor.brief_data_calendar', None) | default({}) }}
+              {%- set raw_data = state_attr('sensor.brief_data_calendar', None) | default({}) -%}
+              {%- if raw_data is string -%}
+                {{ raw_data | from_json }}
+              {%- else -%}
+                {{ raw_data }}
+              {%- endif -%}
             {%- else -%}
               {}
             {%- endif -%}
 
           garbage_data: >
             {%- if garbage_enabled -%}
-              {{ state_attr('sensor.brief_data_garbage', None) | default({}) }}
+              {%- set raw_data = state_attr('sensor.brief_data_garbage', None) | default({}) -%}
+              {%- if raw_data is string -%}
+                {{ raw_data | from_json }}
+              {%- else -%}
+                {{ raw_data }}
+              {%- endif -%}
             {%- else -%}
               {}
             {%- endif -%}
 
           air_quality_data: >
             {%- if air_quality_enabled -%}
-              {{ state_attr('sensor.brief_data_air_quality', None) | default({}) }}
+              {%- set raw_data = state_attr('sensor.brief_data_air_quality', None) | default({}) -%}
+              {%- if raw_data is string -%}
+                {{ raw_data | from_json }}
+              {%- else -%}
+                {{ raw_data }}
+              {%- endif -%}
             {%- else -%}
               {}
             {%- endif -%}
