@@ -72,11 +72,10 @@ script:
             {% endif %}
             {{ ns.garbage_events }}
 
-      # Step 3: Determine if reminder is relevant (has pickup AND it's evening/night)
+      # Step 3: Determine if reminder is relevant (has pickup tomorrow)
       - variables:
           has_pickup_tomorrow: "{{ garbage_tomorrow | length > 0 }}"
-          time_to_remind: "{{ is_evening or is_night }}"
-          is_relevant: "{{ has_pickup_tomorrow and time_to_remind }}"
+          is_relevant: "{{ has_pickup_tomorrow }}"
           collection_status: >
             {% if garbage_tomorrow | length > 0 %}
               success
