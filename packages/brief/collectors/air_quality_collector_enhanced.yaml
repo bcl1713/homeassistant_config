@@ -85,7 +85,7 @@ script:
                   "co2_value": {{ co2 if co2 != 'N/A' else null }},
                   "voc_value": {{ voc if voc != 'N/A' else null }},
                   "trend": "{{ trend }}",
-                  "is_relevant": {{ is_relevant | lower }},
+                  "relevant": {{ is_relevant | lower }},
                   "summary": "{{ summary_text }}",
                   "validation_status": "{{ collection_status }}"
                 }

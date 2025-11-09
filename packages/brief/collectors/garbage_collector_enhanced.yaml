@@ -97,7 +97,7 @@ script:
             {
               "has_pickup_tomorrow": {{ has_pickup_tomorrow | lower }},
               "pickup_events": {{ garbage_tomorrow | tojson }},
-              "is_relevant": {{ is_relevant | lower }},
+              "relevant": {{ is_relevant | lower }},
               "reminder_message": "{{ reminder_message }}",
               "validation_status": "{{ collection_status }}"
             }

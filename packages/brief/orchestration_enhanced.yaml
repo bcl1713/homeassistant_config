@@ -285,7 +285,7 @@ script:
 
           garbage_data: >
             {%- if garbage_enabled -%}
-              {%- set relevant = state_attr('sensor.brief_data_garbage', 'is_relevant') | default(false) -%}
+              {%- set relevant = state_attr('sensor.brief_data_garbage', 'relevant') | default(false) -%}
               {%- set reminder = state_attr('sensor.brief_data_garbage', 'reminder_message') -%}
               {%- if relevant -%}
                 {{ {
