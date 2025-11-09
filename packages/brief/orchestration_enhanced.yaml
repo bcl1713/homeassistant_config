@@ -377,7 +377,7 @@ script:
             {% endif %}
 
             {# Garbage reminders (if enabled and relevant) #}
-            {% if garbage_enabled and garbage.get('is_relevant', false) %}
+            {% if garbage_enabled and garbage.get('relevant', false) %}
               {% set ns.sections = ns.sections + [garbage.get('reminder_message', '')] %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
