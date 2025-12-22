@@ -55,11 +55,6 @@ automation:
         event_data:
           domain: device_tracker
       - platform: state
-        entity_id:
-          - input_boolean.chore_dishwasher_completed
-          - input_boolean.chore_bathroom_completed
-        to: "on"
-      - platform: state
         entity_id: weather.forecast_home
         attribute: weather_alert
     action:
@@ -71,7 +66,7 @@ automation:
     description: "Monitor briefing system health"
     trigger:
       - platform: time_pattern
-        hours: "/6"  # Every 6 hours
+        hours: "/6" # Every 6 hours
     condition:
       - condition: template
         value_template: >
@@ -81,7 +76,7 @@ automation:
         data:
           title: "Briefing System Issue"
           message: >
-            The modular briefing system appears to have issues.
-            Context: {{ states('sensor.brief_context_summary') }}
-            Last update: {{ state_attr('sensor.brief_context_summary', 'last_generated') }}
+            The modular briefing system appears to have issues. Context: {{
+            states('sensor.brief_context_summary') }} Last update: {{
+            state_attr('sensor.brief_context_summary', 'last_generated') }}
           notification_id: briefing_system_health

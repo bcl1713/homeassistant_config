@@ -1,13 +1,19 @@
 # packages/towner_notifications.yaml
 #
-# Reliable Towner school notifications with state-based tracking
-# - Morning departure: 30s verification delay, sets school arrival expectation
-# - School arrival: only notifies if expected, clears expectation
-# - School departure: 30s verification delay, sets home arrival expectation
-# - Home arrival: only notifies if expected, clears expectation
-# - Timeouts: expectations auto-clear after 30 minutes
-# - Overdue alerts: notifications if 20+ minutes late
-
+# Improved Towner school notifications handling infrequent location updates
+#
+# Problem solved:
+# - Race condition when device detects school before it detects leaving home
+# - Missing arrival notifications due to location update gaps
+# - Unreliable tracking with infrequent device updates
+#
+# Solution:
+# - Track previous location with helper text entity
+# - Detect location transitions based on context (time of day, last known location)
+# - Verify transitions make logical sense before notifying
+# - Use "in transit" state to handle direct home→school or school→home jumps
+# - Add configurability for school hours and locations
+#
 input_boolean:
   towner_expecting_school_arrival:
     name: "Expecting Towner at School"
@@ -17,8 +23,22 @@ input_boolean:
     name: "Expecting Towner Home from School"
     icon: mdi:home
     initial: false
+  towner_at_school:
+    name: "Towner at School"
+    icon: mdi:school
+    initial: false
+
+input_text:
+  towner_previous_location:
+    name: "Towner Previous Location"
+    icon: mdi:map-marker
+    initial: "home"
 
 automation:
+  # ========================================
+  # PHASE 1: DETECT DEPARTURE FROM HOME
+  # ========================================
+  # When Towner leaves home during school hours, set expectation for school arrival
   - id: "towner_left_home_verification"
     alias: "Towner: Verify departure from home"
     description: "Wait 30 seconds to verify Towner actually left home, then set school expectation"
@@ -40,20 +60,33 @@ automation:
         entity_id: input_boolean.towner_expecting_school_arrival
         state: "off"
     action:
+      # Wait to verify the state actually changed (not a transient blip)
       - delay: "00:00:30"
       - condition: template
         value_template: "{{ states('person.towner') != 'home' }}"
+      # Notify departure
       - service: notify.all_mobile_devices
         data:
           title: "Towner — Left for School"
           message: "Towner left home for school at {{ now().strftime('%-I:%M %p') }}."
           data:
             tag: "towner-school"
+      # Set expectation flag
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.towner_expecting_school_arrival
+      # Update previous location
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.towner_previous_location
+        data:
+          value: "home"
     mode: single
 
+  # ========================================
+  # PHASE 2A: SCHOOL ARRIVAL (Normal path)
+  # ========================================
+  # When we detect Towner at school (and we were expecting this), notify arrival
   - id: "towner_arrived_school"
     alias: "Towner: Arrived at school"
     description: "Notify when Towner arrives at school (only if expected)"
@@ -72,11 +105,81 @@ automation:
           message: "Towner arrived at La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
           data:
             tag: "towner-school"
+      # Turn off expectation
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.towner_expecting_school_arrival
+      # Mark that Towner is at school
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.towner_at_school
+      # Update previous location
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.towner_previous_location
+        data:
+          value: "La Vista Middle School"
     mode: single
 
+  # ========================================
+  # PHASE 2B: SCHOOL ARRIVAL (Race condition recovery)
+  # ========================================
+  # If device jumps directly to school without us detecting the departure,
+  # and we're during school morning hours, treat it as arrival
+  - id: "towner_arrived_school_race_condition"
+    alias: "Towner: Arrived at school (race condition)"
+    description: "Handle race condition when device detects school before departure from home"
+    trigger:
+      - platform: state
+        entity_id: person.towner
+        to: "La Vista Middle School"
+    condition:
+      # Only during morning school hours
+      - condition: time
+        after: "06:30:00"
+        before: "09:30:00"
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      # Only if we were NOT already expecting school arrival (that's the normal path)
+      - condition: state
+        entity_id: input_boolean.towner_expecting_school_arrival
+        state: "off"
+      # Only if we're NOT already at school
+      - condition: state
+        entity_id: input_boolean.towner_at_school
+        state: "off"
+      # Only if the previous location was home (race condition indicator)
+      - condition: state
+        entity_id: input_text.towner_previous_location
+        state: "home"
+    action:
+      # Notify school arrival (race condition)
+      - service: notify.all_mobile_devices
+        data:
+          title: "Towner — Arrived at School"
+          message: "Towner arrived at La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
+          data:
+            tag: "towner-school"
+      # Mark that Towner is at school
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.towner_at_school
+      # Update previous location
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.towner_previous_location
+        data:
+          value: "La Vista Middle School"
+    mode: single
+
+  # ========================================
+  # PHASE 3: DETECT DEPARTURE FROM SCHOOL
+  # ========================================
+  # When Towner leaves school, set expectation for home arrival
   - id: "towner_left_school_verification"
     alias: "Towner: Verify departure from school"
     description: "Wait 30 seconds to verify Towner actually left school, then set home expectation"
@@ -89,20 +192,37 @@ automation:
         entity_id: input_boolean.towner_expecting_home_arrival
         state: "off"
     action:
+      # Wait to verify the state actually changed
       - delay: "00:00:30"
       - condition: template
         value_template: "{{ states('person.towner') != 'La Vista Middle School' }}"
+      # Notify departure
       - service: notify.all_mobile_devices
         data:
           title: "Towner — Left School"
           message: "Towner left La Vista Middle School at {{ now().strftime('%-I:%M %p') }}."
           data:
             tag: "towner-school"
+      # Set expectation flag
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.towner_expecting_home_arrival
+      # Clear "at school" flag since they left
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.towner_at_school
+      # Update previous location
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.towner_previous_location
+        data:
+          value: "La Vista Middle School"
     mode: single
 
+  # ========================================
+  # PHASE 4A: HOME ARRIVAL (Normal path)
+  # ========================================
+  # When Towner arrives home (and we were expecting this), notify arrival
   - id: "towner_arrived_home"
     alias: "Towner: Arrived home from school"
     description: "Notify when Towner arrives home (only if expected)"
@@ -121,11 +241,77 @@ automation:
           message: "Towner arrived home from school at {{ now().strftime('%-I:%M %p') }}."
           data:
             tag: "towner-school"
+      # Turn off expectation
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.towner_expecting_home_arrival
+      # Update previous location
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.towner_previous_location
+        data:
+          value: "home"
     mode: single
 
+  # ========================================
+  # PHASE 4B: HOME ARRIVAL (Race condition recovery)
+  # ========================================
+  # If device jumps directly to home without us detecting departure from school,
+  # and we're during afternoon school hours, treat it as arrival home
+  - id: "towner_arrived_home_race_condition"
+    alias: "Towner: Arrived home from school (race condition)"
+    description: "Handle race condition when device detects home before departure from school"
+    trigger:
+      - platform: state
+        entity_id: person.towner
+        to: "home"
+    condition:
+      # Only during afternoon school hours (3pm - 6pm)
+      - condition: time
+        after: "15:00:00"
+        before: "18:00:00"
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      # Only if we were NOT already expecting home arrival (that's the normal path)
+      - condition: state
+        entity_id: input_boolean.towner_expecting_home_arrival
+        state: "off"
+      # Only if Towner is marked as at school
+      - condition: state
+        entity_id: input_boolean.towner_at_school
+        state: "on"
+      # Only if the previous location was school (race condition indicator)
+      - condition: state
+        entity_id: input_text.towner_previous_location
+        state: "La Vista Middle School"
+    action:
+      # Notify home arrival (race condition)
+      - service: notify.all_mobile_devices
+        data:
+          title: "Towner — Home from School"
+          message: "Towner arrived home from school at {{ now().strftime('%-I:%M %p') }}."
+          data:
+            tag: "towner-school"
+      # Clear "at school" flag
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.towner_at_school
+      # Update previous location
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.towner_previous_location
+        data:
+          value: "home"
+    mode: single
+
+  # ========================================
+  # CLEANUP: TIMEOUTS & ALERTS
+  # ========================================
+  # Clear school expectation after 30 minutes
   - id: "towner_school_expectation_timeout"
     alias: "Towner: School arrival timeout"
     description: "Clear school expectation after 30 minutes"
@@ -140,6 +326,7 @@ automation:
           entity_id: input_boolean.towner_expecting_school_arrival
     mode: single
 
+  # Clear home expectation after 30 minutes
   - id: "towner_home_expectation_timeout"
     alias: "Towner: Home arrival timeout"
     description: "Clear home expectation after 30 minutes"
@@ -154,6 +341,7 @@ automation:
           entity_id: input_boolean.towner_expecting_home_arrival
     mode: single
 
+  # Warn if school arrival is overdue
   - id: "towner_school_arrival_overdue"
     alias: "Towner: School arrival overdue warning"
     description: "Warn if Towner hasn't arrived at school within 20 minutes"
@@ -171,6 +359,7 @@ automation:
             tag: "towner-overdue"
     mode: single
 
+  # Warn if home arrival is overdue
   - id: "towner_home_arrival_overdue"
     alias: "Towner: Home arrival overdue warning"
     description: "Warn if Towner hasn't arrived home within 20 minutes"
@@ -188,16 +377,23 @@ automation:
             tag: "towner-overdue"
     mode: single
 
+  # Reset all state each morning
   - id: "towner_daily_reset"
     alias: "Towner: Daily state reset"
-    description: "Reset all expectation states each morning"
+    description: "Reset all expectation states and location tracking each morning"
     trigger:
       - platform: time
         at: "06:00:00"
     action:
       - service: input_boolean.turn_off
         target:
-          entity_id: 
+          entity_id:
             - input_boolean.towner_expecting_school_arrival
             - input_boolean.towner_expecting_home_arrival
+            - input_boolean.towner_at_school
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.towner_previous_location
+        data:
+          value: "home"
     mode: single

@@ -5,51 +5,25 @@
 #
 
 script:
-  brief_collect_chores:
-    alias: "Collect Chores Information"
-    description: "Gathers current chore status with context-aware filtering"
-    variables:
-      is_weekend: "{{ is_state('binary_sensor.time_is_weekend', 'on') }}"
-      dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') }}"
-      dishwasher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
-      bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
-      bathroom_completed: "{{ is_state('input_boolean.chore_bathroom_completed', 'on') }}"
-    sequence:
-      - variables:
-          chores_data:
-            daily:
-              dishwasher:
-                assignee: "{{ dishwasher_assignee }}"
-                completed: "{{ dishwasher_completed }}"
-                relevant: true
-            weekend:
-              bathroom:
-                assignee: "{{ bathroom_assignee }}"
-                completed: "{{ bathroom_completed }}"
-                relevant: "{{ is_weekend }}"
-      - service: mqtt.publish
-        data:
-          topic: "home/brief/data/chores"
-          payload: "{{ chores_data | tojson }}"
-
   brief_collect_appliances:
     alias: "Collect Appliance Status"
     description: "Gathers appliance information with intelligent filtering"
     variables:
-      dishwasher_state: "{{ states('sensor.dishwasher_state') }}"
+      dishwasher_state:
+        "{{ states('sensor.kitchen_dishwasher_operation_state') }}"
       dishwasher_available: >
-        {{ not is_state('sensor.dishwasher_state', 'unavailable') and 
-           not is_state('sensor.dishwasher_state', 'unknown') }}
+        {{ not is_state('sensor.kitchen_dishwasher_operation_state',
+        'unavailable') and
+           not is_state('sensor.kitchen_dishwasher_operation_state', 'unknown')
+        }}
       dishwasher_running: >
-        {{ dishwasher_available and 
-           states('sensor.dishwasher_state') == "BSH.Common.EnumType.OperationState.Run" }}
-      # New dishwasher status sensors
+        {{ dishwasher_available and
+           states('sensor.kitchen_dishwasher_operation_state') == "run" }}
+      # Dishwasher maintenance sensors - checks if salt or rinse aid is low
       needs_salt: >
-        {{ is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_saltnearlyempty', 'on') or
-           is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_saltempty', 'on') }}
+        {{ states('sensor.kitchen_dishwasher_salt_nearly_empty') == 'on' }}
       needs_rinse_aid: >
-        {{ is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidnearlyempty', 'on') or
-           is_state('binary_sensor.014030536224000994_dishcare_dishwasher_event_rinseaidempty', 'on') }}
+        {{ states('sensor.kitchen_dishwasher_rinse_aid_nearly_empty') == 'on' }}
     sequence:
       - variables:
           appliance_data:
@@ -78,42 +52,50 @@ script:
         target:
           label_id: brief
         response_variable: raw_events
-      
+
       - variables:
           today: "{{ now().date() }}"
           processed_events: >
-            {% set ns = namespace(events=[]) %}
-            {% set today_date = now().date() %}
-            {% for calendar, event_list in raw_events.items() %}
+            {% set ns = namespace(events=[]) %} {% set today_date = now().date()
+            %} {% for calendar, event_list in raw_events.items() %}
               {% for event in event_list.events %}
                 {# Parse event start date and handle timezone conversion #}
                 {% if 'T' in event.start %}
-                  {# Timed event - normalize to local timezone using ISO parsing #}
-                  {% set parsed_dt = strptime(event.start.replace('Z', '+00:00'), '%Y-%m-%dT%H:%M:%S%z') %}
+                  {# Timed event - normalize to local timezone using ISO parsing
+            #}
+                  {% set parsed_dt = strptime(event.start.replace('Z',
+            '+00:00'), '%Y-%m-%dT%H:%M:%S%z') %}
                   {% set local_dt = parsed_dt.astimezone() %}
                   {% set event_datetime = local_dt %}
                   {% set event_date = local_dt.date() %}
-                  {% set corrected_start = local_dt.strftime('%Y-%m-%dT%H:%M:%S%z') %}
-                  {% set was_converted = parsed_dt.strftime('%z') != local_dt.strftime('%z') %}
+                  {% set corrected_start =
+            local_dt.strftime('%Y-%m-%dT%H:%M:%S%z') %}
+                  {% set was_converted = parsed_dt.strftime('%z') !=
+            local_dt.strftime('%z') %}
                 {% else %}
                   {# All-day event - just date, no timezone conversion needed #}
-                  {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
+                  {% set event_date = strptime(event.start, '%Y-%m-%d').date()
+            %}
                   {% set event_datetime = none %}
                   {% set corrected_start = event.start %}
                   {% set was_converted = false %}
                 {% endif %}
                 
-                {# Include logic: Today (all events) OR tomorrow's events OR future events within next 4 hours #}
+                {# Include logic: Today (all events) OR tomorrow's events OR
+            future events within next 4 hours #}
                 {% set include_event = false %}
                 {% if event_date == today_date %}
                   {# Include ALL events from today, regardless of time #}
                   {% set include_event = true %}
                 {% elif event_date == (today_date + timedelta(days=1)) %}
-                  {# Include ALL events from tomorrow (both timed and all-day) #}
+                  {# Include ALL events from tomorrow (both timed and all-day)
+            #}
                   {% set include_event = true %}
                 {% elif event_datetime %}
-                  {# For future timed events beyond tomorrow, check if within next 4 hours #}
-                  {% if event_datetime is not none and event_datetime is not string %}
+                  {# For future timed events beyond tomorrow, check if within
+            next 4 hours #}
+                  {% if event_datetime is not none and event_datetime is not
+            string %}
                     {% set event_timestamp = event_datetime.timestamp() %}
                     {% set current_timestamp = now().timestamp() %}
                     {% set four_hours_later = current_timestamp + (4 * 3600) %}
@@ -132,22 +114,25 @@ script:
                 {% if include_event %}
                   {% set ns.events = ns.events + [{
                     'summary': event.summary,
-                    'calendar': calendar.replace('calendar.', '').replace('_', ' ').title(),
+                    'calendar': calendar.replace('calendar.', '').replace('_', '
+            ').title(),
                     'start': corrected_start,
                     'original_start': event.start,
                     'date': event_date.isoformat(),
                     'is_today': event_date == today_date,
                     'is_timed': event_datetime is not none,
-                    'formatted_time': event_datetime.strftime('%H:%M') if event_datetime else 'All day',
-                    'formatted_date': event_date.strftime('%A') if event_date != today_date else 'TODAY',
-                    'day_name': event_date.strftime('%A, %B %d') if event_date != today_date else 'Today',
+                    'formatted_time': event_datetime.strftime('%H:%M') if
+            event_datetime else 'All day',
+                    'formatted_date': event_date.strftime('%A') if event_date !=
+            today_date else 'TODAY',
+                    'day_name': event_date.strftime('%A, %B %d') if event_date
+            != today_date else 'Today',
                     'timezone_converted': was_converted
                   }] %}
                 {% endif %}
               {% endfor %}
-            {% endfor %}
-            {{ ns.events }}
-      
+            {% endfor %} {{ ns.events }}
+
       - service: mqtt.publish
         data:
           topic: "home/brief/data/calendar"
@@ -155,7 +140,9 @@ script:
 
   brief_collect_garbage:
     alias: "Collect Garbage Schedule"
-    description: "Dedicated garbage collection logic - reminds to take out trash the night before"
+    description:
+      "Dedicated garbage collection logic - reminds to take out trash the night
+      before"
     sequence:
       # Get garbage calendar events for the next 2 days
       - service: calendar.get_events
@@ -165,14 +152,14 @@ script:
         target:
           label_id: trash_calendar
         response_variable: garbage_events
-      
+
       - variables:
           today: "{{ now().date() }}"
           tomorrow: "{{ (now() + timedelta(days=1)).date() }}"
           is_evening: "{{ now().hour >= 17 }}"
           garbage_tomorrow: >
-            {% set ns = namespace(garbage_events=[]) %}
-            {% for calendar, event_list in garbage_events.items() %}
+            {% set ns = namespace(garbage_events=[]) %} {% for calendar,
+            event_list in garbage_events.items() %}
               {% for event in event_list.events %}
                 {# Parse event start date #}
                 {% if 'T' in event.start %}
@@ -182,27 +169,28 @@ script:
                 {% endif %}
                 
                 {# Get tomorrow's date as string in YYYY-MM-DD format #}
-                {% set tomorrow_str = (now() + timedelta(days=1)).strftime('%Y-%m-%d') %}
+                {% set tomorrow_str = (now() +
+            timedelta(days=1)).strftime('%Y-%m-%d') %}
                 
                 {# Check if pickup is tomorrow #}
                 {% if event_date_str == tomorrow_str %}
                   {% set ns.garbage_events = ns.garbage_events + [{
                     'summary': event.summary,
                     'date': event_date_str,
-                    'type': 'garbage_and_recycling' if 'recycling' in event.summary.lower() else 'garbage_only'
+                    'type': 'garbage_and_recycling' if 'recycling' in
+            event.summary.lower() else 'garbage_only'
                   }] %}
                 {% endif %}
               {% endfor %}
-            {% endfor %}
-            {{ ns.garbage_events }}
-          
+            {% endfor %} {{ ns.garbage_events }}
+
           garbage_data:
             has_pickup_tomorrow: "{{ garbage_tomorrow | length > 0 }}"
             pickup_events: "{{ garbage_tomorrow }}"
             relevant: >
-              {% set has_pickup = garbage_tomorrow | length > 0 %}
-              {% set time_to_remind = is_evening or now().hour >= 20 %}
-              {{ has_pickup and time_to_remind }}
+              {% set has_pickup = garbage_tomorrow | length > 0 %} {% set
+              time_to_remind = is_evening or now().hour >= 20 %} {{ has_pickup
+              and time_to_remind }}
             reminder_message: >
               {% if garbage_tomorrow | length > 0 %}
                 {% set event = garbage_tomorrow[0] %}
@@ -214,7 +202,7 @@ script:
               {% else %}
                 ""
               {% endif %}
-      
+
       - service: mqtt.publish
         data:
           topic: "home/brief/data/garbage"
@@ -227,50 +215,62 @@ script:
       # Get today's meals
       - service: calendar.get_events
         data:
-          start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
-          end_date_time: "{{ now().replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+          start_date_time:
+            "{{ now().replace(hour=0, minute=0, second=0,
+            microsecond=0).isoformat() }}"
+          end_date_time:
+            "{{ now().replace(hour=23, minute=59, second=59,
+            microsecond=0).isoformat() }}"
         target:
-          entity_id: 
+          entity_id:
             - calendar.mealie_breakfast
-            - calendar.mealie_lunch  
+            - calendar.mealie_lunch
             - calendar.mealie_dinner
         response_variable: today_meals
-      
+
       # Get tomorrow's meals
       - service: calendar.get_events
         data:
-          start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
-          end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+          start_date_time:
+            "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0,
+            microsecond=0).isoformat() }}"
+          end_date_time:
+            "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59,
+            second=59, microsecond=0).isoformat() }}"
         target:
-          entity_id: 
+          entity_id:
             - calendar.mealie_breakfast
-            - calendar.mealie_lunch  
+            - calendar.mealie_lunch
             - calendar.mealie_dinner
         response_variable: tomorrow_meals
-      
+
       - variables:
           meal_data:
             today: >
-              {% set ns = namespace(meals={}) %}
-              {% for calendar, event_list in today_meals.items() %}
+              {% set ns = namespace(meals={}) %} {% for calendar, event_list in
+              today_meals.items() %}
                 {% set meal_type = calendar.split('_')[-1] %}
                 {% if event_list.events %}
-                  {% set ns.meals = dict(ns.meals, **{meal_type: event_list.events[0].summary}) %}
+                  {% set ns.meals = dict(ns.meals, **{meal_type:
+              event_list.events[0].summary}) %}
                 {% endif %}
-              {% endfor %}
-              {{ ns.meals }}
+              {% endfor %} {{ ns.meals }}
             tomorrow: >
-              {% set ns = namespace(meals={}) %}
-              {% for calendar, event_list in tomorrow_meals.items() %}
+              {% set ns = namespace(meals={}) %} {% for calendar, event_list in
+              tomorrow_meals.items() %}
                 {% set meal_type = calendar.split('_')[-1] %}
                 {% if event_list.events %}
-                  {% set ns.meals = dict(ns.meals, **{meal_type: event_list.events[0].summary}) %}
+                  {% set ns.meals = dict(ns.meals, **{meal_type:
+              event_list.events[0].summary}) %}
                 {% endif %}
-              {% endfor %}
-              {{ ns.meals }}
-            has_today: "{{ today_meals.values() | map(attribute='events') | map('length') | sum > 0 }}"
-            has_tomorrow: "{{ tomorrow_meals.values() | map(attribute='events') | map('length') | sum > 0 }}"
-      
+              {% endfor %} {{ ns.meals }}
+            has_today:
+              "{{ today_meals.values() | map(attribute='events') | map('length')
+              | sum > 0 }}"
+            has_tomorrow:
+              "{{ tomorrow_meals.values() | map(attribute='events') |
+              map('length') | sum > 0 }}"
+
       - service: mqtt.publish
         data:
           topic: "home/brief/data/meals"
@@ -280,14 +280,17 @@ script:
     alias: "Collect Device Status"
     description: "Gathers critical device issues with intelligent filtering"
     variables:
-      battery_threshold: "{{ states('input_number.device_health_critical_threshold') | int(15) }}"
-      critical_domains: ['camera', 'alarm_control_panel', 'lock', 'binary_sensor']
+      battery_threshold:
+        "{{ states('input_number.device_health_critical_threshold') | int(15) }}"
+      critical_domains:
+        ["camera", "alarm_control_panel", "lock", "binary_sensor"]
     sequence:
       - variables:
           critical_batteries: >
-            {% set ns = namespace(batteries=[]) %}
-            {% for entity in states if entity.attributes.battery_level is defined %}
-              {% set level = entity.attributes.battery_level | float(-1) | int %}
+            {% set ns = namespace(batteries=[]) %} {% for entity in states if
+            entity.attributes.battery_level is defined %}
+              {% set level = entity.attributes.battery_level | float(-1) | int
+            %}
               {% if level >= 0 and level <= battery_threshold %}
                 {% set device_name = entity.name or entity.entity_id %}
                 {% set friendly_name = device_name.replace('_', ' ').title() %}
@@ -297,15 +300,18 @@ script:
                   'level': level
                 }] %}
               {% endif %}
-            {% endfor %}
-            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+            {% endfor %} {% for entity in states.sensor |
+            selectattr('attributes.device_class', '==', 'battery') %}
               {% if entity.state | string | regex_match('^[0-9.]+$') %}
                 {% set level = entity.state | int %}
                 {% if 0 <= level <= battery_threshold %}
-                  {# Skip our own device_health sensors to avoid circular reference #}
-                  {% if not entity.entity_id.startswith('sensor.device_health_') %}
+                  {# Skip our own device_health sensors to avoid circular
+            reference #}
+                  {% if not entity.entity_id.startswith('sensor.device_health_')
+            %}
                     {% set device_name = entity.name or entity.entity_id %}
-                    {% set friendly_name = device_name.replace('_', ' ').title() %}
+                    {% set friendly_name = device_name.replace('_', ' ').title()
+            %}
                     {% set ns.batteries = ns.batteries + [{
                       'entity_id': entity.entity_id,
                       'name': friendly_name,
@@ -314,12 +320,11 @@ script:
                   {% endif %}
                 {% endif %}
               {% endif %}
-            {% endfor %}
-            {{ ns.batteries }}
+            {% endfor %} {{ ns.batteries }}
 
           offline_devices: >
-            {% set ns = namespace(devices=[]) %}
-            {% for entity in states if entity.state == 'unavailable' %}
+            {% set ns = namespace(devices=[]) %} {% for entity in states if
+            entity.state == 'unavailable' %}
               {% if entity.domain in critical_domains %}
                 {% set device_name = entity.name or entity.entity_id %}
                 {% set friendly_name = device_name.replace('_', ' ').title() %}
@@ -329,13 +334,14 @@ script:
                   'domain': entity.domain
                 }] %}
               {% endif %}
-            {% endfor %}
-            {{ ns.devices }}
-          
+            {% endfor %} {{ ns.devices }}
+
           device_data:
             critical_batteries: "{{ critical_batteries }}"
             offline_devices: "{{ offline_devices }}"
-            has_issues: "{{ (critical_batteries | length) + (offline_devices | length) > 0 }}"
+            has_issues:
+              "{{ (critical_batteries | length) + (offline_devices | length) > 0
+              }}"
             battery_count: "{{ critical_batteries | length }}"
             offline_count: "{{ offline_devices | length }}"
 
@@ -354,9 +360,13 @@ script:
       - variables:
           commute_data:
             relevant: "{{ is_weekday and is_morning }}"
-            brian_time: "{{ states('sensor.travel_time_to_brian_s_work') if is_weekday and is_morning else 'N/A' }}"
-            hester_time: "{{ states('sensor.travel_time_to_hester_s_work') if is_weekday and is_morning else 'N/A' }}"
-      
+            brian_time:
+              "{{ states('sensor.travel_time_to_brian_s_work') if is_weekday and
+              is_morning else 'N/A' }}"
+            hester_time:
+              "{{ states('sensor.travel_time_to_hester_s_work') if is_weekday
+              and is_morning else 'N/A' }}"
+
       - service: mqtt.publish
         data:
           topic: "home/brief/data/commute"

@@ -28,7 +28,9 @@ script:
             - service: light.turn_on
               data:
                 entity_id: "{{ lamp }}"
-                brightness_step_pct: "{{ transition_step if direction == 'up' else (transition_step * -1) }}"
+                brightness_step_pct:
+                  "{{ transition_step if direction == 'up' else (transition_step
+                  * -1) }}"
                 transition: "{{ transition_time / 1000 }}"
             - delay:
                 seconds: "{{ transition_time / 1000 }}"
@@ -46,11 +48,11 @@ automation:
         scene_004_press:
           - service: light.turn_on
             data:
-              entity_id: light.bedroom_table_lamp_brian
+              entity_id: light.master_bedroom_lamp_brian
         scene_004_held:
           - service: script.lamp_dim_sequence
             data:
-              lamp: light.bedroom_table_lamp_brian
+              lamp: light.master_bedroom_lamp_brian
               direction: up
               dimming_helper: input_boolean.dimming_lamp_brian
         scene_004_released:
@@ -60,22 +62,22 @@ automation:
         scene_004_double:
           - service: light.turn_on
             data:
-              entity_id: light.bedroom_table_lamp_brian
+              entity_id: light.master_bedroom_lamp_brian
               brightness_pct: 100
         scene_003_press:
           - service: light.turn_off
             data:
-              entity_id: light.bedroom_table_lamp_brian
+              entity_id: light.master_bedroom_lamp_brian
         scene_003_double:
           - service: light.turn_off
             data:
               entity_id:
-                - light.bedroom_table_lamp_brian
-                - light.bedroom_table_lamp_hester
+                - light.master_bedroom_lamp_brian
+                - light.master_bedroom_lamp_hester
         scene_003_held:
           - service: script.lamp_dim_sequence
             data:
-              lamp: light.bedroom_table_lamp_brian
+              lamp: light.master_bedroom_lamp_brian
               direction: down
               dimming_helper: input_boolean.dimming_lamp_brian
         scene_003_released:
@@ -95,11 +97,11 @@ automation:
         scene_003_press:
           - service: light.turn_on
             data:
-              entity_id: light.bedroom_table_lamp_hester
+              entity_id: light.master_bedroom_lamp_hester
         scene_003_held:
           - service: script.lamp_dim_sequence
             data:
-              lamp: light.bedroom_table_lamp_hester
+              lamp: light.master_bedroom_lamp_hester
               direction: up
               dimming_helper: input_boolean.dimming_lamp_hester
         scene_003_released:
@@ -109,17 +111,17 @@ automation:
         scene_004_press:
           - service: light.turn_off
             data:
-              entity_id: light.bedroom_table_lamp_hester
+              entity_id: light.master_bedroom_lamp_hester
         scene_004_double:
           - service: light.turn_off
             data:
               entity_id:
-                - light.bedroom_table_lamp_brian
-                - light.bedroom_table_lamp_hester
+                - light.master_bedroom_lamp_brian
+                - light.master_bedroom_lamp_hester
         scene_004_held:
           - service: script.lamp_dim_sequence
             data:
-              lamp: light.bedroom_table_lamp_hester
+              lamp: light.master_bedroom_lamp_hester
               direction: down
               dimming_helper: input_boolean.dimming_lamp_hester
         scene_004_released:

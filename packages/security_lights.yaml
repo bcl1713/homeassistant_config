@@ -31,9 +31,9 @@ automation:
     trigger:
       - platform: state
         entity_id:
-          - binary_sensor.camera_front_drive_person_occupancy
-          - binary_sensor.camera_back_yard_person_occupancy
-          - binary_sensor.camera_doorbell_front_person_occupancy
+          - binary_sensor.driveway_camera_occupancy_person
+          - binary_sensor.back_yard_camera_occupancy_person
+          - binary_sensor.front_door_camera_occupancy_person
         to: "on"
     condition:
       - condition: numeric_state
@@ -49,7 +49,7 @@ automation:
       # Set auto-off flags for any lights that are currently off
       - if:
           - condition: state
-            entity_id: light.outdoor_front_yard
+            entity_id: light.front_yard
             state: "off"
         then:
           - service: input_boolean.turn_on
@@ -57,7 +57,7 @@ automation:
               entity_id: input_boolean.auto_off_lights_front
       - if:
           - condition: state
-            entity_id: light.outdoor_back_yard
+            entity_id: light.back_yard
             state: "off"
         then:
           - service: input_boolean.turn_on
@@ -67,10 +67,10 @@ automation:
           - condition: or
             conditions:
               - condition: state
-                entity_id: select.front_doorbell_security_light
+                entity_id: select.front_door_doorbell_security_light
                 state: "Off"
               - condition: state
-                entity_id: light.doorbell_front_ring
+                entity_id: light.front_door_doorbell_ring_light
                 state: "off"
         then:
           - service: input_boolean.turn_on
@@ -81,18 +81,18 @@ automation:
       - service: light.turn_on
         target:
           entity_id:
-            - light.outdoor_front_yard
-            - light.outdoor_back_yard
+            - light.front_yard
+            - light.back_yard
       - service: select.select_option
         data:
           option: "On"
         target:
-          entity_id: select.front_doorbell_security_light
+          entity_id: select.front_door_doorbell_security_light
       - service: light.turn_on
         target:
-          entity_id: light.doorbell_front_ring
+          entity_id: light.front_door_doorbell_ring_light
 
-      # wait 10 minutes
+      # Wait 10 minutes minimum (timer resets if motion detected again via mode: restart)
       - delay: "00:10:00"
 
       # Turn off each light group if it was originally off
@@ -103,7 +103,7 @@ automation:
         then:
           - service: light.turn_off
             target:
-              entity_id: light.outdoor_front_yard
+              entity_id: light.front_yard
           - service: input_boolean.turn_off
             target:
               entity_id: input_boolean.auto_off_lights_front
@@ -115,7 +115,7 @@ automation:
         then:
           - service: light.turn_off
             target:
-              entity_id: light.outdoor_back_yard
+              entity_id: light.back_yard
           - service: input_boolean.turn_off
             target:
               entity_id: input_boolean.auto_off_lights_back
@@ -129,10 +129,10 @@ automation:
             data:
               option: "Off"
             target:
-              entity_id: select.front_doorbell_security_light
+              entity_id: select.front_door_doorbell_security_light
           - service: light.turn_off
             target:
-              entity_id: light.doorbell_front_ring
+              entity_id: light.front_door_doorbell_ring_light
           - service: input_boolean.turn_off
             target:
               entity_id: input_boolean.auto_off_lights_doorbell
@@ -148,5 +148,5 @@ automation:
     action:
       - service: light.turn_on
         target:
-          entity_id: light.outdoor_front_yard
+          entity_id: light.front_yard
     mode: single

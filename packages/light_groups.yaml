@@ -15,13 +15,13 @@ light:
   - platform: group
     name: "Entry Lights"
     entities:
-      - light.outdoor_front_yard
+      - light.front_yard
       - light.hallway_entry
       - light.hallway_corridor
-      - light.doorbell_front_ring
+      - light.front_door_doorbell_ring_light
 
   - platform: group
-    name: "Downstairs Lights" 
+    name: "Downstairs Lights"
     entities:
       - light.dining_room_table
       - light.hallway_corridor

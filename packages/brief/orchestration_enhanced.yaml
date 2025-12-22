@@ -13,20 +13,30 @@ script:
     mode: single
     variables:
       # Load configuration from config_loader (with null safety)
-      config_modules: "{{ state_attr('sensor.brief_config_modules', None) or {} }}"
-      config_timeouts: "{{ state_attr('sensor.brief_config_timeouts', None) or {} }}"
+      config_modules:
+        "{{ state_attr('sensor.brief_config_modules', None) or {} }}"
+      config_timeouts:
+        "{{ state_attr('sensor.brief_config_timeouts', None) or {} }}"
       collector_timeout: "{{ config_timeouts.get('collector_timeout', 15) }}"
-      build_prompt_timeout: "{{ config_timeouts.get('build_prompt_timeout', 30) }}"
+      build_prompt_timeout:
+        "{{ config_timeouts.get('build_prompt_timeout', 30) }}"
 
       # Get enabled modules from input_boolean toggles
-      chores_enabled: "{{ is_state('input_boolean.brief_chores_enabled', 'on') }}"
-      appliances_enabled: "{{ is_state('input_boolean.brief_appliances_enabled', 'on') }}"
+      chores_enabled:
+        "{{ is_state('input_boolean.brief_chores_enabled', 'on') }}"
+      appliances_enabled:
+        "{{ is_state('input_boolean.brief_appliances_enabled', 'on') }}"
       meals_enabled: "{{ is_state('input_boolean.brief_meals_enabled', 'on') }}"
-      commute_enabled: "{{ is_state('input_boolean.brief_commute_enabled', 'on') }}"
-      devices_enabled: "{{ is_state('input_boolean.brief_device_health_enabled', 'on') }}"
-      calendar_enabled: "{{ is_state('input_boolean.brief_calendar_enabled', 'on') }}"
-      garbage_enabled: "{{ is_state('input_boolean.brief_garbage_enabled', 'on') }}"
-      air_quality_enabled: "{{ is_state('input_boolean.brief_air_quality_enabled', 'on') }}"
+      commute_enabled:
+        "{{ is_state('input_boolean.brief_commute_enabled', 'on') }}"
+      devices_enabled:
+        "{{ is_state('input_boolean.brief_device_health_enabled', 'on') }}"
+      calendar_enabled:
+        "{{ is_state('input_boolean.brief_calendar_enabled', 'on') }}"
+      garbage_enabled:
+        "{{ is_state('input_boolean.brief_garbage_enabled', 'on') }}"
+      air_quality_enabled:
+        "{{ is_state('input_boolean.brief_air_quality_enabled', 'on') }}"
 
       # Context variables
       is_morning: "{{ now().hour < 12 }}"
@@ -180,7 +190,9 @@ script:
         data:
           type: hourly
         target:
-          entity_id: "{{ state_attr('sensor.brief_config_entity_references', 'weather') | default('weather.forecast_home') }}"
+          entity_id:
+            "{{ state_attr('sensor.brief_config_entity_references', 'weather') |
+            default('weather.forecast_home') }}"
         response_variable: hourly_forecast
 
       # ====================================================================
@@ -190,10 +202,12 @@ script:
           # Read all collected MQTT data from sensor attributes
           # Build dict from sensor attributes since MQTT flattens JSON
           chores_data: >
-            {%- set daily = state_attr('sensor.brief_data_chores', 'daily') | default({}) -%}
-            {%- set weekend = state_attr('sensor.brief_data_chores', 'weekend') | default({}) -%}
-            {%- set validation_status = state_attr('sensor.brief_data_chores', 'validation_status') | default('none') -%}
-            {%- if validation_status in ['success', 'partial'] -%}
+            {%- set daily = state_attr('sensor.brief_data_chores', 'daily') |
+            default({}) -%} {%- set weekend =
+            state_attr('sensor.brief_data_chores', 'weekend') | default({}) -%}
+            {%- set validation_status = state_attr('sensor.brief_data_chores',
+            'validation_status') | default('none') -%} {%- if validation_status
+            in ['success', 'partial'] -%}
               {{ {
                 'daily': daily,
                 'weekend': weekend,
@@ -205,7 +219,8 @@ script:
 
           appliances_data: >
             {%- if appliances_enabled -%}
-              {%- set dishwasher = state_attr('sensor.brief_data_appliances', 'dishwasher') | default({}) -%}
+              {%- set dishwasher = state_attr('sensor.brief_data_appliances',
+            'dishwasher') | default({}) -%}
               {%- if dishwasher -%}
                 {{ { 'dishwasher': dishwasher } | tojson }}
               {%- else -%}
@@ -217,10 +232,14 @@ script:
 
           meals_data: >
             {%- if meals_enabled -%}
-              {%- set today = state_attr('sensor.brief_data_meals', 'today') | default({}) -%}
-              {%- set tomorrow = state_attr('sensor.brief_data_meals', 'tomorrow') | default({}) -%}
-              {%- set has_today = state_attr('sensor.brief_data_meals', 'has_today') | default(false) -%}
-              {%- set has_tomorrow = state_attr('sensor.brief_data_meals', 'has_tomorrow') | default(false) -%}
+              {%- set today = state_attr('sensor.brief_data_meals', 'today') |
+            default({}) -%}
+              {%- set tomorrow = state_attr('sensor.brief_data_meals',
+            'tomorrow') | default({}) -%}
+              {%- set has_today = state_attr('sensor.brief_data_meals',
+            'has_today') | default(false) -%}
+              {%- set has_tomorrow = state_attr('sensor.brief_data_meals',
+            'has_tomorrow') | default(false) -%}
               {%- if has_today or has_tomorrow -%}
                 {{ {
                   'today': today,
@@ -237,9 +256,12 @@ script:
 
           commute_data: >
             {%- if commute_enabled -%}
-              {%- set relevant = state_attr('sensor.brief_data_commute', 'relevant') | default(false) -%}
-              {%- set brian_time = state_attr('sensor.brief_data_commute', 'brian_time') -%}
-              {%- set hester_time = state_attr('sensor.brief_data_commute', 'hester_time') -%}
+              {%- set relevant = state_attr('sensor.brief_data_commute',
+            'relevant') | default(false) -%}
+              {%- set brian_time = state_attr('sensor.brief_data_commute',
+            'brian_time') -%}
+              {%- set hester_time = state_attr('sensor.brief_data_commute',
+            'hester_time') -%}
               {%- if relevant -%}
                 {{ {
                   'relevant': relevant,
@@ -255,11 +277,18 @@ script:
 
           devices_data: >
             {%- if devices_enabled -%}
-              {%- set has_issues = state_attr('sensor.brief_data_devices', 'has_issues') | default(false) -%}
-              {%- set critical_batteries = state_attr('sensor.brief_data_devices', 'critical_batteries') | default([]) -%}
-              {%- set warning_batteries = state_attr('sensor.brief_data_devices', 'warning_batteries') | default([]) -%}
-              {%- set offline_count = state_attr('sensor.brief_data_devices', 'offline_count') | default(0) -%}
-              {%- set offline_devices = state_attr('sensor.brief_data_devices', 'offline_devices') | default([]) -%}
+              {%- set has_issues = state_attr('sensor.brief_data_devices',
+            'has_issues') | default(false) -%}
+              {%- set critical_batteries =
+            state_attr('sensor.brief_data_devices', 'critical_batteries') |
+            default([]) -%}
+              {%- set warning_batteries =
+            state_attr('sensor.brief_data_devices', 'warning_batteries') |
+            default([]) -%}
+              {%- set offline_count = state_attr('sensor.brief_data_devices',
+            'offline_count') | default(0) -%}
+              {%- set offline_devices = state_attr('sensor.brief_data_devices',
+            'offline_devices') | default([]) -%}
               {%- if has_issues -%}
                 {{ {
                   'has_issues': has_issues,
@@ -276,8 +305,8 @@ script:
             {%- endif -%}
 
           calendar_data: >
-            {%- set events = state_attr('sensor.brief_data_calendar', 'events') | default([]) -%}
-            {%- if events -%}
+            {%- set events = state_attr('sensor.brief_data_calendar', 'events')
+            | default([]) -%} {%- if events -%}
               {{ { 'events': events } | tojson }}
             {%- else -%}
               {}
@@ -285,8 +314,10 @@ script:
 
           garbage_data: >
             {%- if garbage_enabled -%}
-              {%- set relevant = state_attr('sensor.brief_data_garbage', 'relevant') | default(false) -%}
-              {%- set reminder = state_attr('sensor.brief_data_garbage', 'reminder_message') -%}
+              {%- set relevant = state_attr('sensor.brief_data_garbage',
+            'relevant') | default(false) -%}
+              {%- set reminder = state_attr('sensor.brief_data_garbage',
+            'reminder_message') -%}
               {%- if relevant -%}
                 {{ {
                   'relevant': relevant,
@@ -301,9 +332,12 @@ script:
 
           air_quality_data: >
             {%- if air_quality_enabled -%}
-              {%- set relevant = state_attr('sensor.brief_data_air_quality', 'relevant') | default(false) -%}
-              {%- set summary = state_attr('sensor.brief_data_air_quality', 'summary') -%}
-              {%- set trend = state_attr('sensor.brief_data_air_quality', 'trend') -%}
+              {%- set relevant = state_attr('sensor.brief_data_air_quality',
+            'relevant') | default(false) -%}
+              {%- set summary = state_attr('sensor.brief_data_air_quality',
+            'summary') -%}
+              {%- set trend = state_attr('sensor.brief_data_air_quality',
+            'trend') -%}
               {%- if relevant -%}
                 {{ {
                   'relevant': relevant,
@@ -320,146 +354,188 @@ script:
       # Build prompt sections
       - variables:
           prompt_sections: >
-            {# Parse data variables from JSON strings to dicts #}
-            {%- set chores = chores_data | from_json if chores_data is string else chores_data -%}
-            {%- set appliances = appliances_data | from_json if appliances_data is string else appliances_data -%}
-            {%- set meals = meals_data | from_json if meals_data is string else meals_data -%}
-            {%- set commute = commute_data | from_json if commute_data is string else commute_data -%}
-            {%- set devices = devices_data | from_json if devices_data is string else devices_data -%}
-            {%- set calendar = calendar_data | from_json if calendar_data is string else calendar_data -%}
-            {%- set garbage = garbage_data | from_json if garbage_data is string else garbage_data -%}
-            {%- set air_quality = air_quality_data | from_json if air_quality_data is string else air_quality_data -%}
+            {# Parse data variables from JSON strings to dicts #} {%- set chores
+            = chores_data | from_json if chores_data is string else chores_data
+            -%} {%- set appliances = appliances_data | from_json if
+            appliances_data is string else appliances_data -%} {%- set meals =
+            meals_data | from_json if meals_data is string else meals_data -%}
+            {%- set commute = commute_data | from_json if commute_data is string
+            else commute_data -%} {%- set devices = devices_data | from_json if
+            devices_data is string else devices_data -%} {%- set calendar =
+            calendar_data | from_json if calendar_data is string else
+            calendar_data -%} {%- set garbage = garbage_data | from_json if
+            garbage_data is string else garbage_data -%} {%- set air_quality =
+            air_quality_data | from_json if air_quality_data is string else
+            air_quality_data -%}
 
             {% set ns = namespace(sections=[]) %}
 
-            {# Base instructions with date/time context #}
-            {% set ns.sections = ns.sections + ['Instructions for generating home status briefs:'] %}
-            {% set ns.sections = ns.sections + ['- Create a concise, conversational brief'] %}
-            {% set ns.sections = ns.sections + ['- Avoid technical terms and Home Assistant terminology'] %}
-            {% set ns.sections = ns.sections + ['- Round numbers naturally (say "around 3" instead of "2.87")'] %}
-            {% set ns.sections = ns.sections + ['- Response should be close to but less than 255 characters'] %}
-            {% set ns.sections = ns.sections + [''] %}
+            {# Base instructions with date/time context #} {% set ns.sections =
+            ns.sections + ['Instructions for generating home status briefs:'] %}
+            {% set ns.sections = ns.sections + ['- Create a concise,
+            conversational brief'] %} {% set ns.sections = ns.sections + ['-
+            Avoid technical terms and Home Assistant terminology'] %} {% set
+            ns.sections = ns.sections + ['- Round numbers naturally (say "around
+            3" instead of "2.87")'] %} {% set ns.sections = ns.sections + ['-
+            Response should be close to but less than 255 characters'] %} {% set
+            ns.sections = ns.sections + [''] %}
 
-            {# Date/time context #}
-            {% set ns.sections = ns.sections + ['CURRENT DATE/TIME CONTEXT:'] %}
-            {% set ns.sections = ns.sections + ['- Current date: ' + now().strftime('%A, %B %d, %Y')] %}
-            {% set ns.sections = ns.sections + ['- Current time: ' + current_time] %}
-            {% set ns.sections = ns.sections + ['- Time of day: ' + ('morning' if is_morning else 'afternoon' if is_afternoon else 'evening')] %}
-            {% set ns.sections = ns.sections + ['- ' + ('Weekday' if is_weekday else 'Weekend')] %}
-            {% set ns.sections = ns.sections + [''] %}
+            {# Date/time context #} {% set ns.sections = ns.sections + ['CURRENT
+            DATE/TIME CONTEXT:'] %} {% set ns.sections = ns.sections + ['-
+            Current date: ' + now().strftime('%A, %B %d, %Y')] %} {% set
+            ns.sections = ns.sections + ['- Current time: ' + current_time] %}
+            {% set ns.sections = ns.sections + ['- Time of day: ' + ('morning'
+            if is_morning else 'afternoon' if is_afternoon else 'evening')] %}
+            {% set ns.sections = ns.sections + ['- ' + ('Weekday' if is_weekday
+            else 'Weekend')] %} {% set ns.sections = ns.sections + [''] %}
 
-            {# Weather (always include if available) #}
-            {% if hourly_forecast %}
-              {% set weather_condition = hourly_forecast['weather.forecast_home'].forecast[0].condition %}
-              {% set ns.sections = ns.sections + ['Current weather: ' + weather_condition] %}
+            {# Weather (always include if available) #} {% if hourly_forecast %}
+              {% set weather_condition =
+            hourly_forecast['weather.forecast_home'].forecast[0].condition %}
+              {% set ns.sections = ns.sections + ['Current weather: ' +
+            weather_condition] %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
-            {# Commute section (if enabled and relevant) #}
-            {% if commute_enabled and commute.get('relevant', false) %}
+            {# Commute section (if enabled and relevant) #} {% if
+            commute_enabled and commute.get('relevant', false) %}
               {% set ns.sections = ns.sections + ['Commute times:'] %}
-              {% if commute.get('brian_time') and commute.get('brian_time') != 'N/A' %}
-                {% set ns.sections = ns.sections + ['- Brian to work: ' + (commute.brian_time | string) + ' minutes'] %}
+              {% if commute.get('brian_time') and commute.get('brian_time') !=
+            'N/A' %}
+                {% set ns.sections = ns.sections + ['- Brian to work: ' +
+            (commute.brian_time | string) + ' minutes'] %}
               {% endif %}
-              {% if commute.get('hester_time') and commute.get('hester_time') != 'N/A' %}
-                {% set ns.sections = ns.sections + ['- Hester to work: ' + (commute.hester_time | string) + ' minutes'] %}
+              {% if commute.get('hester_time') and commute.get('hester_time') !=
+            'N/A' %}
+                {% set ns.sections = ns.sections + ['- Hester to work: ' +
+            (commute.hester_time | string) + ' minutes'] %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
-            {# Calendar events (if enabled and available) #}
-            {% if calendar_enabled and calendar.get('events', []) %}
+            {# Calendar events (if enabled and available) #} {% if
+            calendar_enabled and calendar.get('events', []) %}
               {% set ns.sections = ns.sections + ['Upcoming events:'] %}
               {% for event in calendar.events %}
-                {% set ns.sections = ns.sections + ['- ' + event.formatted_date + ': ' + event.summary + ' at ' + event.formatted_time] %}
+                {% set ns.sections = ns.sections + ['- ' + event.formatted_date
+            + ': ' + event.summary + ' at ' + event.formatted_time] %}
               {% endfor %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
-            {# Garbage reminders (if enabled and relevant) #}
-            {% if garbage_enabled and garbage.get('relevant', false) %}
-              {% set ns.sections = ns.sections + [garbage.get('reminder_message', '')] %}
+            {# Garbage reminders (if enabled and relevant) #} {% if
+            garbage_enabled and garbage.get('relevant', false) %}
+              {% set ns.sections = ns.sections +
+            [garbage.get('reminder_message', '')] %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
-            {# Meal planning (if enabled and available) #}
-            {% if meals_enabled and (meals.get('has_today', false) or meals.get('has_tomorrow', false)) %}
+            {# Meal planning (if enabled and available) #} {% if meals_enabled
+            and (meals.get('has_today', false) or meals.get('has_tomorrow',
+            false)) %}
               {% set ns.sections = ns.sections + ['Meal planning:'] %}
               {% if meals.get('has_today', false) and meals.get('today') %}
                 {% for meal_type, meal in meals.today.items() %}
-                  {% set ns.sections = ns.sections + ['- Today ' + meal_type + ': ' + meal] %}
+                  {% set ns.sections = ns.sections + ['- Today ' + meal_type +
+            ': ' + meal] %}
                 {% endfor %}
               {% endif %}
-              {% if meals.get('has_tomorrow', false) and meals.get('tomorrow') %}
+              {% if meals.get('has_tomorrow', false) and meals.get('tomorrow')
+            %}
                 {% for meal_type, meal in meals.tomorrow.items() %}
-                  {% set ns.sections = ns.sections + ['- Tomorrow ' + meal_type + ': ' + meal] %}
+                  {% set ns.sections = ns.sections + ['- Tomorrow ' + meal_type
+            + ': ' + meal] %}
                 {% endfor %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
-            {# Chores (if enabled) #}
-            {% if chores_enabled and chores and chores.get('validation_status') != 'disabled' %}
+            {# Chores (if enabled) #} {% if chores_enabled and chores and
+            chores.get('validation_status') != 'disabled' %}
               {# Daily dishwasher #}
-              {% if chores.get('daily', {}).get('dishwasher', {}).get('relevant', false) and not chores.get('daily', {}).get('dishwasher', {}).get('completed', false) %}
-                {% set ns.sections = ns.sections + ['- ' + chores.daily.dishwasher.assignee + ' needs to empty the dishwasher'] %}
+              {% if chores.get('daily', {}).get('dishwasher',
+            {}).get('relevant', false) and not chores.get('daily',
+            {}).get('dishwasher', {}).get('completed', false) %}
+                {% set ns.sections = ns.sections + ['- ' +
+            chores.daily.kitchen_dischwasher.assignee + ' needs to empty the
+            dishwasher'] %}
               {% endif %}
               {# Weekend bathroom #}
-              {% if chores.get('weekend', {}).get('bathroom', {}).get('relevant', false) and not chores.get('weekend', {}).get('bathroom', {}).get('completed', false) %}
-                {% set ns.sections = ns.sections + ['- ' + chores.weekend.bathroom.assignee + ' needs to clean the bathroom'] %}
+              {% if chores.get('weekend', {}).get('bathroom',
+            {}).get('relevant', false) and not chores.get('weekend',
+            {}).get('bathroom', {}).get('completed', false) %}
+                {% set ns.sections = ns.sections + ['- ' +
+            chores.weekend.bathroom.assignee + ' needs to clean the bathroom']
+            %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
-            {# Appliances (if enabled) #}
-            {% if appliances_enabled and appliances and appliances.get('dishwasher', {}).get('maintenance', {}).get('relevant', false) %}
-              {% set ns.sections = ns.sections + ['Dishwasher maintenance needed:'] %}
-              {% if appliances.dishwasher.maintenance.get('needs_salt', false) %}
+            {# Appliances (if enabled) #} {% if appliances_enabled and
+            appliances and appliances.get('dishwasher', {}).get('maintenance',
+            {}).get('relevant', false) %}
+              {% set ns.sections = ns.sections + ['Dishwasher maintenance
+            needed:'] %}
+              {% if appliances.kitchen_dishwasher.maintenance.get('needs_salt',
+            false)
+            %}
                 {% set ns.sections = ns.sections + ['- Needs salt refill'] %}
               {% endif %}
-              {% if appliances.dishwasher.maintenance.get('needs_rinse_aid', false) %}
-                {% set ns.sections = ns.sections + ['- Needs rinse aid refill'] %}
+              {% if
+            appliances.kitchen_dishwasher.maintenance.get('needs_rinse_aid',
+            false) %}
+                {% set ns.sections = ns.sections + ['- Needs rinse aid refill']
+            %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
-            {# Device issues (if enabled) #}
-            {% if devices_enabled and devices.get('has_issues', false) %}
+            {# Device issues (if enabled) #} {% if devices_enabled and
+            devices.get('has_issues', false) %}
               {% set ns.sections = ns.sections + ['Device issues:'] %}
 
               {# Critical batteries (most urgent) #}
               {% set critical_devices = devices.get('critical_batteries', []) %}
               {% if critical_devices | length > 0 %}
-                {% set battery_names = critical_devices | map(attribute='name') | list %}
-                {% set ns.sections = ns.sections + ['- Critical battery: ' + battery_names | join(', ')] %}
+                {% set battery_names = critical_devices | map(attribute='name')
+            | list %}
+                {% set ns.sections = ns.sections + ['- Critical battery: ' +
+            battery_names | join(', ')] %}
               {% endif %}
 
               {# Warning batteries (monitor soon) #}
               {% set warning_devices = devices.get('warning_batteries', []) %}
               {% if warning_devices | length > 0 %}
-                {% set battery_names = warning_devices | map(attribute='name') | list %}
-                {% set ns.sections = ns.sections + ['- Low battery: ' + battery_names | join(', ')] %}
+                {% set battery_names = warning_devices | map(attribute='name') |
+            list %}
+                {% set ns.sections = ns.sections + ['- Low battery: ' +
+            battery_names | join(', ')] %}
               {% endif %}
 
               {# Offline devices #}
               {% if devices.get('offline_count', 0) > 0 %}
                 {% set offline_devices = devices.get('offline_devices', []) %}
                 {% if offline_devices | length > 0 %}
-                  {% set device_names = offline_devices | map(attribute='name') | list %}
-                  {% set ns.sections = ns.sections + ['- Critical devices offline: ' + device_names | join(', ')] %}
+                  {% set device_names = offline_devices | map(attribute='name')
+            | list %}
+                  {% set ns.sections = ns.sections + ['- Critical devices
+            offline: ' + device_names | join(', ')] %}
                 {% else %}
-                  {% set ns.sections = ns.sections + ['- ' + devices.offline_count|string + ' critical devices offline'] %}
+                  {% set ns.sections = ns.sections + ['- ' +
+            devices.offline_count|string + ' critical devices offline'] %}
                 {% endif %}
               {% endif %}
 
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
 
-            {# Air quality (if enabled) #}
-            {% if air_quality_enabled and air_quality.get('relevant', false) %}
-              {% set ns.sections = ns.sections + ['Indoor air quality: ' + air_quality.get('summary', '')] %}
+            {# Air quality (if enabled) #} {% if air_quality_enabled and
+            air_quality.get('relevant', false) %}
+              {% set ns.sections = ns.sections + ['Indoor air quality: ' +
+            air_quality.get('summary', '')] %}
               {% if air_quality.get('trend') == 'worsening' %}
-                {% set ns.sections = ns.sections + ['- Trend: Declining, monitor closely'] %}
+                {% set ns.sections = ns.sections + ['- Trend: Declining, monitor
+            closely'] %}
               {% endif %}
               {% set ns.sections = ns.sections + [''] %}
             {% endif %}
@@ -470,32 +546,71 @@ script:
       - variables:
           # Parse devices_data string back to dict for context
           devices_dict: >
-            {%- set d = devices_data | from_json if devices_data is string and devices_data != '{}' else devices_data -%}
-            {%- if d is string -%}
+            {%- set d = devices_data | from_json if devices_data is string and
+            devices_data != '{}' else devices_data -%} {%- if d is string -%}
               {}
             {%- else -%}
               {{ d }}
             {%- endif -%}
 
           # Collect status from MQTT sensors
-          chores_status: "{{ state_attr('sensor.brief_data_chores', 'validation_status') | default('skipped') }}"
-          appliances_status: "{{ state_attr('sensor.brief_data_appliances', 'validation_status') | default('skipped') }}"
-          meals_status: "{{ state_attr('sensor.brief_data_meals', 'validation_status') | default('skipped') }}"
-          commute_status: "{{ state_attr('sensor.brief_data_commute', 'validation_status') | default('skipped') }}"
-          devices_status: "{{ state_attr('sensor.brief_data_devices', 'validation_status') | default('skipped') }}"
-          calendar_status: "{{ state_attr('sensor.brief_data_calendar', 'validation_status') | default('skipped') }}"
-          garbage_status: "{{ state_attr('sensor.brief_data_garbage', 'validation_status') | default('skipped') }}"
-          air_quality_status: "{{ state_attr('sensor.brief_data_air_quality', 'validation_status') | default('skipped') }}"
+          chores_status:
+            "{{ state_attr('sensor.brief_data_chores', 'validation_status') |
+            default('skipped') }}"
+          appliances_status:
+            "{{ state_attr('sensor.brief_data_appliances', 'validation_status')
+            | default('skipped') }}"
+          meals_status:
+            "{{ state_attr('sensor.brief_data_meals', 'validation_status') |
+            default('skipped') }}"
+          commute_status:
+            "{{ state_attr('sensor.brief_data_commute', 'validation_status') |
+            default('skipped') }}"
+          devices_status:
+            "{{ state_attr('sensor.brief_data_devices', 'validation_status') |
+            default('skipped') }}"
+          calendar_status:
+            "{{ state_attr('sensor.brief_data_calendar', 'validation_status') |
+            default('skipped') }}"
+          garbage_status:
+            "{{ state_attr('sensor.brief_data_garbage', 'validation_status') |
+            default('skipped') }}"
+          air_quality_status:
+            "{{ state_attr('sensor.brief_data_air_quality', 'validation_status')
+            | default('skipped') }}"
 
           # Build collector status object - evaluate templates inline
-          chores_final_status: "{{ 'success' if chores_enabled and chores_status in ['success', 'partial'] else 'skipped' if not chores_enabled else chores_status }}"
-          appliances_final_status: "{{ 'success' if appliances_enabled and appliances_status in ['success', 'partial'] else 'skipped' if not appliances_enabled else appliances_status }}"
-          meals_final_status: "{{ 'success' if meals_enabled and meals_status in ['success', 'partial'] else 'skipped' if not meals_enabled else meals_status }}"
-          commute_final_status: "{{ 'success' if commute_enabled and commute_status in ['success', 'partial'] else 'skipped' if not commute_enabled else commute_status }}"
-          devices_final_status: "{{ 'success' if devices_enabled and devices_status in ['success', 'partial'] else 'skipped' if not devices_enabled else devices_status }}"
-          calendar_final_status: "{{ 'success' if calendar_enabled and calendar_status in ['success', 'partial'] else 'skipped' if not calendar_enabled else calendar_status }}"
-          garbage_final_status: "{{ 'success' if garbage_enabled and garbage_status in ['success', 'partial'] else 'skipped' if not garbage_enabled else garbage_status }}"
-          air_quality_final_status: "{{ 'success' if air_quality_enabled and air_quality_status in ['success', 'partial'] else 'skipped' if not air_quality_enabled else air_quality_status }}"
+          chores_final_status:
+            "{{ 'success' if chores_enabled and chores_status in ['success',
+            'partial'] else 'skipped' if not chores_enabled else chores_status
+            }}"
+          appliances_final_status:
+            "{{ 'success' if appliances_enabled and appliances_status in
+            ['success', 'partial'] else 'skipped' if not appliances_enabled else
+            appliances_status }}"
+          meals_final_status:
+            "{{ 'success' if meals_enabled and meals_status in ['success',
+            'partial'] else 'skipped' if not meals_enabled else meals_status }}"
+          commute_final_status:
+            "{{ 'success' if commute_enabled and commute_status in ['success',
+            'partial'] else 'skipped' if not commute_enabled else commute_status
+            }}"
+          devices_final_status:
+            "{{ 'success' if devices_enabled and devices_status in ['success',
+            'partial'] else 'skipped' if not devices_enabled else devices_status
+            }}"
+          calendar_final_status:
+            "{{ 'success' if calendar_enabled and calendar_status in ['success',
+            'partial'] else 'skipped' if not calendar_enabled else
+            calendar_status }}"
+          garbage_final_status:
+            "{{ 'success' if garbage_enabled and garbage_status in ['success',
+            'partial'] else 'skipped' if not garbage_enabled else garbage_status
+            }}"
+          air_quality_final_status:
+            "{{ 'success' if air_quality_enabled and air_quality_status in
+            ['success', 'partial'] else 'skipped' if not air_quality_enabled
+            else air_quality_status }}"
 
           collector_status:
             chores: "{{ chores_final_status }}"
@@ -518,7 +633,8 @@ script:
                 "context": {
                   "is_morning": is_morning,
                   "is_weekday": is_weekday,
-                  "has_issues": devices_dict.get('has_issues', false) if devices_dict is mapping else false
+                  "has_issues": devices_dict['has_issues'] | default(false) if
+            devices_dict is mapping else false
                 },
                 "enabled_modules": {
                   "chores": chores_enabled,
@@ -543,4 +659,6 @@ script:
             context:
               is_morning: "{{ is_morning }}"
               is_weekday: "{{ is_weekday }}"
-              has_issues: "{{ devices_dict.get('has_issues', false) if devices_dict is mapping else false }}"
+              has_issues:
+                "{{ devices_dict['has_issues'] | default(false) if devices_dict
+                is mapping else false }}"

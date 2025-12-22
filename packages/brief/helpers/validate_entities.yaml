@@ -8,7 +8,7 @@
 # Usage:
 #   - service: script.brief_validate_entity
 #     data:
-#       entity_id: "sensor.dishwasher_state"
+#       entity_id: "sensor.kitchen_dishwasher_operation_state"
 #   Response: result.valid (true/false), result.state (if valid)
 #
 # Last Updated: 2025-11-07
@@ -20,8 +20,10 @@ script:
     mode: parallel
     fields:
       entity_id:
-        description: "Entity ID to validate (e.g., sensor.dishwasher_state)"
-        example: "sensor.dishwasher_state"
+        description:
+          "Entity ID to validate (e.g.,
+          sensor.kitchen_dishwasher_operation_state)"
+        example: "sensor.kitchen_dishwasher_operation_state"
       fallback_value:
         description: "Optional fallback value if entity unavailable"
         example: "N/A"
@@ -47,12 +49,11 @@ script:
     mode: single
     fields:
       module:
-        description: "Module to validate (chores, appliances, meals, commute, etc.)"
-        example: "chores"
+        description: "Module to validate (appliances, meals, commute, etc.)"
+        example: "appliances"
         selector:
           select:
             options:
-              - chores
               - appliances
               - meals
               - commute
@@ -68,16 +69,8 @@ script:
     sequence:
       # Map module to entity requirements
       - variables:
-          chores_required:
-            - binary_sensor.time_is_weekend
-            - input_select.chore_dishwasher_assignee
-            - input_boolean.chore_dishwasher_completed
-            - input_select.chore_bathroom_assignee
-            - input_boolean.chore_bathroom_completed
-          chores_optional: []
-
           appliances_required:
-            - sensor.dishwasher_state
+            - sensor.kitchen_dishwasher_operation_state
           appliances_optional:
             - binary_sensor.014030536224000994_dishcare_dishwasher_event_saltnearlyempty
             - binary_sensor.014030536224000994_dishcare_dishwasher_event_saltempty
@@ -111,9 +104,7 @@ script:
 
           # Select which entities to check based on module
           required_entities: >
-            {%- if module == 'chores' -%}
-              {{ chores_required }}
-            {%- elif module == 'appliances' -%}
+            {%- if module == 'appliances' -%}
               {{ appliances_required }}
             {%- elif module == 'meals' -%}
               {{ meals_required }}
@@ -132,9 +123,7 @@ script:
             {%- endif -%}
 
           optional_entities: >
-            {%- if module == 'chores' -%}
-              {{ chores_optional }}
-            {%- elif module == 'appliances' -%}
+            {%- if module == 'appliances' -%}
               {{ appliances_optional }}
             {%- elif module == 'meals' -%}
               {{ meals_optional }}
@@ -198,5 +187,6 @@ script:
               {%- if validation_results.all_required_valid -%}
                 {{ module | capitalize }}: All required entities present
               {%- else -%}
-                {{ module | capitalize }}: Missing {{ validation_results.missing_required | length }} required entities
+                {{ module | capitalize }}: Missing {{
+              validation_results.missing_required | length }} required entities
               {%- endif -%}

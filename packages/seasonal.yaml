@@ -1,0 +1,29 @@
+# Seasonal Lighting Automations
+# Manages seasonal decorations like Christmas lights
+
+automation:
+  - alias: "Christmas Lights - Turn On at Sunset"
+    description: "Turn on outdoor and indoor Christmas lights at sunset"
+    trigger:
+      - platform: sun
+        event: sunset
+    action:
+      - service: switch.turn_on
+        target:
+          entity_id:
+            - switch.outdoor_plug
+            - switch.christmas_tree
+    mode: single
+
+  - alias: "Christmas Lights - Turn Off at Sunrise"
+    description: "Turn off outdoor and indoor Christmas lights at sunrise"
+    trigger:
+      - platform: sun
+        event: sunrise
+    action:
+      - service: switch.turn_off
+        target:
+          entity_id:
+            - switch.outdoor_plug
+            - switch.christmas_tree
+    mode: single

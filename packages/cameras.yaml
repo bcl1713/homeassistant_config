@@ -9,8 +9,8 @@ automation:
     condition:
       - condition: template
         value_template: >
-          {% set camera = trigger.payload_json['after']['camera'] %}
-          {% if camera in ['living_room'] %}
+          {% set camera = trigger.payload_json['after']['camera'] %} {% if
+          camera in ['living_room'] %}
             {{ is_state('input_boolean.notification_camera_indoor', 'on') }}
           {% elif camera in ['front_drive', 'back_door', 'front_doorbell'] %}
             {{ is_state('input_boolean.notification_camera_outdoor', 'on') }}
@@ -41,33 +41,33 @@ automation:
             priority: "high"
             ttl: 0
             alert_once: true
-          
+
   # Special case for doorbell button press
   - alias: "doorbell_button_press_notification"
     id: "doorbell_button_press_notification"
     description: "Notify on doorbell press"
     trigger:
       - platform: state
-        entity_id: binary_sensor.doorbell_front_button_pressed
+        entity_id: binary_sensor.front_door_doorbell_button_pressed
         to: "on"
     action:
       # Step 1: Take a snapshot from the doorbell camera
       - service: camera.snapshot
         target:
-          entity_id: camera.front_doorbell
+          entity_id: camera.front_door_doorbell_camera
         data:
           filename: "/config/www/doorbell/doorbell_snapshot.jpg"
-      
+
       # Step 2: Short delay to ensure the snapshot is saved
       - delay:
           seconds: 1
-      
+
       # Step 3: Send notification to only your phone with the camera image
       - service: notify.all_mobile_devices
         data:
           message: "Doorbell pressed"
           data:
-            image: "/api/camera_proxy/camera.front_doorbell"
+            image: "/api/camera_proxy/camera.front_door_doorbell_camera"
             tag: "doorbell-press-{{ now().timestamp() | int }}"
             when: "{{ now().timestamp() | int }}"
             priority: "high"
@@ -75,7 +75,7 @@ automation:
             critical: true
             # Add clickAction to redirect to camera view
             clickAction: "/dashboard-cameras/front-doorbell"
-      
+
       # Step 4: Log the event
       - service: logbook.log
         data:

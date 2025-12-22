@@ -30,6 +30,3 @@ exclude:
 include:
   entities:
     - switch.hallway_lamp
-    - switch.work_bench
-    - switch.pi_hole
-
