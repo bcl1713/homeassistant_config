@@ -59,8 +59,7 @@ script:
                 {{ not is_state('sensor.kitchen_dishwasher_operation_state',
                 'unavailable') and
                    not is_state('sensor.kitchen_dishwasher_operation_state',
-                'unknown')
-                }}
+                'unknown') }}
               dishwasher_running: >
                 {{ dishwasher_available and
                    states('sensor.kitchen_dishwasher_operation_state') == "run"
@@ -70,15 +69,13 @@ script:
               needs_salt: >
                 {%- if has_salt_sensor -%}
                   {{ states('sensor.kitchen_dishwasher_salt_nearly_empty') ==
-                'on' }}
-                {%- else -%}
+                'present' }} {%- else -%}
                   false
                 {%- endif -%}
               needs_rinse_aid: >
                 {%- if has_rinse_sensor -%}
                   {{ states('sensor.kitchen_dishwasher_rinse_aid_nearly_empty')
-                == 'on'
-                }} {%- else -%}
+                == 'present' }} {%- else -%}
                   false
                 {%- endif -%}
 

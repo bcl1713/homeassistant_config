@@ -34,7 +34,7 @@ brief_chores_enabled:
 
 brief_appliances_enabled:
   name: "Brief: Appliances Enabled"
-  initial: false
+  initial: true
   icon: mdi:dishwasher
 
 brief_garbage_enabled:
