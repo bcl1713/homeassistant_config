@@ -16,6 +16,7 @@ http:
   use_x_forwarded_for: true
   trusted_proxies:
     - 192.168.86.2
+    - 10.10.50.2
 
 google_assistant:
   project_id: homeassistant-32654
