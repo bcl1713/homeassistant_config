@@ -82,7 +82,11 @@ template:
         unique_id: brief_config_calendars
         state: "ready"
         attributes:
-          default: "calendar.events"
+          default: "calendar.family"
+          brian_personal: "calendar.brian_personal"
+          family: "calendar.family"
+          tk_activities: "calendar.tk_activities"
+          porter_activities: "calendar.porter_activities"
           meals_breakfast: "calendar.mealie_breakfast"
           meals_lunch: "calendar.mealie_lunch"
           meals_dinner: "calendar.mealie_dinner"

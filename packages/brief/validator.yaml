@@ -35,7 +35,7 @@ template:
             {%- if weather and states(weather) not in ['unknown', 'unavailable'] -%}
               {%- set valid_count = valid_count + 1 -%}
             {%- endif -%}
-            {%- if notification_service and states(notification_service) not in ['unknown', 'unavailable'] -%}
+            {%- if notification_service -%}
               {%- set valid_count = valid_count + 1 -%}
             {%- endif -%}
             {%- if valid_count >= 1 -%}
@@ -65,9 +65,6 @@ template:
             {%- endif -%}
             {%- if weather and states(weather) in ['unknown', 'unavailable'] -%}
               {%- set errors = errors + [weather ~ ' (weather)'] -%}
-            {%- endif -%}
-            {%- if notification_service and states(notification_service) in ['unknown', 'unavailable'] -%}
-              {%- set errors = errors + [notification_service ~ ' (notification service)'] -%}
             {%- endif -%}
             {%- if errors | length > 0 -%}
               {{ errors | join(', ') }}
