@@ -1,0 +1,35 @@
+# packages/light_groups.yaml
+light:
+  # Basic light from switch conversions
+  - platform: switch
+    name: Hallway Lamp
+    entity_id: switch.hallway_lamp
+  - platform: switch
+    name: Outdoor Plugin
+    entity_id: switch.outdoor_plug
+  - platform: switch
+    name: Seasonal Christmas Tree
+    entity_id: switch.christmas_tree
+
+  # Functional groups
+  - platform: group
+    name: "Entry Lights"
+    entities:
+      - light.front_yard
+      - light.hallway_entry
+      - light.hallway_corridor
+      - light.front_door_doorbell_ring_light
+
+  - platform: group
+    name: "Downstairs Lights"
+    entities:
+      - light.dining_room_table
+      - light.hallway_corridor
+      - light.hallway_entry
+      - light.living_room_ceiling_center
+      - light.living_room_ceiling_left
+      - light.living_room_ceiling_right
+      - light.kitchen_bar
+      - light.kitchen_counter
+      - light.kitchen_ceiling_fan
+      - light.hallway_lamp

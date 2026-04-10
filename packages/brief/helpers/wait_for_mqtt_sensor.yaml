@@ -1,0 +1,67 @@
+# packages/brief/helpers/wait_for_mqtt_sensor.yaml
+#
+# Wait Helper for MQTT Sensor Data
+# Replaces arbitrary delays with proper async synchronization
+# Based on: https://www.home-assistant.io/docs/scripts/
+#
+# Usage:
+#   - service: script.brief_wait_for_mqtt_sensor
+#     data:
+#       sensor_name: "sensor.brief_data_chores"
+#       timeout_seconds: 15
+#
+# Returns:
+#   - succeeded: true/false (whether data arrived before timeout)
+#   - waited_seconds: how long it actually waited
+#
+# Last Updated: 2025-11-07
+
+script:
+  brief_wait_for_mqtt_sensor:
+    alias: "Wait for MQTT Sensor Data"
+    description: "Waits for an MQTT sensor to update (replaces arbitrary delays)"
+    mode: parallel
+    fields:
+      sensor_name:
+        description: "Entity ID of the sensor to wait for (e.g., sensor.brief_data_chores)"
+        selector:
+          entity:
+            domain: sensor
+      timeout_seconds:
+        description: "Maximum seconds to wait for sensor data (default 15)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 60
+    variables:
+      start_time: "{{ now() }}"
+    sequence:
+      # Wait for the sensor to have valid data (not unknown/unavailable)
+      - wait_template: "{{ states(sensor_name) not in ['unknown', 'unavailable', 'none'] }}"
+        timeout:
+          seconds: "{{ timeout_seconds }}"
+        continue_on_timeout: true
+
+      # Calculate duration and prepare result
+      - variables:
+          end_time: "{{ now() }}"
+          waited_duration: >
+            {%- if start_time is not none and start_time is not string and end_time is not none and end_time is not string -%}
+              {%- set start_ts = start_time.timestamp() -%}
+              {%- set end_ts = end_time.timestamp() -%}
+              {%- set duration = (end_ts - start_ts) | round(2) -%}
+              {{ duration }}
+            {%- else -%}
+              0
+            {%- endif -%}
+          final_state: "{{ states(sensor_name) }}"
+          has_valid_data: "{{ final_state not in ['unknown', 'unavailable', 'none'] }}"
+
+      # Return result for caller to use
+      - variables:
+          result:
+            succeeded: "{{ has_valid_data }}"
+            waited_seconds: "{{ waited_duration }}"
+            sensor_state: "{{ final_state }}"
+            timeout_occurred: "{{ waited_duration >= timeout_seconds }}"

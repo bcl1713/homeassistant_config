@@ -1,0 +1,174 @@
+# packages/brief/collectors/devices_collector_enhanced.yaml
+#
+# Enhanced Devices Collector - Phase 3 with Entity Validation
+# Monitors device health with graceful degradation
+# Based on: https://www.home-assistant.io/docs/scripts/
+#
+# Last Updated: 2025-11-07
+
+script:
+  brief_collect_devices_safe:
+    alias: "Collect Device Status (Safe with Validation)"
+    description: "Gathers device health with battery and offline monitoring"
+    mode: parallel
+    fields:
+      timeout_seconds:
+        description: "Timeout for collection (from config_loader)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 60
+      battery_threshold:
+        description: "Battery level threshold to report (from config_loader)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 100
+    variables:
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/devices"
+      fallback_payload: "Device status unavailable"
+
+      # Check if threshold sensor exists
+      has_threshold_sensor: "{{ states('input_number.device_health_critical_threshold') not in ['unknown', 'unavailable'] }}"
+
+      # Use configured thresholds or defaults
+      critical_threshold: >
+        {%- if has_threshold_sensor -%}
+          {{ states('input_number.device_health_critical_threshold') | int(15) }}
+        {%- else -%}
+          {{ battery_threshold | default(15) }}
+        {%- endif -%}
+
+      warning_threshold: >
+        {%- set warning_sensor = states('input_number.device_health_warning_threshold') -%}
+        {%- if warning_sensor not in ['unknown', 'unavailable'] -%}
+          {{ warning_sensor | int(30) }}
+        {%- else -%}
+          30
+        {%- endif -%}
+
+      # Domains to monitor for offline status
+      # Note: Excluding 'binary_sensor' as most battery-related sensors shouldn't be in "offline" list
+      critical_domains: ["camera", "alarm_control_panel", "lock"]
+
+    sequence:
+      # Collect device health data - always runs when called by orchestration
+      - variables:
+          # Find all devices with critical battery (at or below critical threshold)
+          critical_batteries: >
+            {%- set ns = namespace(batteries=[]) -%}
+            {%- for entity in states if entity.attributes.battery_level is defined -%}
+              {%- set level = entity.attributes.battery_level | float(-1) | int -%}
+              {%- if level >= 0 and level <= critical_threshold -%}
+                {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
+                {%- set ns.batteries = ns.batteries + [{
+                  'entity_id': entity.entity_id,
+                  'name': friendly_name,
+                  'level': level,
+                  'device_id': entity.entity_id.split('.')[1]
+                }] -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+              {%- if entity.state | string | regex_match('^[0-9.]+$') -%}
+                {%- set level = entity.state | int -%}
+                {%- if 0 <= level <= critical_threshold -%}
+                  {%- if not entity.entity_id.startswith('sensor.device_health_') and not entity.entity_id.startswith('sensor.brief_') -%}
+                    {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                    {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
+                    {%- set ns.batteries = ns.batteries + [{
+                      'entity_id': entity.entity_id,
+                      'name': friendly_name,
+                      'level': level,
+                      'device_id': entity.entity_id.split('.')[1]
+                    }] -%}
+                  {%- endif -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns.batteries }}
+
+          # Find all devices with warning battery (above critical but at or below warning threshold)
+          warning_batteries: >
+            {%- set ns = namespace(batteries=[]) -%}
+            {%- for entity in states if entity.attributes.battery_level is defined -%}
+              {%- set level = entity.attributes.battery_level | float(-1) | int -%}
+              {%- if level > critical_threshold and level <= warning_threshold -%}
+                {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
+                {%- set ns.batteries = ns.batteries + [{
+                  'entity_id': entity.entity_id,
+                  'name': friendly_name,
+                  'level': level,
+                  'device_id': entity.entity_id.split('.')[1]
+                }] -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {% for entity in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+              {%- if entity.state | string | regex_match('^[0-9.]+$') -%}
+                {%- set level = entity.state | int -%}
+                {%- if level > critical_threshold and level <= warning_threshold -%}
+                  {%- if not entity.entity_id.startswith('sensor.device_health_') and not entity.entity_id.startswith('sensor.brief_') -%}
+                    {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                    {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
+                    {%- set ns.batteries = ns.batteries + [{
+                      'entity_id': entity.entity_id,
+                      'name': friendly_name,
+                      'level': level,
+                      'device_id': entity.entity_id.split('.')[1]
+                    }] -%}
+                  {%- endif -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns.batteries }}
+
+          # Find all offline critical devices
+          offline_devices: >
+            {%- set ns = namespace(devices=[]) -%}
+            {%- for entity in states if entity.state == 'unavailable' -%}
+              {%- if entity.domain in critical_domains -%}
+                {# Skip battery-related binary sensors, they're not really offline devices #}
+                {%- set is_battery_sensor = entity.entity_id | regex_match('^.*(_low_battery|_battery_level)') -%}
+                {%- if not is_battery_sensor -%}
+                  {%- set device_name = entity.attributes.get('friendly_name') or entity.name or entity.entity_id -%}
+                  {%- set friendly_name = device_name if 'friendly_name' in entity.attributes else device_name.replace('_', ' ').title() -%}
+                  {%- set ns.devices = ns.devices + [{
+                    'entity_id': entity.entity_id,
+                    'name': friendly_name,
+                    'domain': entity.domain,
+                    'device_id': entity.entity_id.split('.')[1]
+                  }] -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns.devices }}
+
+      - variables:
+          device_data:
+            critical_batteries: "{{ critical_batteries }}"
+            warning_batteries: "{{ warning_batteries }}"
+            offline_devices: "{{ offline_devices }}"
+            has_issues: "{{ (critical_batteries | length) + (warning_batteries | length) + (offline_devices | length) > 0 }}"
+            critical_battery_count: "{{ critical_batteries | length }}"
+            warning_battery_count: "{{ warning_batteries | length }}"
+            offline_count: "{{ offline_devices | length }}"
+            critical_threshold: "{{ critical_threshold }}"
+            warning_threshold: "{{ warning_threshold }}"
+            threshold_source: >
+              {%- if has_threshold_sensor -%}
+                input_number.device_health_critical_threshold
+              {%- else -%}
+                default
+              {%- endif -%}
+            validation_status: "success"
+            monitored_domains: "{{ critical_domains }}"
+
+      - service: mqtt.publish
+        data:
+          topic: "{{ mqtt_topic }}"
+          payload: "{{ device_data | tojson }}"

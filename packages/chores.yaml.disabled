@@ -1,0 +1,158 @@
+# packages/chores.yaml
+#
+# Home Assistant Chore Management Package
+# Features:
+# - Daily dishwasher rotation between Towner and Porter
+# - Weekly bathroom cleaning rotation between Towner and Porter
+# - Automatic rotation on completion
+# - Easy manual override capability
+#
+# To use: Place this file in your /config/packages/ directory and ensure
+# packages: !include_dir_named packages/
+# is in your configuration.yaml
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      kids: &kids
+        - "Towner"
+        - "Porter"
+      icons: &icons
+        - &icon_dishwasher "mdi:dishwasher"
+        - &icon_bathroom "mdi:bathroom"
+        - &icon_completed "mdi:check-circle"
+
+input_select:
+  chore_dishwasher_assignee:
+    name: "Dishwasher Duty"
+    options: *kids
+    icon: *icon_dishwasher
+
+  chore_bathroom_assignee:
+    name: "Bathroom Duty"
+    options: *kids
+    icon: *icon_bathroom
+
+input_boolean:
+  chore_dishwasher_completed:
+    name: "Dishwasher - Completed Today"
+    icon: *icon_completed
+
+  chore_bathroom_completed:
+    name: "Bathroom - Completed This Weekend"
+    icon: *icon_completed
+
+automation:
+  - alias: "chore_reset_daily"
+    id: "chore_reset_daily"
+    description: "Reset daily chores at midnight"
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.chore_dishwasher_completed
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.chore_dishwasher_completed
+      - service: input_select.select_next
+        target:
+          entity_id: input_select.chore_dishwasher_assignee
+
+  - alias: "chore_reset_weekly"
+    id: "chore_reset_weekly"
+    description: "Reset weekly chores on Friday"
+    trigger:
+      - platform: time
+        at: "00:00:01"
+    condition:
+      - condition: time
+        weekday:
+          - sat
+      - condition: state
+        entity_id: input_boolean.chore_bathroom_completed
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.chore_bathroom_completed
+      - service: input_select.select_next
+        target:
+          entity_id: input_select.chore_bathroom_assignee
+
+template:
+  - binary_sensor:
+      - name: "time_is_weekend"
+        unique_id: time_is_weekend
+        state: >
+          {{ now().weekday() in [5,6] }}
+
+  - sensor:
+      - name: "Chores Summary"
+        unique_id: chores_summary
+        state: >
+          {% macro format_chore(assignee, chore_name, completed_state) -%}
+          {% if states(completed_state) == 'on' -%}(✓) {% endif -%}
+          {{ assignee }} needs to {{ chore_name }}
+          {%- endmacro %}
+
+          {# Daily chores #}
+          {{ format_chore(
+              states('input_select.chore_dishwasher_assignee'),
+              'empty the dishwasher',
+              'input_boolean.chore_dishwasher_completed'
+          ) }}
+
+          {# Weekend chores #}
+          {% if is_state('binary_sensor.time_is_weekend', 'on') %}
+            {{ format_chore(
+                states('input_select.chore_bathroom_assignee'),
+                'clean the bathroom',
+                'input_boolean.chore_bathroom_completed'
+            ) }}
+          {% endif %}
+script:
+  show_chores:
+    sequence:
+      - action: media_player.turn_off
+        target:
+          entity_id: media_player.display_kitchen
+      - action: cast.show_lovelace_view
+        data:
+          dashboard_path: dashboard-chore
+          view_path: "0"
+          entity_id: media_player.display_kitchen
+# # Lovelace dashboard configuration
+# # Add this to your dashboard configuration
+# lovelace:
+#   dashboards:
+#     chores:
+#       mode: yaml
+#       title: Chores Dashboard
+#       filename: dashboards/chores.yaml
+#       show_in_sidebar: true
+#       icon: mdi:calendar-check
+#       require_admin: false
+#
+# # Save this part as dashboards/chores.yaml
+# dashboard_content: &dashboard
+#   title: "Chores Dashboard"
+#   views:
+#     - title: "Today's Chores"
+#       path: chores
+#       badges: []
+#       cards:
+#         - type: entities
+#           title: "Today's Chores"
+#           entities:
+#             - entity: sensor.chores_summary
+#             - type: section
+#               label: "Assignments"
+#             - entity: input_select.chore_dishwasher_assignee
+#             - entity: input_select.chore_bathroom_assignee
+#             - type: section
+#               label: "Completion Status"
+#             - entity: input_boolean.chore_dishwasher_completed
+#             - entity: input_boolean.chore_bathroom_completed

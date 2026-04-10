@@ -1,0 +1,452 @@
+# packages/climate_control.yaml
+#
+# Smart HVAC Automation System
+#
+# Features:
+# - Intelligent time-based temperature scheduling
+# - Separate heating and cooling setpoints for all time periods
+# - Presence-aware away mode with energy-saving setbacks
+# - Manual changes persist until next scheduled automation
+# - Guest mode integration (respects existing presence system)
+# - Fully configurable via UI helpers
+#
+# Schedule:
+# - Weekday mornings: 5:00 AM warmup (Mon-Fri)
+# - Weekend mornings: 7:00 AM warmup (Sat-Sun)
+# - Daytime: 9:00 AM comfortable temps
+# - Bedtime: 9:00 PM comfort warmup
+# - Sleep: 10:30 PM cooler temps for better sleep
+# - Away: Energy-saving setbacks when nobody home
+#
+# Integration:
+# - Works with climate.dining_room_thermostat (Ecobee)
+# - Integrates with existing zone.home presence detection
+# - Respects input_boolean.mode_guest for guest handling
+# - Ensures heat_cool (auto) mode year-round
+# - Schedule automations skip when nobody is home (away mode handles temps)
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      # Default heating setpoints (winter)
+      heat_morning: &heat_morning 70
+      heat_day: &heat_day 68
+      heat_bedtime: &heat_bedtime 70
+      heat_sleep: &heat_sleep 66
+      heat_away: &heat_away 62
+      # Default cooling setpoints (summer)
+      cool_morning: &cool_morning 74
+      cool_day: &cool_day 76
+      cool_bedtime: &cool_bedtime 72
+      cool_sleep: &cool_sleep 72
+      cool_away: &cool_away 78
+
+# Helper entities for temperature setpoints
+input_number:
+  climate_heat_morning:
+    name: "Climate Heat - Morning"
+    min: 60
+    max: 80
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:thermometer-chevron-up
+    initial: *heat_morning
+
+  climate_heat_day:
+    name: "Climate Heat - Daytime"
+    min: 60
+    max: 80
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:thermometer
+    initial: *heat_day
+
+  climate_heat_bedtime:
+    name: "Climate Heat - Bedtime"
+    min: 60
+    max: 80
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:thermometer-chevron-up
+    initial: *heat_bedtime
+
+  climate_heat_sleep:
+    name: "Climate Heat - Sleep"
+    min: 60
+    max: 80
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:thermometer-chevron-down
+    initial: *heat_sleep
+
+  climate_heat_away:
+    name: "Climate Heat - Away"
+    min: 55
+    max: 75
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:thermometer-low
+    initial: *heat_away
+
+  climate_cool_morning:
+    name: "Climate Cool - Morning"
+    min: 65
+    max: 85
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:snowflake
+    initial: *cool_morning
+
+  climate_cool_day:
+    name: "Climate Cool - Daytime"
+    min: 65
+    max: 85
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:snowflake
+    initial: *cool_day
+
+  climate_cool_bedtime:
+    name: "Climate Cool - Bedtime"
+    min: 65
+    max: 85
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:snowflake
+    initial: *cool_bedtime
+
+  climate_cool_sleep:
+    name: "Climate Cool - Sleep"
+    min: 65
+    max: 85
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:snowflake
+    initial: *cool_sleep
+
+  climate_cool_away:
+    name: "Climate Cool - Away"
+    min: 70
+    max: 85
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:snowflake-thermometer
+    initial: *cool_away
+
+# State tracking helpers
+input_boolean:
+  climate_automation_enabled:
+    name: "Climate Automation"
+    icon: mdi:thermostat-auto
+    initial: true
+
+# Automations
+automation:
+  # ============================================================================
+  # TIME-BASED SCHEDULE AUTOMATIONS
+  # ============================================================================
+
+  - alias: "climate_schedule_morning_weekday"
+    id: "climate_schedule_morning_weekday"
+    description: "Set morning temperature for weekdays (Mon-Fri)"
+    trigger:
+      - platform: time
+        at: "05:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          target_temp_high: >
+            {{ states('input_number.climate_cool_morning') | float }}
+          target_temp_low: >
+            {{ states('input_number.climate_heat_morning') | float }}
+
+  - alias: "climate_schedule_morning_weekend"
+    id: "climate_schedule_morning_weekend"
+    description: "Set morning temperature for weekends (Sat-Sun)"
+    trigger:
+      - platform: time
+        at: "07:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      - condition: time
+        weekday:
+          - sat
+          - sun
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          target_temp_high: >
+            {{ states('input_number.climate_cool_morning') | float }}
+          target_temp_low: >
+            {{ states('input_number.climate_heat_morning') | float }}
+
+  - alias: "climate_schedule_day"
+    id: "climate_schedule_day"
+    description: "Set daytime temperature (all days)"
+    trigger:
+      - platform: time
+        at: "09:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          target_temp_high: >
+            {{ states('input_number.climate_cool_day') | float }}
+          target_temp_low: >
+            {{ states('input_number.climate_heat_day') | float }}
+
+  - alias: "climate_schedule_bedtime"
+    id: "climate_schedule_bedtime"
+    description: "Set bedtime comfort temperature (all days)"
+    trigger:
+      - platform: time
+        at: "21:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          target_temp_high: >
+            {{ states('input_number.climate_cool_bedtime') | float }}
+          target_temp_low: >
+            {{ states('input_number.climate_heat_bedtime') | float }}
+
+  - alias: "climate_schedule_sleep"
+    id: "climate_schedule_sleep"
+    description: "Set sleep temperature (all days)"
+    trigger:
+      - platform: time
+        at: "22:30:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          target_temp_high: >
+            {{ states('input_number.climate_cool_sleep') | float }}
+          target_temp_low: >
+            {{ states('input_number.climate_heat_sleep') | float }}
+
+  # ============================================================================
+  # PRESENCE-BASED AUTOMATIONS
+  # ============================================================================
+
+  - alias: "climate_away_mode_activate"
+    id: "climate_away_mode_activate"
+    description: "Activate energy-saving temps when everyone leaves"
+    trigger:
+      - platform: numeric_state
+        entity_id: zone.home
+        below: 1
+        for:
+          minutes: 5
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      # Don't activate away mode if guest mode is on
+      - condition: state
+        entity_id: input_boolean.mode_guest
+        state: "off"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          target_temp_high: >
+            {{ states('input_number.climate_cool_away') | float }}
+          target_temp_low: >
+            {{ states('input_number.climate_heat_away') | float }}
+
+  - alias: "climate_away_mode_deactivate"
+    id: "climate_away_mode_deactivate"
+    description: "Resume schedule when someone returns home"
+    trigger:
+      - platform: numeric_state
+        entity_id: zone.home
+        above: 0
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+    action:
+      # Ensure heat_cool mode first
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      # Determine which schedule to resume based on current time
+      - choose:
+          # Morning (5:00-8:59 weekdays, 7:00-8:59 weekends)
+          - conditions:
+              - condition: or
+                conditions:
+                  - condition: and
+                    conditions:
+                      - condition: time
+                        after: "05:00:00"
+                        before: "09:00:00"
+                      - condition: time
+                        weekday:
+                          - mon
+                          - tue
+                          - wed
+                          - thu
+                          - fri
+                  - condition: and
+                    conditions:
+                      - condition: time
+                        after: "07:00:00"
+                        before: "09:00:00"
+                      - condition: time
+                        weekday:
+                          - sat
+                          - sun
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {{ states('input_number.climate_cool_morning') | float }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_morning') | float }}
+          # Daytime (9:00-20:59)
+          - conditions:
+              - condition: time
+                after: "09:00:00"
+                before: "21:00:00"
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {{ states('input_number.climate_cool_day') | float }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_day') | float }}
+          # Bedtime (21:00-22:29)
+          - conditions:
+              - condition: time
+                after: "21:00:00"
+                before: "22:30:00"
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {{ states('input_number.climate_cool_bedtime') | float }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_bedtime') | float }}
+        # Default: Sleep temps (22:30-04:59)
+        default:
+          - service: climate.set_temperature
+            target:
+              entity_id: climate.dining_room_thermostat
+            data:
+              target_temp_high: >
+                {{ states('input_number.climate_cool_sleep') | float }}
+              target_temp_low: >
+                {{ states('input_number.climate_heat_sleep') | float }}

@@ -1,0 +1,138 @@
+# packages/brief/collectors/appliances_collector_enhanced.yaml
+#
+# Enhanced Appliances Collector - Phase 3 with Entity Validation
+# Validates entities exist, handles missing gracefully, logs errors
+# Based on: https://www.home-assistant.io/docs/scripts/
+#
+# Last Updated: 2025-11-07
+
+script:
+  brief_collect_appliances_safe:
+    alias: "Collect Appliances (Safe with Validation)"
+    description:
+      "Gathers appliance status with entity validation and error handling"
+    mode: parallel
+    fields:
+      timeout_seconds:
+        description: "Timeout for collection (from config_loader)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 60
+    variables:
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/appliances"
+      fallback_payload: "Appliance status unavailable"
+
+      # Check if required entities exist
+      has_dishwasher_state:
+        "{{ states('sensor.kitchen_dishwasher_operation_state') not in
+        ['unknown', 'unavailable'] }}"
+
+      # Maintenance sensors for salt and rinse aid
+      has_salt_sensor:
+        "{{ states('sensor.kitchen_dishwasher_salt_nearly_empty') not in
+        ['unknown', 'unavailable'] }}"
+      has_rinse_sensor:
+        "{{ states('sensor.kitchen_dishwasher_rinse_aid_nearly_empty') not in
+        ['unknown', 'unavailable'] }}"
+
+      # Check if required entities are available
+      all_required_present: "{{ has_dishwasher_state }}"
+
+      # Check for maintenance sensors (optional but preferred)
+      has_maintenance_sensors: >
+        {{ has_salt_sensor or has_rinse_sensor }}
+
+    sequence:
+      # Collect appliances data - always runs when called by orchestration
+      - if:
+          - condition: template
+            value_template: "{{ all_required_present }}"
+        then:
+          # Required entity present - collect normally
+          - variables:
+              dishwasher_state:
+                "{{ states('sensor.kitchen_dishwasher_operation_state') }}"
+              dishwasher_available: >
+                {{ not is_state('sensor.kitchen_dishwasher_operation_state',
+                'unavailable') and
+                   not is_state('sensor.kitchen_dishwasher_operation_state',
+                'unknown') }}
+              dishwasher_running: >
+                {{ dishwasher_available and
+                   states('sensor.kitchen_dishwasher_operation_state') == "run"
+                }}
+
+          - variables:
+              needs_salt: >
+                {%- if has_salt_sensor -%}
+                  {{ states('sensor.kitchen_dishwasher_salt_nearly_empty') ==
+                'present' }} {%- else -%}
+                  false
+                {%- endif -%}
+              needs_rinse_aid: >
+                {%- if has_rinse_sensor -%}
+                  {{ states('sensor.kitchen_dishwasher_rinse_aid_nearly_empty')
+                == 'present' }} {%- else -%}
+                  false
+                {%- endif -%}
+
+          - variables:
+              appliance_data:
+                dishwasher:
+                  state: "{{ dishwasher_state }}"
+                  available: "{{ dishwasher_available }}"
+                  running: "{{ dishwasher_running }}"
+                  maintenance:
+                    needs_salt: "{{ needs_salt }}"
+                    needs_rinse_aid: "{{ needs_rinse_aid }}"
+                    relevant: "{{ needs_salt or needs_rinse_aid }}"
+                    sensors_available: "{{ has_maintenance_sensors }}"
+                validation_status: "success"
+
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: "{{ appliance_data | tojson }}"
+
+        else:
+          # Required entity missing - publish error state
+          - variables:
+              appliance_data:
+                validation_status: "failed"
+                error_message:
+                  "Missing required entity:
+                  sensor.kitchen_dishwasher_operation_state"
+                missing_entities: ["sensor.kitchen_dishwasher_operation_state"]
+                fallback_message: "{{ fallback_payload }}"
+                dishwasher:
+                  state: "unknown"
+                  available: false
+                  running: false
+                  maintenance:
+                    needs_salt: false
+                    needs_rinse_aid: false
+                    relevant: false
+                    sensors_available: false
+
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: "{{ appliance_data | tojson }}"
+
+          # Log validation error
+          - service: mqtt.publish
+            data:
+              topic: "home/brief/validation/appliances"
+              payload: >
+                {{
+                  {
+                    "timestamp": now().isoformat(),
+                    "status": "validation_error",
+                    "missing_entities":
+                ["sensor.kitchen_dishwasher_operation_state"],
+                    "help": "Check entity ID in Developer Tools > States"
+                  } | tojson
+                }}

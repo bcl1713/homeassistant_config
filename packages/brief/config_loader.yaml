@@ -1,0 +1,159 @@
+# packages/brief/config_loader.yaml
+#
+# Configuration Loader for Modular Briefing System
+# Uses template sensors to store configuration in Home Assistant state
+# Based on: https://www.home-assistant.io/integrations/template/
+#
+# HOW TO USE:
+# In scripts, reference config values like:
+# - {{ state_attr('sensor.brief_config_entities', 'conversation_agent') }}
+# - {{ state_attr('sensor.brief_config_modules', 'calendar') }}
+# - {{ state_attr('sensor.brief_config_timeouts', 'collector_timeout') }}
+#
+# Last Updated: 2025-11-07
+
+template:
+  - sensor:
+      # ====================================================================
+      # Configuration: Enabled Modules
+      # ====================================================================
+      # Set each to true/false to enable/disable that data collection module
+      # Disabled modules are skipped gracefully (no errors)
+      #
+      - name: "Brief Config: Enabled Modules"
+        unique_id: brief_config_modules
+        state: "ready"
+        attributes:
+          calendar: true
+          weather: true
+          device_health: true
+          meals: false
+          commute: false
+          chores: false
+          appliances: false
+          garbage: false
+          air_quality: true
+
+      # ====================================================================
+      # Configuration: Timeout Values (in seconds)
+      # ====================================================================
+      - name: "Brief Config: Timeouts"
+        unique_id: brief_config_timeouts
+        state: "ready"
+        attributes:
+          collector_timeout: 15
+          build_prompt_timeout: 30
+          conversation_timeout: 60
+          mqtt_response_timeout: 5
+
+      # ====================================================================
+      # Configuration: Retry Settings
+      # ====================================================================
+      - name: "Brief Config: Retry Settings"
+        unique_id: brief_config_retries
+        state: "ready"
+        attributes:
+          max_retries: 2
+          retry_delay_ms: 1000
+          backoff_multiplier: 2.0
+
+      # ====================================================================
+      # Configuration: Entity References
+      # ====================================================================
+      # Core entity IDs used by briefing system
+      # To customize, update the entity names below to match your HA setup
+      # Find entity IDs by going to Developer Tools > States in Home Assistant
+      # Or use: curl -H "Authorization: Bearer TOKEN" http://IP:8123/api/states
+      #
+      - name: "Brief Config: Entity References"
+        unique_id: brief_config_entities
+        state: "ready"
+        attributes:
+          conversation_agent: "conversation.chatgpt"
+          weather: "weather.forecast_home"
+          notification_service: "notify.all_mobile_devices"
+          media_player: "media_player.display_kitchen"
+          weekend_sensor: "binary_sensor.time_is_weekend"
+
+      # ====================================================================
+      # Configuration: Calendar Entities
+      # ====================================================================
+      - name: "Brief Config: Calendar Entities"
+        unique_id: brief_config_calendars
+        state: "ready"
+        attributes:
+          default: "calendar.events"
+          meals_breakfast: "calendar.mealie_breakfast"
+          meals_lunch: "calendar.mealie_lunch"
+          meals_dinner: "calendar.mealie_dinner"
+
+      # ====================================================================
+      # Configuration: Travel Time Entities
+      # ====================================================================
+      - name: "Brief Config: Travel Time Sensors"
+        unique_id: brief_config_travel_time
+        state: "ready"
+        attributes:
+          brian: "sensor.travel_time_to_brian_s_work"
+          hester: "sensor.travel_time_to_hester_s_work"
+
+      # ====================================================================
+      # Configuration: MQTT Topics
+      # ====================================================================
+      - name: "Brief Config: MQTT Topics"
+        unique_id: brief_config_mqtt
+        state: "ready"
+        attributes:
+          base_topic: "home/brief"
+          chores: "home/brief/data/chores"
+          appliances: "home/brief/data/appliances"
+          calendar: "home/brief/data/calendar"
+          garbage: "home/brief/data/garbage"
+          meals: "home/brief/data/meals"
+          devices: "home/brief/data/devices"
+          commute: "home/brief/data/commute"
+          air_quality: "home/brief/data/air_quality"
+          prompt: "home/brief/prompt"
+          response: "home/ai/response"
+
+      # ====================================================================
+      # Configuration: Time Windows
+      # ====================================================================
+      - name: "Brief Config: Time Windows"
+        unique_id: brief_config_time_windows
+        state: "ready"
+        attributes:
+          morning_start: 6
+          morning_end: 12
+          evening_start: 17
+          evening_end: 21
+
+      # ====================================================================
+      # Configuration: Fallback Text
+      # ====================================================================
+      - name: "Brief Config: Fallback Text"
+        unique_id: brief_config_fallback_text
+        state: "ready"
+        attributes:
+          chores: "No chores assigned"
+          appliances: "Appliance status unavailable"
+          calendar: "No events scheduled"
+          garbage: "Garbage schedule unavailable"
+          meals: "No meal plan available"
+          devices: "Device status unavailable"
+          commute: "Travel times unavailable"
+          air_quality: "Air quality data unavailable"
+
+      # ====================================================================
+      # Configuration: Feature Flags
+      # ====================================================================
+      - name: "Brief Config: Feature Flags"
+        unique_id: brief_config_features
+        state: "ready"
+        attributes:
+          tts_enabled: true
+          mobile_enabled: true
+          caching_enabled: false
+          rate_limiting_enabled: false
+          health_monitoring_enabled: true
+          debug_logging_enabled: false

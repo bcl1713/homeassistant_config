@@ -1,0 +1,83 @@
+# packages/cameras.yaml
+automation:
+  - id: "camera_notification_universal"
+    alias: "camera_notification_universal"
+    description: "Notify tracked objects"
+    trigger:
+      platform: mqtt
+      topic: frigate/reviews
+    condition:
+      - condition: template
+        value_template: >
+          {% set camera = trigger.payload_json['after']['camera'] %} {% if
+          camera in ['living_room'] %}
+            {{ is_state('input_boolean.notification_camera_indoor', 'on') }}
+          {% elif camera in ['front_drive', 'back_door', 'front_doorbell'] %}
+            {{ is_state('input_boolean.notification_camera_outdoor', 'on') }}
+          {% endif %}
+    action:
+      - variables:
+          base_url: "https://home.hblucas.org/api/frigate/notifications/"
+          event: "{{ trigger.payload_json }}"
+          detections: "{{ event['after']['data']['detections'] }}"
+          review_id: "{{event['after']['id']}}"
+          id: "{{ detections[0] }}"
+          objects: "{{ event['after']['data']['objects'] }}"
+          sub_labels: "{{ event['after']['data']['sub_labels'] }}"
+          label: "{{ objects | list | join(', ') | title }}"
+          camera: "{{ event['after']['camera'] }}"
+          camera_name: "{{ camera | replace('_', ' ') | title}}"
+          start_time: "{{ event['after']['start_time'] | int }}"
+          notification_tag: "frigate_{{id}}"
+      - service: notify.all_mobile_devices
+        data:
+          title: "{{ camera_name }}"
+          message: "A {{label}} was detected on {{camera_name}}."
+          data:
+            clickAction: "{{base_url}}{{id}}/{{camera}}/clip.mp4"
+            image: "{{base_url}}{{id}}/thumbnail.jpg?format=android"
+            tag: "{{notification_tag}}"
+            when: "{{start_time}}"
+            priority: "high"
+            ttl: 0
+            alert_once: true
+
+  # Special case for doorbell button press
+  - alias: "doorbell_button_press_notification"
+    id: "doorbell_button_press_notification"
+    description: "Notify on doorbell press"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.front_door_doorbell_button_pressed
+        to: "on"
+    action:
+      # Step 1: Take a snapshot from the doorbell camera
+      - service: camera.snapshot
+        target:
+          entity_id: camera.front_door_doorbell_camera
+        data:
+          filename: "/config/www/doorbell/doorbell_snapshot.jpg"
+
+      # Step 2: Short delay to ensure the snapshot is saved
+      - delay:
+          seconds: 1
+
+      # Step 3: Send notification to only your phone with the camera image
+      - service: notify.all_mobile_devices
+        data:
+          message: "Doorbell pressed"
+          data:
+            image: "/api/camera_proxy/camera.front_door_doorbell_camera"
+            tag: "doorbell-press-{{ now().timestamp() | int }}"
+            when: "{{ now().timestamp() | int }}"
+            priority: "high"
+            ttl: 0
+            critical: true
+            # Add clickAction to redirect to camera view
+            clickAction: "/dashboard-cameras/front-doorbell"
+
+      # Step 4: Log the event
+      - service: logbook.log
+        data:
+          name: "Front Doorbell"
+          message: "Doorbell button pressed, notification sent with image"

@@ -1,0 +1,19 @@
+light:
+  - platform: group
+    name: Holiday Lights
+    entities:
+      - light.front_yard
+      - light.outdoor_plugin
+      - light.dining_room_christmas_tree
+
+automation:
+  - alias: "Turn on the Holiday Lights at Dusk"
+    trigger:
+      - platform: state
+        entity_id: sun.sun
+        to: "below_horizon"
+    action:
+      - service: light.turn_on
+        target:
+          entity_id: light.holiday_lights
+    mode: single

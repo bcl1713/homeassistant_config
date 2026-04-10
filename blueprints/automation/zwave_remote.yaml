@@ -1,0 +1,275 @@
+# blueprints/automation/zwave_remote.yaml
+blueprint:
+  name: Z-Wave Remote Control
+  description: >
+    Universal Z-Wave remote control blueprint that handles all button combinations.
+    Supports 4 scenes (buttons) with single press, 2-5x press, hold, and release actions.
+  domain: automation
+  input:
+    remote_device:
+      name: Remote Control Device
+      description: The Z-Wave remote control device
+      selector:
+        device:
+          integration: zwave_js
+
+    # Scene 001 inputs
+    scene_001_press:
+      name: Scene 1 Press Action
+      description: Action to run when Scene 1 is pressed
+      default: []
+      selector:
+        action: {}
+    scene_001_double:
+      name: Scene 1 Double Press Action
+      default: []
+      selector:
+        action: {}
+    scene_001_triple:
+      name: Scene 1 Triple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_001_quadruple:
+      name: Scene 1 Quadruple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_001_quintuple:
+      name: Scene 1 Quintuple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_001_held:
+      name: Scene 1 Hold Action
+      default: []
+      selector:
+        action: {}
+    scene_001_released:
+      name: Scene 1 Release Action
+      default: []
+      selector:
+        action: {}
+
+    # Scene 002 inputs
+    scene_002_press:
+      name: Scene 2 Press Action
+      default: []
+      selector:
+        action: {}
+    scene_002_double:
+      name: Scene 2 Double Press Action
+      default: []
+      selector:
+        action: {}
+    scene_002_triple:
+      name: Scene 2 Triple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_002_quadruple:
+      name: Scene 2 Quadruple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_002_quintuple:
+      name: Scene 2 Quintuple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_002_held:
+      name: Scene 2 Hold Action
+      default: []
+      selector:
+        action: {}
+    scene_002_released:
+      name: Scene 2 Release Action
+      default: []
+      selector:
+        action: {}
+
+    # Scene 003 inputs
+    scene_003_press:
+      name: Scene 3 Press Action
+      default: []
+      selector:
+        action: {}
+    scene_003_double:
+      name: Scene 3 Double Press Action
+      default: []
+      selector:
+        action: {}
+    scene_003_triple:
+      name: Scene 3 Triple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_003_quadruple:
+      name: Scene 3 Quadruple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_003_quintuple:
+      name: Scene 3 Quintuple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_003_held:
+      name: Scene 3 Hold Action
+      default: []
+      selector:
+        action: {}
+    scene_003_released:
+      name: Scene 3 Release Action
+      default: []
+      selector:
+        action: {}
+
+    # Scene 004 inputs
+    scene_004_press:
+      name: Scene 4 Press Action
+      default: []
+      selector:
+        action: {}
+    scene_004_double:
+      name: Scene 4 Double Press Action
+      default: []
+      selector:
+        action: {}
+    scene_004_triple:
+      name: Scene 4 Triple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_004_quadruple:
+      name: Scene 4 Quadruple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_004_quintuple:
+      name: Scene 4 Quintuple Press Action
+      default: []
+      selector:
+        action: {}
+    scene_004_held:
+      name: Scene 4 Hold Action
+      default: []
+      selector:
+        action: {}
+    scene_004_released:
+      name: Scene 4 Release Action
+      default: []
+      selector:
+        action: {}
+
+trigger:
+  - platform: event
+    event_type: zwave_js_value_notification
+    event_data:
+      device_id: !input remote_device
+
+variables:
+  scene_number: >
+    {{ trigger.event.data.label | regex_replace('Scene ','') }}
+  press_type: >
+    {{ trigger.event.data.value }}
+  debug_msg: >
+    Remote Event - Scene: {{ scene_number }}, Press Type: {{ trigger.event.data.value }}
+
+action:
+  - service: logbook.log
+    data:
+      name: "Blueprint Test"
+      message: "{{ debug_msg }}"
+  - choose:
+      # Scene 001 actions
+      - conditions:
+          - "{{ scene_number == '001' and press_type == 'KeyPressed' }}"
+        sequence: !input scene_001_press
+      - conditions:
+          - "{{ scene_number == '001' and press_type == 'KeyPressed2x' }}"
+        sequence: !input scene_001_double
+      - conditions:
+          - "{{ scene_number == '001' and press_type == 'KeyPressed3x' }}"
+        sequence: !input scene_001_triple
+      - conditions:
+          - "{{ scene_number == '001' and press_type == 'KeyPressed4x' }}"
+        sequence: !input scene_001_quadruple
+      - conditions:
+          - "{{ scene_number == '001' and press_type == 'KeyPressed5x' }}"
+        sequence: !input scene_001_quintuple
+      - conditions:
+          - "{{ scene_number == '001' and press_type == 'KeyHeldDown' }}"
+        sequence: !input scene_001_held
+      - conditions:
+          - "{{ scene_number == '001' and press_type == 'KeyReleased' }}"
+        sequence: !input scene_001_released
+
+      # Scene 002 actions
+      - conditions:
+          - "{{ scene_number == '002' and press_type == 'KeyPressed' }}"
+        sequence: !input scene_002_press
+      - conditions:
+          - "{{ scene_number == '002' and press_type == 'KeyPressed2x' }}"
+        sequence: !input scene_002_double
+      - conditions:
+          - "{{ scene_number == '002' and press_type == 'KeyPressed3x' }}"
+        sequence: !input scene_002_triple
+      - conditions:
+          - "{{ scene_number == '002' and press_type == 'KeyPressed4x' }}"
+        sequence: !input scene_002_quadruple
+      - conditions:
+          - "{{ scene_number == '002' and press_type == 'KeyPressed5x' }}"
+        sequence: !input scene_002_quintuple
+      - conditions:
+          - "{{ scene_number == '002' and press_type == 'KeyHeldDown' }}"
+        sequence: !input scene_002_held
+      - conditions:
+          - "{{ scene_number == '002' and press_type == 'KeyReleased' }}"
+        sequence: !input scene_002_released
+
+      # Scene 003 actions
+      - conditions:
+          - "{{ scene_number == '003' and press_type == 'KeyPressed' }}"
+        sequence: !input scene_003_press
+      - conditions:
+          - "{{ scene_number == '003' and press_type == 'KeyPressed2x' }}"
+        sequence: !input scene_003_double
+      - conditions:
+          - "{{ scene_number == '003' and press_type == 'KeyPressed3x' }}"
+        sequence: !input scene_003_triple
+      - conditions:
+          - "{{ scene_number == '003' and press_type == 'KeyPressed4x' }}"
+        sequence: !input scene_003_quadruple
+      - conditions:
+          - "{{ scene_number == '003' and press_type == 'KeyPressed5x' }}"
+        sequence: !input scene_003_quintuple
+      - conditions:
+          - "{{ scene_number == '003' and press_type == 'KeyHeldDown' }}"
+        sequence: !input scene_003_held
+      - conditions:
+          - "{{ scene_number == '003' and press_type == 'KeyReleased' }}"
+        sequence: !input scene_003_released
+
+      # Scene 004 actions
+      - conditions:
+          - "{{ scene_number == '004' and press_type == 'KeyPressed' }}"
+        sequence: !input scene_004_press
+      - conditions:
+          - "{{ scene_number == '004' and press_type == 'KeyPressed2x' }}"
+        sequence: !input scene_004_double
+      - conditions:
+          - "{{ scene_number == '004' and press_type == 'KeyPressed3x' }}"
+        sequence: !input scene_004_triple
+      - conditions:
+          - "{{ scene_number == '004' and press_type == 'KeyPressed4x' }}"
+        sequence: !input scene_004_quadruple
+      - conditions:
+          - "{{ scene_number == '004' and press_type == 'KeyPressed5x' }}"
+        sequence: !input scene_004_quintuple
+      - conditions:
+          - "{{ scene_number == '004' and press_type == 'KeyHeldDown' }}"
+        sequence: !input scene_004_held
+      - conditions:
+          - "{{ scene_number == '004' and press_type == 'KeyReleased' }}"
+        sequence: !input scene_004_released

@@ -1,0 +1,134 @@
+# packages/brief/helpers/conversation_wrapper.yaml
+#
+# Conversation Wrapper - AI Processing with Error Handling
+# Calls conversation.process with retry logic and fallback text
+# Based on: https://www.home-assistant.io/docs/scripts/
+#
+# Usage:
+#   - service: script.brief_call_conversation_safe
+#     data:
+#       prompt: "Please generate a briefing based on..."
+#       agent_id: "conversation.chatgpt"
+#       timeout_seconds: 60
+#
+# Returns:
+#   - succeeded: true/false
+#   - response: AI-generated text or fallback
+#   - attempts: number of attempts made
+#   - used_fallback: whether fallback text was used
+#
+# Last Updated: 2025-11-07
+
+script:
+  brief_call_conversation_safe:
+    alias: "Safe Conversation Call with Fallback"
+    description: "Calls conversation.process with error handling and fallback text"
+    mode: single
+    fields:
+      prompt:
+        description: "The prompt text to send to AI"
+        example: "Generate a home briefing based on: calendar events..."
+      agent_id:
+        description: "Conversation agent ID to use"
+        default: "conversation.chatgpt"
+        example: "conversation.chatgpt"
+      timeout_seconds:
+        description: "Timeout for each attempt (default 60)"
+        default: 60
+        selector:
+          number:
+            min: 10
+            max: 120
+      max_retries:
+        description: "Number of retries on failure (default 2)"
+        default: 2
+        selector:
+          number:
+            min: 0
+            max: 5
+    variables:
+      fallback_response: >
+        Good morning! Here's what's happening today. Check your calendars for events,
+        check the weather forecast, and let me know if you need more details about your schedule.
+      max_attempts: "{{ max_retries + 1 }}"
+    sequence:
+      # Initialize tracking variables
+      - variables:
+          response_found: false
+
+      # Try to call conversation API with retries
+      - repeat:
+          count: "{{ max_attempts }}"
+          sequence:
+            # Exit early if we already got a response
+            - if:
+                - condition: template
+                  value_template: "{{ response_found }}"
+              then:
+                - stop: "Response already obtained"
+
+            - variables:
+                current_attempt: "{{ repeat.index }}"
+
+            # Call conversation service
+            - service: conversation.process
+              data:
+                agent_id: "{{ agent_id }}"
+                text: "{{ prompt }}"
+              response_variable: conversation_response
+              continue_on_error: true
+
+            # Check if we got a valid response
+            - if:
+                - condition: template
+                  value_template: >
+                    {%- if conversation_response.response.speech.plain is defined -%}
+                      {%- set text = conversation_response.response.speech.plain.speech -%}
+                      {{ text and text | length > 0 and text not in ['error', 'failed'] }}
+                    {%- else -%}
+                      false
+                    {%- endif -%}
+              then:
+                # Got a valid response, extract it
+                - variables:
+                    ai_response: "{{ conversation_response.response.speech.plain.speech }}"
+                    succeeded: true
+                    used_fallback: false
+                    final_attempts: "{{ repeat.index }}"
+                    response_found: true
+              else:
+                # Check if this is the last attempt
+                - if:
+                    - condition: template
+                      value_template: "{{ repeat.index < max_attempts }}"
+                  then:
+                    # Not the last attempt, wait before retry with exponential backoff
+                    - delay:
+                        milliseconds: "{{ (1000 * (2 ** (repeat.index - 1))) | int }}"
+                  else:
+                    # Last attempt failed, use fallback
+                    - variables:
+                        ai_response: "{{ fallback_response }}"
+                        succeeded: false
+                        used_fallback: true
+                        final_attempts: "{{ max_attempts }}"
+
+      # Ensure we have values set if loop didn't execute
+      - if:
+          - condition: template
+            value_template: "{{ ai_response is not defined }}"
+        then:
+          - variables:
+              ai_response: "{{ fallback_response }}"
+              succeeded: false
+              used_fallback: true
+              final_attempts: "{{ max_attempts }}"
+
+      # Return the result
+      - variables:
+          result:
+            succeeded: "{{ succeeded | default(false) }}"
+            response: "{{ ai_response | default(fallback_response) }}"
+            attempts: "{{ final_attempts | default(max_attempts) }}"
+            used_fallback: "{{ used_fallback | default(true) }}"
+            agent_id: "{{ agent_id }}"

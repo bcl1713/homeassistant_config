@@ -1,0 +1,209 @@
+# packages/brief/health_monitoring.yaml
+#
+# Health Monitoring for Modular Briefing System
+# Tracks execution metrics, collector status, and health issues
+# Based on: https://www.home-assistant.io/integrations/template/
+#
+# Last Updated: 2025-11-07
+
+input_boolean:
+  brief_health_warning:
+    name: "Brief: Health Warning"
+    icon: mdi:alert-circle
+    initial: off
+
+template:
+  - sensor:
+      # ====================================================================
+      # Execution Status Sensor
+      # ====================================================================
+      # Shows current state of the briefing system
+      - name: "Brief: Execution Status"
+        unique_id: brief_execution_status
+        state: "idle"
+        icon: "mdi:check-circle"
+        attributes:
+          last_update: "{{ now().isoformat() }}"
+
+      # ====================================================================
+      # Last Execution Time
+      # ====================================================================
+      # Timestamp of when briefing last ran
+      - name: "Brief: Last Execution Time"
+        unique_id: brief_last_execution_time
+        state: "{{ as_timestamp(now()) }}"
+        attributes:
+          friendly: >
+            {%- set last_brief = states('sensor.ai_brief') -%}
+            {%- if last_brief not in ['unknown', 'unavailable', 'Never'] -%}
+              Recently
+            {%- else -%}
+              Never
+            {%- endif -%}
+
+      # ====================================================================
+      # Last Execution Duration
+      # ====================================================================
+      # How long the last briefing took to generate
+      - name: "Brief: Last Execution Duration"
+        unique_id: brief_last_execution_duration
+        state: "0"
+        unit_of_measurement: "seconds"
+        attributes:
+          note: "Duration tracking requires logging of start/end times"
+
+      # ====================================================================
+      # Collector Status
+      # ====================================================================
+      # JSON showing which collectors passed/failed on last run
+      - name: "Brief: Collector Status"
+        unique_id: brief_collectors_status
+        state: "unknown"
+        attributes:
+          calendar: "unknown"
+          weather: "unknown"
+          device_health: "unknown"
+          meals: "unknown"
+          commute: "unknown"
+          chores: "unknown"
+          appliances: "unknown"
+          garbage: "unknown"
+          air_quality: "unknown"
+          note: "Updated by collector scripts on each run"
+
+      # ====================================================================
+      # Next Scheduled Execution
+      # ====================================================================
+      # When the next briefing is scheduled
+      - name: "Brief: Next Scheduled Execution"
+        unique_id: brief_next_scheduled_execution
+        state: "Unknown"
+        attributes:
+          morning_time: "06:45"
+          evening_time: "17:30"
+          calendar_trigger: "30 minutes before calendar events"
+
+      # ====================================================================
+      # Last Execution Error
+      # ====================================================================
+      # Most recent error from briefing operations
+      - name: "Brief: Last Execution Error"
+        unique_id: brief_last_execution_error
+        state: "None"
+        attributes:
+          timestamp: "Never"
+          collectors_failed: "None"
+          conversation_error: "None"
+          delivery_error: "None"
+
+      # ====================================================================
+      # API Call Count
+      # ====================================================================
+      # Number of API calls made (conversation.process calls)
+      - name: "Brief: API Call Count"
+        unique_id: brief_api_call_count
+        state: "0"
+        unit_of_measurement: "calls"
+        attributes:
+          period: "today"
+          note: "Tracked to monitor API rate limiting"
+
+      # ====================================================================
+      # Fallback Count
+      # ====================================================================
+      # How many times fallback values were used (collectors failed)
+      - name: "Brief: Fallback Usage Count"
+        unique_id: brief_fallback_count
+        state: "0"
+        unit_of_measurement: "uses"
+        attributes:
+          period: "today"
+          note: "Indicates how often data collection failed"
+
+      # ====================================================================
+      # System Ready Status
+      # ====================================================================
+      # Overall readiness of the briefing system
+      - name: "Brief: System Ready"
+        unique_id: brief_system_ready
+        state: >
+          {%- if is_state('input_boolean.brief_validation_passed', 'on') -%}
+            ready
+          {%- else -%}
+            not_ready
+          {%- endif -%}
+        attributes:
+          validation: "{{ states('input_boolean.brief_validation_passed') }}"
+          health_warning: "{{ states('input_boolean.brief_health_warning') }}"
+          last_error: "{{ states('sensor.brief_last_execution_error') }}"
+
+automation:
+  - alias: "Brief: Health Check"
+    description: "Verify briefing system is functioning correctly"
+    trigger:
+      platform: time_pattern
+      hours: "*"
+      minutes: "0"
+      seconds: "0"
+    action:
+      - if:
+          - condition: state
+            entity_id: input_boolean.brief_validation_passed
+            state: "off"
+        then:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.brief_health_warning
+        else:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.brief_health_warning
+
+  - alias: "Brief: Alert on Health Warning"
+    description: "Notify if health check detects issues"
+    trigger:
+      platform: state
+      entity_id: input_boolean.brief_health_warning
+      to: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          notification_id: brief_health_warning
+          title: "Brief System Health Warning"
+          message: |
+            The briefing system detected health issues:
+
+            **Validation Status:** {{ states('input_boolean.brief_validation_passed') }}
+            **Last Error:** {{ states('sensor.brief_last_execution_error') }}
+
+            **System Status Dashboard:**
+            Go to your Home Assistant dashboard and look for the "Brief Health Monitoring" card.
+
+            **Common Issues:**
+            1. Missing entities (check validation)
+            2. API errors (check conversation.chatgpt configuration)
+            3. MQTT broker issues (check MQTT connection)
+            4. Recent failures (check collector status)
+
+            **To Debug:**
+            - Check the Home Assistant logs for errors
+            - Verify entity IDs in `packages/brief/config_loader.yaml`
+            - Ensure all required integrations are configured
+            - Use REST API to check entity states: `curl -H "Authorization: Bearer TOKEN" http://IP:8123/api/states`
+
+            **For Help:**
+            - Briefing documentation: `packages/brief/README.md`
+            - Configuration: https://www.home-assistant.io/docs/configuration/
+            - Automations: https://www.home-assistant.io/docs/automation/
+            - REST API: https://developers.home-assistant.io/docs/api/rest/
+
+  - alias: "Brief: Clear Health Warning on Resolution"
+    description: "Dismiss health warning when issues are resolved"
+    trigger:
+      platform: state
+      entity_id: input_boolean.brief_health_warning
+      to: "off"
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: brief_health_warning

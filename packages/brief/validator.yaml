@@ -1,0 +1,162 @@
+# packages/brief/validator.yaml
+#
+# Entity Validator for Modular Briefing System
+# Checks that all required entities exist on startup
+# Based on: https://www.home-assistant.io/docs/automation/
+#
+# Last Updated: 2025-11-07
+
+input_boolean:
+  brief_validation_passed:
+    name: "Brief: Validation Passed"
+    icon: mdi:check-circle
+    initial: off
+
+template:
+  - sensor:
+      # ====================================================================
+      # Validation Status
+      # ====================================================================
+      # Shows if critical entities exist
+      - name: "Brief: Validation Status"
+        unique_id: brief_validation_status
+        state: >
+          {%- set config_entities = states('sensor.brief_config_entity_references') -%}
+          {%- if config_entities in ['unknown', 'unavailable'] -%}
+            pending
+          {%- else -%}
+            {%- set conversation_agent = state_attr('sensor.brief_config_entity_references', 'conversation_agent') -%}
+            {%- set weather = state_attr('sensor.brief_config_entity_references', 'weather') -%}
+            {%- set notification_service = state_attr('sensor.brief_config_entity_references', 'notification_service') -%}
+            {%- set valid_count = 0 -%}
+            {%- if conversation_agent and states(conversation_agent) not in ['unknown', 'unavailable'] -%}
+              {%- set valid_count = valid_count + 1 -%}
+            {%- endif -%}
+            {%- if weather and states(weather) not in ['unknown', 'unavailable'] -%}
+              {%- set valid_count = valid_count + 1 -%}
+            {%- endif -%}
+            {%- if notification_service and states(notification_service) not in ['unknown', 'unavailable'] -%}
+              {%- set valid_count = valid_count + 1 -%}
+            {%- endif -%}
+            {%- if valid_count >= 1 -%}
+              valid
+            {%- else -%}
+              invalid
+            {%- endif -%}
+          {%- endif -%}
+
+      # ====================================================================
+      # Missing Entities List
+      # ====================================================================
+      # Shows which critical entities are missing
+      - name: "Brief: Validation Errors"
+        unique_id: brief_validation_errors
+        state: >
+          {%- set config_entities = states('sensor.brief_config_entity_references') -%}
+          {%- if config_entities in ['unknown', 'unavailable'] -%}
+            Config entities not yet loaded
+          {%- else -%}
+            {%- set conversation_agent = state_attr('sensor.brief_config_entity_references', 'conversation_agent') -%}
+            {%- set weather = state_attr('sensor.brief_config_entity_references', 'weather') -%}
+            {%- set notification_service = state_attr('sensor.brief_config_entity_references', 'notification_service') -%}
+            {%- set errors = [] -%}
+            {%- if conversation_agent and states(conversation_agent) in ['unknown', 'unavailable'] -%}
+              {%- set errors = errors + [conversation_agent ~ ' (conversation agent)'] -%}
+            {%- endif -%}
+            {%- if weather and states(weather) in ['unknown', 'unavailable'] -%}
+              {%- set errors = errors + [weather ~ ' (weather)'] -%}
+            {%- endif -%}
+            {%- if notification_service and states(notification_service) in ['unknown', 'unavailable'] -%}
+              {%- set errors = errors + [notification_service ~ ' (notification service)'] -%}
+            {%- endif -%}
+            {%- if errors | length > 0 -%}
+              {{ errors | join(', ') }}
+            {%- else -%}
+              None
+            {%- endif -%}
+          {%- endif -%}
+
+automation:
+  - alias: "Brief: Validate on Startup"
+    description: "Check that all required briefing entities exist"
+    trigger:
+      platform: homeassistant
+      event: start
+    action:
+      - service: template.reload
+
+      - delay:
+          seconds: 2
+
+      # Set validation flag based on status
+      - if:
+          - condition: template
+            value_template: "{{ states('sensor.brief_validation_status') == 'valid' }}"
+        then:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.brief_validation_passed
+        else:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.brief_validation_passed
+
+          # Create persistent notification with error details
+          - service: persistent_notification.create
+            data:
+              notification_id: brief_validation_failed
+              title: "Brief Validation Failed"
+              message: |
+                The briefing system detected missing entities. Please configure:
+
+                **Missing Entities:**
+                {{ states('sensor.brief_validation_errors') }}
+
+                **How to Fix:**
+                1. Check that the entities exist in Home Assistant
+                2. Go to Developer Tools > States to find correct entity IDs
+                3. Or use: `curl -H "Authorization: Bearer TOKEN" http://IP:8123/api/states`
+                4. Update entity names in `packages/brief/config_loader.yaml`
+                5. Reload templates or restart Home Assistant
+                6. Check this notification for confirmation
+
+                **For more help:**
+                - Template integration: https://www.home-assistant.io/integrations/template/
+                - Configuration: https://www.home-assistant.io/docs/configuration/
+                - REST API: https://developers.home-assistant.io/docs/api/rest/
+
+  - alias: "Brief: Revalidate When Config Changes"
+    description: "Re-check entities when configuration changes"
+    trigger:
+      - platform: template
+        value_template: >
+          {% set sensor = states('sensor.brief_config_entity_references') %}
+          {{ sensor not in ['unknown', 'unavailable', 'unknown'] }}
+    action:
+      - service: template.reload
+
+      - delay:
+          seconds: 1
+
+      # Set validation flag
+      - if:
+          - condition: template
+            value_template: "{{ states('sensor.brief_validation_status') == 'valid' }}"
+        then:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.brief_validation_passed
+          - service: persistent_notification.dismiss
+            data:
+              notification_id: brief_validation_failed
+        else:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.brief_validation_passed
+          - service: persistent_notification.create
+            data:
+              notification_id: brief_validation_failed
+              title: "Brief Validation Failed"
+              message: |
+                Missing entities: {{ states('sensor.brief_validation_errors') }}
+                See previous notification for details.

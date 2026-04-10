@@ -1,0 +1,134 @@
+# packages/brief/sensors.yaml
+#
+# MQTT Sensors for Modular Briefing System
+# Stores collected data from different modules
+#
+
+mqtt:
+  sensor:
+    # Existing AI Brief sensor
+    - name: "AI Brief"
+      state_topic: "home/ai/response"
+      value_template: "{{ value_json.state }}"
+      json_attributes_topic: "home/ai/response"
+    
+    # Data collection sensors - use attributes for JSON data
+    - name: "Brief Data Chores"
+      state_topic: "home/brief/data/chores"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/chores"
+    
+    - name: "Brief Data Appliances"
+      state_topic: "home/brief/data/appliances" 
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/appliances"
+    
+    - name: "Brief Data Calendar"
+      state_topic: "home/brief/data/calendar"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/calendar"
+    
+    - name: "Brief Data Garbage"
+      state_topic: "home/brief/data/garbage"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/garbage"
+    
+    - name: "Brief Data Meals"
+      state_topic: "home/brief/data/meals"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/meals"
+    
+    - name: "Brief Data Devices"
+      state_topic: "home/brief/data/devices"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/devices"
+    
+    - name: "Brief Data Commute"
+      state_topic: "home/brief/data/commute"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/data/commute"
+
+    # Note: "Brief Data Air Quality" sensor is defined in packages/air_quality.yaml
+    # to avoid duplicate definitions. The air quality package handles both
+    # data collection and MQTT sensor definition.
+
+    # Built prompt sensor - use attributes for prompt content
+    - name: "Brief Prompt"
+      state_topic: "home/brief/prompt"
+      value_template: "{{ now().isoformat() }}"
+      json_attributes_topic: "home/brief/prompt"
+
+    # Collector errors log - stores array of last 10 errors
+    - name: "Brief Collector Errors"
+      state_topic: "home/brief/errors"
+      value_template: "{{ value_json.error_count | default(0) }}"
+      unit_of_measurement: "errors"
+      json_attributes_topic: "home/brief/errors"
+
+template:
+  sensor:
+    # Convenience sensors for accessing data
+    - name: "Brief Context Summary"
+      unique_id: brief_context_summary
+      state: >
+        {% set context = state_attr('sensor.brief_prompt', 'context') %}
+        {% if context %}
+          {{ ('Morning' if context.get('is_morning', false) else 'Evening') }} | 
+          {{ 'Weekday' if context.get('is_weekday', false) else 'Weekend' }} |
+          {{ 'Issues' if context.get('has_critical_issues', false) else 'Normal' }}
+        {% else %}
+          Not Ready
+        {% endif %}
+      attributes:
+        last_generated: >
+          {{ state_attr('sensor.brief_prompt', 'timestamp') }}
+        prompt_length: >
+          {% set prompt = state_attr('sensor.brief_prompt', 'prompt') %}
+          {{ prompt | length if prompt else 0 }}
+        data_sources: >
+          {% set sources = [] %}
+          {% if states('sensor.brief_data_chores') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['chores'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_appliances') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['appliances'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_calendar') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['calendar'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_garbage') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['garbage'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_meals') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['meals'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_devices') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['devices'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_commute') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['commute'] %}
+          {% endif %}
+          {% if states('sensor.brief_data_air_quality') not in ['unknown', 'unavailable'] %}
+            {% set sources = sources + ['air_quality'] %}
+          {% endif %}
+          {{ sources | join(', ') }}
+
+    # Error log display - shows recent errors in readable format
+    - name: "Brief Recent Errors"
+      unique_id: brief_recent_errors
+      state: >
+        {%- set errors = state_attr('sensor.brief_collector_errors', 'recent_errors') -%}
+        {%- if errors and errors | length > 0 -%}
+          {{ errors | length }} recent error(s)
+        {%- else -%}
+          No errors
+        {%- endif -%}
+      attributes:
+        errors: >
+          {%- set errors = state_attr('sensor.brief_collector_errors', 'recent_errors') -%}
+          {%- if errors -%}
+            {{ errors | list }}
+          {%- else -%}
+            []
+          {%- endif -%}
+        note: "Updated by collector scripts when errors occur"

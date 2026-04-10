@@ -1,0 +1,32 @@
+exclude:
+  domains:
+    - media_player
+    - binary_sensor
+    - scene
+    - weather
+    - number
+    - image
+    - zone
+    - event
+    - switch
+    - calendar
+    - conversation
+  entity_globs:
+    - sensor.pixel*
+    - sensor.towner_phone*
+    - sensor.hester_phone*
+    - sensor.
+    - sensor.condition*
+    - sensor.homeconnect*
+    - sensor.backup*
+    - sensor.*direction_of_travel
+    - sensor.weather*
+    - input_datetime.*last_updated*
+    - binary_sensor.ratgdo*
+    - button.ratgdo*
+    - sensor.ratgdo*
+    - button.*identify
+    - sensor.*last_seen
+include:
+  entities:
+    - switch.hallway_lamp

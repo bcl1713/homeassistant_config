@@ -1,0 +1,163 @@
+rest:
+  - resource: "http://api.airplanes.live/v2/hex/adfeb3"
+    scan_interval: 30 
+    sensor:
+      - name: "676 Callsign" 
+        value_template: "{{ value_json['ac'][0]['flight'] }}"
+      - name: "676 Altitude"
+        value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
+      - name: "676 Latitude"
+        value_template: "{{ value_json['ac'][0]['lat'] }}"
+      - name: "676 Longitude"
+        value_template: "{{ value_json['ac'][0]['lon'] }}"
+  - resource: "http://api.airplanes.live/v2/hex/adfeb4"
+    scan_interval: 30 
+    sensor:
+      - name: "677 Callsign"
+        value_template: "{{ value_json['ac'][0]['flight'] }}"
+      - name: "677 Altitude"
+        value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
+      - name: "677 Latitude"
+        value_template: "{{ value_json['ac'][0]['lat'] }}"
+      - name: "677 Longitude"
+        value_template: "{{ value_json['ac'][0]['lon'] }}"
+  - resource: "http://api.airplanes.live/v2/hex/adfeb5"
+    scan_interval: 30 
+    sensor:
+      - name: "787 Callsign"
+        value_template: "{{ value_json['ac'][0]['flight'] }}"
+      - name: "787 Altitude"
+        value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
+      - name: "787 Latitude"
+        value_template: "{{ value_json['ac'][0]['lat'] }}"
+      - name: "787 Longitude"
+        value_template: "{{ value_json['ac'][0]['lon'] }}"
+  - resource: "http://api.airplanes.live/v2/hex/adfeb6"
+    scan_interval: 30 
+    sensor:
+      - name: "125 Callsign"
+        value_template: "{{ value_json['ac'][0]['flight'] }}"
+      - name: "125 Altitude"
+        value_template: "{{ value_json['ac'][0]['alt_baro'] }}"
+      - name: "125 Latitude"
+        value_template: "{{ value_json['ac'][0]['lat'] }}"
+      - name: "125 Longitude"
+        value_template: "{{ value_json['ac'][0]['lon'] }}"
+template:
+  sensor:
+    - name: "Aircraft 676"
+      state: >
+        {% if states('sensor.676_callsign') not in ['unknown', 'unavailable', ''] %}
+          {{ states('sensor.676_callsign') }}
+        {% else %}
+          {{ states('sensor.aircraft_676') }}
+        {% endif %}
+      attributes:
+        latitude: >
+          {% set new_latitude = states('sensor.676_latitude') %}
+          {% if new_latitude | float(0) != 0 %}
+            {{ new_latitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_676', 'latitude') }}
+          {% endif %}
+        longitude: >
+          {% set new_longitude = states('sensor.676_longitude') %}
+          {% if new_longitude | float(0) != 0 %}
+            {{ new_longitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_676', 'longitude') }}
+          {% endif %}
+        altitude: >
+          {% set new_altitude = states('sensor.676_altitude') %}
+          {% if new_altitude | float(0) != 0 %}
+            {{ new_altitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_676', 'altitude') }}
+          {% endif %}
+    - name: "Aircraft 677"
+      state: >
+        {% if states('sensor.677_callsign') not in ['unknown', 'unavailable', ''] %}
+          {{ states('sensor.677_callsign') }}
+        {% else %}
+          {{ states('sensor.aircraft_677') }}
+        {% endif %}
+      attributes:
+        latitude: >
+          {% set new_latitude = states('sensor.677_latitude') %}
+          {% if new_latitude | float(0) != 0 %}
+            {{ new_latitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_677', 'latitude') }}
+          {% endif %}
+        longitude: >
+          {% set new_longitude = states('sensor.677_longitude') %}
+          {% if new_longitude | float(0) != 0 %}
+            {{ new_longitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_677', 'longitude') }}
+          {% endif %}
+        altitude: >
+          {% set new_altitude = states('sensor.677_altitude') %}
+          {% if new_altitude | float(0) != 0 %}
+            {{ new_altitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_677', 'altitude') }}
+          {% endif %}
+    - name: "Aircraft 787"
+      state: >
+        {% if states('sensor.787_callsign') not in ['unknown', 'unavailable', ''] %}
+          {{ states('sensor.787_callsign') }}
+        {% else %}
+          {{ states('sensor.aircraft_787') }}
+        {% endif %}
+      attributes:
+        latitude: >
+          {% set new_latitude = states('sensor.787_latitude') %}
+          {% if new_latitude | float(0) != 0 %}
+            {{ new_latitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_787', 'latitude') }}
+          {% endif %}
+        longitude: >
+          {% set new_longitude = states('sensor.787_longitude') %}
+          {% if new_longitude | float(0) != 0 %}
+            {{ new_longitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_787', 'longitude') }}
+          {% endif %}
+        altitude: >
+          {% set new_altitude = states('sensor.787_altitude') %}
+          {% if new_altitude | float(0) != 0 %}
+            {{ new_altitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_787', 'altitude') }}
+          {% endif %}
+    - name: "Aircraft 125"
+      state: >
+        {% if states('sensor.125_callsign') not in ['unknown', 'unavailable', ''] %}
+          {{ states('sensor.125_callsign') }}
+        {% else %}
+          {{ states('sensor.aircraft_125') }}
+        {% endif %}
+      attributes:
+        latitude: >
+          {% set new_latitude = states('sensor.125_latitude') %}
+          {% if new_latitude | float(0) != 0 %}
+            {{ new_latitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_125', 'latitude') }}
+          {% endif %}
+        longitude: >
+          {% set new_longitude = states('sensor.125_longitude') %}
+          {% if new_longitude | float(0) != 0 %}
+            {{ new_longitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_125', 'longitude') }}
+          {% endif %}
+        altitude: >
+          {% set new_altitude = states('sensor.125_altitude') %}
+          {% if new_altitude | float(0) != 0 %}
+            {{ new_altitude | float }}
+          {% else %}
+            {{ state_attr('sensor.aircraft_125', 'altitude') }}
+          {% endif %}

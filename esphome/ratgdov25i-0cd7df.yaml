@@ -1,0 +1,17 @@
+substitutions:
+  name: ratgdov25i-0cd7df
+  friendly_name: ratgdov2.5i 0cd7df
+packages:
+  ratgdo.esphome: github://ratgdo/esphome-ratgdo/v25iboard.yaml@main
+esphome:
+  name: ${name}
+  name_add_mac_suffix: false
+  friendly_name: ${friendly_name}
+api:
+  encryption:
+    key: Qp7B6xdy65tS3WOjcCT8vLb5o0e54iar046CrmLYH2k=
+
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password

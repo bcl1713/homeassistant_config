@@ -1,0 +1,122 @@
+# packages/brief/collectors/garbage_collector_enhanced.yaml
+#
+# Enhanced Garbage Collector - Phase 3 with Label-Based Filtering
+# Validates label availability, handles pickup scheduling, graceful fallback
+# Based on: https://www.home-assistant.io/docs/scripts/
+#          https://www.home-assistant.io/integrations/calendar/
+#
+# Last Updated: 2025-11-08
+
+script:
+  brief_collect_garbage_safe:
+    alias: "Collect Garbage Schedule (Safe with Label Filtering)"
+    description: "Gathers garbage pickup schedule with label_id filtering and evening timing logic"
+    mode: parallel
+    fields:
+      timeout_seconds:
+        description: "Timeout for collection (from config_loader)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 60
+    variables:
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/garbage"
+      fallback_payload: "Garbage schedule unavailable"
+
+      # Label ID for filtering garbage/trash calendar events
+      label_id_filter: "trash_calendar"
+
+      # Time context
+      is_evening: "{{ now().hour >= 17 }}"
+      is_night: "{{ now().hour >= 20 }}"
+
+    sequence:
+      # Step 1: Attempt to get garbage events filtered by label_id
+      - service: calendar.get_events
+        data:
+          duration:
+            days: 2
+        target:
+          label_id: "{{ label_id_filter }}"
+        response_variable: garbage_events
+        continue_on_error: true
+
+      # Step 2: Extract tomorrow's garbage pickups
+      - variables:
+          tomorrow_date: "{{ (now() + timedelta(days=1)).strftime('%Y-%m-%d') }}"
+          garbage_tomorrow: >
+            {% set ns = namespace(garbage_events=[]) %}
+            {# Handle both successful and error responses #}
+            {% if garbage_events is defined and garbage_events.items() is defined %}
+              {% for calendar, event_list in garbage_events.items() %}
+                {% for event in event_list.events %}
+                  {# Parse event start date #}
+                  {% if 'T' in event.start %}
+                    {% set event_date_str = event.start.split('T')[0] %}
+                  {% else %}
+                    {% set event_date_str = event.start %}
+                  {% endif %}
+
+                  {# Check if pickup is tomorrow #}
+                  {% if event_date_str == tomorrow_date %}
+                    {% set ns.garbage_events = ns.garbage_events + [{
+                      'summary': event.summary,
+                      'date': event_date_str,
+                      'type': 'garbage_and_recycling' if 'recycling' in event.summary.lower() else 'garbage_only'
+                    }] %}
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+            {{ ns.garbage_events }}
+
+      # Step 3: Determine if reminder is relevant (has pickup tomorrow)
+      - variables:
+          has_pickup_tomorrow: "{{ garbage_tomorrow | length > 0 }}"
+          is_relevant: "{{ has_pickup_tomorrow }}"
+          collection_status: >
+            {% if garbage_tomorrow | length > 0 %}
+              success
+            {% else %}
+              partial
+            {% endif %}
+          reminder_message: >
+            {% if garbage_tomorrow | length > 0 %}
+              {% set event = garbage_tomorrow[0] %}
+              {% if event.type == 'garbage_and_recycling' %}
+                Remember to take out garbage and recycling tonight
+              {% else %}
+                Remember to take out garbage tonight
+              {% endif %}
+            {% else %}
+              ""
+            {% endif %}
+          final_payload: >
+            {
+              "has_pickup_tomorrow": {{ has_pickup_tomorrow | lower }},
+              "pickup_events": {{ garbage_tomorrow | tojson }},
+              "relevant": {{ is_relevant | lower }},
+              "reminder_message": "{{ reminder_message }}",
+              "validation_status": "{{ collection_status }}"
+            }
+
+      # Step 4: Publish to MQTT
+      - service: mqtt.publish
+        data:
+          topic: "{{ mqtt_topic }}"
+          payload: "{{ final_payload }}"
+        continue_on_error: true
+
+      # Step 5: Log if pickup is relevant (only if evening and has pickup)
+      - if:
+          - condition: template
+            value_template: "{{ is_relevant }}"
+        then:
+          - service: persistent_notification.create
+            data:
+              title: "Garbage Reminder"
+              message: "{{ reminder_message }} - Pickup tomorrow ({{ garbage_tomorrow[0].date }})"
+              notification_id: "brief_garbage_reminder"
+            continue_on_error: true

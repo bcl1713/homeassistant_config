@@ -1,0 +1,134 @@
+# packages/brief/collectors/chores_collector_enhanced.yaml
+#
+# Enhanced Chores Collector - Phase 3 with Entity Validation
+# Validates entities exist, handles missing gracefully, logs errors
+# Based on: https://www.home-assistant.io/docs/scripts/
+#          https://www.home-assistant.io/docs/configuration/
+#
+# Last Updated: 2025-11-07
+
+script:
+  brief_collect_chores_safe:
+    alias: "Collect Chores (Safe with Validation)"
+    description: "Gathers chore status with entity validation and error handling"
+    mode: parallel
+    fields:
+      timeout_seconds:
+        description: "Timeout for collection (from config_loader)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 60
+    variables:
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/chores"
+      fallback_payload: "No chores assigned"
+
+      # Check if required entities exist
+      has_weekend_sensor: "{{ states('binary_sensor.time_is_weekend') not in ['unknown', 'unavailable'] }}"
+      has_dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') not in ['unknown', 'unavailable'] }}"
+      has_dishwasher_completed: "{{ states('input_boolean.chore_dishwasher_completed') not in ['unknown', 'unavailable'] }}"
+      has_bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') not in ['unknown', 'unavailable'] }}"
+      has_bathroom_completed: "{{ states('input_boolean.chore_bathroom_completed') not in ['unknown', 'unavailable'] }}"
+
+      # Check if all required entities are available
+      all_required_present: >
+        {{
+          has_weekend_sensor and
+          has_dishwasher_assignee and
+          has_dishwasher_completed and
+          has_bathroom_assignee and
+          has_bathroom_completed
+        }}
+
+      # Build list of missing entities for logging
+      missing_entities: >
+        {%- set missing = [] -%}
+        {%- if not has_weekend_sensor -%}
+          {%- set missing = missing + ['binary_sensor.time_is_weekend'] -%}
+        {%- endif -%}
+        {%- if not has_dishwasher_assignee -%}
+          {%- set missing = missing + ['input_select.chore_dishwasher_assignee'] -%}
+        {%- endif -%}
+        {%- if not has_dishwasher_completed -%}
+          {%- set missing = missing + ['input_boolean.chore_dishwasher_completed'] -%}
+        {%- endif -%}
+        {%- if not has_bathroom_assignee -%}
+          {%- set missing = missing + ['input_select.chore_bathroom_assignee'] -%}
+        {%- endif -%}
+        {%- if not has_bathroom_completed -%}
+          {%- set missing = missing + ['input_boolean.chore_bathroom_completed'] -%}
+        {%- endif -%}
+        {{ missing }}
+    sequence:
+      # Collect chores data - always runs when called by orchestration
+      - if:
+          - condition: template
+            value_template: "{{ all_required_present }}"
+        then:
+          # All required entities present - collect normally
+          - variables:
+              is_weekend: "{{ is_state('binary_sensor.time_is_weekend', 'on') }}"
+              dishwasher_assignee: "{{ states('input_select.chore_dishwasher_assignee') }}"
+              dishwasher_completed: "{{ is_state('input_boolean.chore_dishwasher_completed', 'on') }}"
+              bathroom_assignee: "{{ states('input_select.chore_bathroom_assignee') }}"
+              bathroom_completed: "{{ is_state('input_boolean.chore_bathroom_completed', 'on') }}"
+
+          - variables:
+              chores_data:
+                daily:
+                  dishwasher:
+                    assignee: "{{ dishwasher_assignee }}"
+                    completed: "{{ dishwasher_completed }}"
+                    relevant: true
+                weekend:
+                  bathroom:
+                    assignee: "{{ bathroom_assignee }}"
+                    completed: "{{ bathroom_completed }}"
+                    relevant: "{{ is_weekend }}"
+                validation_status: "success"
+                missing_entities: []
+
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: "{{ chores_data | tojson }}"
+
+        else:
+          # Some required entities missing - publish error state with fallback
+          - variables:
+              chores_data:
+                validation_status: "partial"
+                error_message: "Missing entities: {{ missing_entities | join(', ') }}"
+                missing_entities: "{{ missing_entities }}"
+                fallback_message: "{{ fallback_payload }}"
+                daily:
+                  dishwasher:
+                    assignee: "unknown"
+                    completed: false
+                    relevant: true
+                weekend:
+                  bathroom:
+                    assignee: "unknown"
+                    completed: false
+                    relevant: false
+
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: "{{ chores_data | tojson }}"
+
+          # Log validation error to health sensors
+          - service: mqtt.publish
+            data:
+              topic: "home/brief/validation/chores"
+              payload: >
+                {{
+                  {
+                    "timestamp": now().isoformat(),
+                    "status": "validation_error",
+                    "missing_entities": missing_entities,
+                    "help": "Check entity IDs in Developer Tools > States"
+                  } | tojson
+                }}

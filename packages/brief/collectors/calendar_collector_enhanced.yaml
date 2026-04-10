@@ -1,0 +1,148 @@
+# packages/brief/collectors/calendar_collector_enhanced.yaml
+#
+# Enhanced Calendar Collector - Phase 3 with Label-Based Filtering
+# Validates label availability, handles timezone normalization, graceful fallback
+# Based on: https://www.home-assistant.io/docs/scripts/
+#          https://www.home-assistant.io/integrations/calendar/
+#
+# Last Updated: 2025-11-08
+
+script:
+  brief_collect_calendar_safe:
+    alias: "Collect Calendar (Safe with Label Filtering)"
+    description: "Gathers calendar events with label_id filtering and timezone normalization"
+    mode: parallel
+    fields:
+      timeout_seconds:
+        description: "Timeout for collection (from config_loader)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 60
+    variables:
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/calendar"
+      fallback_payload: "No events scheduled"
+
+      # Label ID for filtering (configured in your HA instance)
+      label_id_filter: "brief"
+
+    sequence:
+      # Step 1: Attempt to get calendar events filtered by label_id
+      - service: calendar.get_events
+        data:
+          duration:
+            days: 3
+        target:
+          label_id: "{{ label_id_filter }}"
+        response_variable: raw_events
+        continue_on_error: true
+
+      # Step 2: Process the raw events with timezone handling and filtering
+      - variables:
+          today_date: "{{ now().date() }}"
+          processed_events: >
+            {% set ns = namespace(events=[]) %}
+            {% set today_date = now().date() %}
+            {# Handle both successful and error responses #}
+            {% if raw_events is defined and raw_events.items() is defined %}
+              {% for calendar, event_list in raw_events.items() %}
+                {% for event in event_list.events %}
+                  {# Parse event start date and handle timezone conversion #}
+                  {% if 'T' in event.start %}
+                    {# Timed event - normalize to local timezone using ISO parsing #}
+                    {% set parsed_dt = strptime(event.start.replace('Z', '+00:00'), '%Y-%m-%dT%H:%M:%S%z') %}
+                    {% set local_dt = parsed_dt.astimezone() %}
+                    {% set event_datetime = local_dt %}
+                    {% set event_date = local_dt.date() %}
+                    {% set corrected_start = local_dt.strftime('%Y-%m-%dT%H:%M:%S%z') %}
+                    {% set was_converted = parsed_dt.strftime('%z') != local_dt.strftime('%z') %}
+                  {% else %}
+                    {# All-day event - just date, no timezone conversion needed #}
+                    {% set event_date = strptime(event.start, '%Y-%m-%d').date() %}
+                    {% set event_datetime = none %}
+                    {% set corrected_start = event.start %}
+                    {% set was_converted = false %}
+                  {% endif %}
+
+                  {# Include logic: Today (all events) OR tomorrow's events OR future events within next 4 hours #}
+                  {% set include_event = false %}
+                  {% if event_date == today_date %}
+                    {# Include ALL events from today, regardless of time #}
+                    {% set include_event = true %}
+                  {% elif event_date == (today_date + timedelta(days=1)) %}
+                    {# Include ALL events from tomorrow (both timed and all-day) #}
+                    {% set include_event = true %}
+                  {% elif event_datetime %}
+                    {# For future timed events beyond tomorrow, check if within next 4 hours #}
+                    {% if event_datetime is not none and event_datetime is not string %}
+                      {% set event_timestamp = event_datetime.timestamp() %}
+                      {% set current_timestamp = now().timestamp() %}
+                      {% set four_hours_later = current_timestamp + (4 * 3600) %}
+                      {% if event_timestamp <= four_hours_later %}
+                        {% set include_event = true %}
+                      {% endif %}
+                    {% endif %}
+                  {% elif event_date > today_date %}
+                    {# Include future all-day events within the next few days #}
+                    {% set days_ahead = (event_date - today_date).days %}
+                    {% if days_ahead <= 2 %}
+                      {% set include_event = true %}
+                    {% endif %}
+                  {% endif %}
+
+                  {% if include_event %}
+                    {% set ns.events = ns.events + [{
+                      'summary': event.summary,
+                      'calendar': calendar.replace('calendar.', '').replace('_', ' ').title(),
+                      'start': corrected_start,
+                      'original_start': event.start,
+                      'date': event_date.isoformat(),
+                      'is_today': event_date == today_date,
+                      'is_timed': event_datetime is not none,
+                      'formatted_time': event_datetime.strftime('%H:%M') if event_datetime else 'All day',
+                      'formatted_date': event_date.strftime('%A') if event_date != today_date else 'TODAY',
+                      'day_name': event_date.strftime('%A, %B %d') if event_date != today_date else 'Today',
+                      'timezone_converted': was_converted
+                    }] %}
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+            {{ ns.events }}
+
+      # Step 3: Determine collection status
+      - variables:
+          has_events: "{{ processed_events | length > 0 }}"
+          collection_status: >
+            {% if processed_events | length > 0 %}
+              success
+            {% else %}
+              partial
+            {% endif %}
+          final_payload: >
+            {
+              "events": {{ processed_events | tojson }},
+              "count": {{ processed_events | length }},
+              "validation_status": "{{ collection_status }}"
+            }
+
+      # Step 4: Publish to MQTT
+      - service: mqtt.publish
+        data:
+          topic: "{{ mqtt_topic }}"
+          payload: "{{ final_payload }}"
+        continue_on_error: true
+
+      # Step 5: Log if no events found (not an error, just informational)
+      - if:
+          - condition: template
+            value_template: "{{ not has_events }}"
+        then:
+          - service: persistent_notification.create
+            data:
+              title: "Calendar Collector: No Events"
+              message: "No events found with label '{{ label_id_filter }}' in next 3 days"
+              notification_id: "brief_calendar_no_events"
+            continue_on_error: true

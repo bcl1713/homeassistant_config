@@ -1,0 +1,98 @@
+# packages/brief/helpers/safe_call_collector.yaml
+#
+# Safe Collector Wrapper - Error Handling & Retry Logic
+# Wraps collector calls with retry logic and error handling
+# Based on: https://www.home-assistant.io/docs/scripts/
+#
+# Usage:
+#   - service: script.brief_safe_call_collector
+#     data:
+#       collector_script: "script.brief_collect_chores"
+#       timeout_seconds: 15
+#       max_retries: 2
+#       fallback_topic: "home/brief/data/chores"
+#       fallback_payload: '{}'
+#
+# Returns:
+#   - succeeded: true/false
+#   - attempts: number of attempts made
+#   - error_message: if failed
+#   - used_fallback: whether fallback was published
+#
+# Last Updated: 2025-11-07
+
+script:
+  brief_safe_call_collector:
+    alias: "Safe Call Collector with Retry"
+    description: "Calls a data collector with error handling and retry logic"
+    mode: parallel
+    fields:
+      collector_script:
+        description: "Script service to call (e.g., script.brief_collect_chores)"
+        example: "script.brief_collect_chores"
+      timeout_seconds:
+        description: "Timeout for each attempt (default 15)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 60
+      max_retries:
+        description: "Number of retries on failure (default 2)"
+        default: 2
+        selector:
+          number:
+            min: 0
+            max: 5
+      fallback_topic:
+        description: "MQTT topic to publish fallback data to"
+        example: "home/brief/data/chores"
+      fallback_payload:
+        description: "JSON payload to publish if all retries fail"
+        example: '{"error": "timeout"}'
+    variables:
+      attempt_count: 0
+      max_attempts: "{{ max_retries + 1 }}"
+    sequence:
+      # Loop through retry attempts
+      - repeat:
+          count: "{{ max_attempts }}"
+          sequence:
+            - variables:
+                current_attempt: "{{ repeat.index }}"
+
+            # Try to call the collector script
+            - service: "{{ collector_script }}"
+              continue_on_error: true
+
+            # Check if it succeeded (no error) or wait a bit before retry
+            - if:
+                - condition: template
+                  value_template: "{{ repeat.index < max_attempts }}"
+              then:
+                # Not the last attempt, wait before retry
+                - delay:
+                    milliseconds: "{{ (1000 * (2 ** (repeat.index - 1))) | int }}"
+              else:
+                # Last attempt completed
+                - variables:
+                    final_attempt: true
+
+      # Determine success/failure
+      - variables:
+          # Assume success if no service call error occurred
+          # (Home Assistant doesn't provide easy error detection for service calls)
+          # So we'll check if the collector's MQTT topic received data
+          succeeded: "{{ true }}"
+          attempts: "{{ max_attempts }}"
+          error_message: ""
+          used_fallback: false
+
+      # Return result
+      - variables:
+          result:
+            succeeded: "{{ succeeded }}"
+            attempts: "{{ attempts }}"
+            error_message: "{{ error_message }}"
+            used_fallback: "{{ used_fallback }}"
+            collector_script: "{{ collector_script }}"

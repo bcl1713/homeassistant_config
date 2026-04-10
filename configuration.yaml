@@ -1,0 +1,37 @@
+homeassistant:
+  packages: !include_dir_named packages
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include_dir_merge_list automation
+input_boolean: !include_dir_merge_named input_boolean
+scene: !include scenes.yaml
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 192.168.86.2
+    - 10.10.50.2
+    - 10.10.50.4
+
+google_assistant:
+  project_id: homeassistant-32654
+  service_account: !include SERVICE_ACCOUNT.json
+  report_state: true
+
+# Custom Configs Below
+recorder: !include recorder.yaml
+
+logbook: !include logbook.yaml
+
+notify:
+  - platform: group
+    name: all_mobile_devices
+    services:
+      - service: mobile_app_brian_phone
+      - service: mobile_app_hester_phone

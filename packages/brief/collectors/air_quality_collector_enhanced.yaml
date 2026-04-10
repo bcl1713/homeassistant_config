@@ -1,0 +1,110 @@
+# packages/brief/collectors/air_quality_collector_enhanced.yaml
+#
+# Enhanced Air Quality Collector - Phase 3 with Entity Validation
+# Validates air quality sensors exist, handles missing gracefully, logs errors
+# Based on: https://www.home-assistant.io/docs/scripts/
+#
+# Last Updated: 2025-11-08
+
+script:
+  brief_collect_air_quality_safe:
+    alias: "Collect Air Quality (Safe with Validation)"
+    description: "Gathers air quality data with entity validation and graceful fallback"
+    mode: parallel
+    fields:
+      timeout_seconds:
+        description: "Timeout for collection (from config_loader)"
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 60
+    variables:
+      # MQTT topic for publishing data
+      mqtt_topic: "home/brief/data/air_quality"
+      fallback_payload: "Air quality data unavailable"
+
+      # Check if required air quality sensors exist
+      has_composite_status: "{{ states('sensor.air_quality_composite_status') not in ['unknown', 'unavailable'] }}"
+      has_trend: "{{ states('sensor.air_quality_trend') not in ['unknown', 'unavailable'] }}"
+
+      # Check if all required entities are available
+      all_required_present: "{{ has_composite_status }}"
+
+    sequence:
+      # Step 1: Check if we can collect air quality data
+      - if:
+          - condition: template
+            value_template: "{{ not all_required_present }}"
+        then:
+          # Missing required sensors - publish fallback
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: >
+                {
+                  "status": "unavailable",
+                  "summary": "{{ fallback_payload }}",
+                  "validation_status": "failed"
+                }
+            continue_on_error: true
+        else:
+          # Step 2: Collect air quality data
+          - variables:
+              current_status: "{{ states('sensor.air_quality_composite_status') }}"
+              aqi: "{{ state_attr('sensor.air_quality_composite_status', 'aqi_value') | default('N/A') }}"
+              co2: "{{ state_attr('sensor.air_quality_composite_status', 'co2_value') | default('N/A') }}"
+              voc: "{{ state_attr('sensor.air_quality_composite_status', 'voc_value') | default('N/A') }}"
+              trend: "{{ states('sensor.air_quality_trend') if has_trend else 'unknown' }}"
+
+          # Step 3: Build air quality summary
+          - variables:
+              relevant_conditions: ["poor", "moderate"]
+              is_relevant: >
+                {{ current_status in relevant_conditions or trend == 'worsening' }}
+              summary_text: >
+                {% if current_status == 'poor' %}
+                  Air quality is poor (AQI: {{ aqi }}, CO2: {{ co2 }}ppm)
+                {% elif current_status == 'moderate' %}
+                  Air quality is moderate (AQI: {{ aqi }}, CO2: {{ co2 }}ppm, VOCs: {{ voc }}µg/m³)
+                {% elif trend == 'worsening' %}
+                  Air quality is declining ({{ trend }})
+                {% else %}
+                  Air quality is good
+                {% endif %}
+              collection_status: >
+                {% if aqi != 'N/A' and co2 != 'N/A' %}
+                  success
+                {% else %}
+                  partial
+                {% endif %}
+              final_payload: >
+                {
+                  "status": "{{ current_status }}",
+                  "aqi_value": {{ aqi if aqi != 'N/A' else null }},
+                  "co2_value": {{ co2 if co2 != 'N/A' else null }},
+                  "voc_value": {{ voc if voc != 'N/A' else null }},
+                  "trend": "{{ trend }}",
+                  "relevant": {{ is_relevant | lower }},
+                  "summary": "{{ summary_text }}",
+                  "validation_status": "{{ collection_status }}"
+                }
+
+          # Step 4: Publish to MQTT
+          - service: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: "{{ final_payload }}"
+            continue_on_error: true
+
+          # Step 5: Log if air quality is concerning
+          - if:
+              - condition: template
+                value_template: "{{ is_relevant }}"
+            then:
+              - service: persistent_notification.create
+                data:
+                  title: "Air Quality Alert"
+                  message: "{{ summary_text }}"
+                  notification_id: "brief_air_quality_alert"
+                continue_on_error: true
