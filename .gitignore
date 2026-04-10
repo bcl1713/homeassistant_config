@@ -57,15 +57,16 @@ scripts/*.tmp
 scripts/*.txt
 scripts/*.log
 
-# Custom Components
-custom_components/
 
-# Blueprints
-blueprints/
 
-# www
-www/
 
 .HA_VERSION
 *.log*
 secrets.yaml
+# Local/generated runtime state
+.cache/
+.claude/tsc-cache/
+.ha_run.lock
+tts/
+www/community/
+
