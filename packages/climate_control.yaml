@@ -22,7 +22,8 @@
 # - Works with climate.dining_room_thermostat (Ecobee)
 # - Integrates with existing zone.home presence detection
 # - Respects input_boolean.mode_guest for guest handling
-# - Uses heat_cool (auto) mode year-round
+# - Ensures heat_cool (auto) mode year-round
+# - Schedule automations skip when nobody is home (away mode handles temps)
 
 homeassistant:
   customize:
@@ -162,12 +163,24 @@ automation:
           - wed
           - thu
           - fri
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
     action:
-      - service: climate.set_temperature
+      - service: climate.set_hvac_mode
         target:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
           target_temp_high: >
             {{ states('input_number.climate_cool_morning') | float }}
           target_temp_low: >
@@ -187,12 +200,24 @@ automation:
         weekday:
           - sat
           - sun
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
     action:
-      - service: climate.set_temperature
+      - service: climate.set_hvac_mode
         target:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
           target_temp_high: >
             {{ states('input_number.climate_cool_morning') | float }}
           target_temp_low: >
@@ -208,12 +233,24 @@ automation:
       - condition: state
         entity_id: input_boolean.climate_automation_enabled
         state: "on"
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
     action:
-      - service: climate.set_temperature
+      - service: climate.set_hvac_mode
         target:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
           target_temp_high: >
             {{ states('input_number.climate_cool_day') | float }}
           target_temp_low: >
@@ -229,12 +266,24 @@ automation:
       - condition: state
         entity_id: input_boolean.climate_automation_enabled
         state: "on"
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
     action:
-      - service: climate.set_temperature
+      - service: climate.set_hvac_mode
         target:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
           target_temp_high: >
             {{ states('input_number.climate_cool_bedtime') | float }}
           target_temp_low: >
@@ -250,12 +299,24 @@ automation:
       - condition: state
         entity_id: input_boolean.climate_automation_enabled
         state: "on"
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
     action:
-      - service: climate.set_temperature
+      - service: climate.set_hvac_mode
         target:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
           target_temp_high: >
             {{ states('input_number.climate_cool_sleep') | float }}
           target_temp_low: >
@@ -283,11 +344,15 @@ automation:
         entity_id: input_boolean.mode_guest
         state: "off"
     action:
-      - service: climate.set_temperature
+      - service: climate.set_hvac_mode
         target:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
           target_temp_high: >
             {{ states('input_number.climate_cool_away') | float }}
           target_temp_low: >
@@ -305,6 +370,12 @@ automation:
         entity_id: input_boolean.climate_automation_enabled
         state: "on"
     action:
+      # Ensure heat_cool mode first
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
       # Determine which schedule to resume based on current time
       - choose:
           # Morning (5:00-8:59 weekdays, 7:00-8:59 weekends)
@@ -337,7 +408,6 @@ automation:
                 target:
                   entity_id: climate.dining_room_thermostat
                 data:
-                  hvac_mode: heat_cool
                   target_temp_high: >
                     {{ states('input_number.climate_cool_morning') | float }}
                   target_temp_low: >
@@ -352,7 +422,6 @@ automation:
                 target:
                   entity_id: climate.dining_room_thermostat
                 data:
-                  hvac_mode: heat_cool
                   target_temp_high: >
                     {{ states('input_number.climate_cool_day') | float }}
                   target_temp_low: >
@@ -367,7 +436,6 @@ automation:
                 target:
                   entity_id: climate.dining_room_thermostat
                 data:
-                  hvac_mode: heat_cool
                   target_temp_high: >
                     {{ states('input_number.climate_cool_bedtime') | float }}
                   target_temp_low: >
@@ -378,7 +446,6 @@ automation:
             target:
               entity_id: climate.dining_room_thermostat
             data:
-              hvac_mode: heat_cool
               target_temp_high: >
                 {{ states('input_number.climate_cool_sleep') | float }}
               target_temp_low: >

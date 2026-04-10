@@ -57,12 +57,6 @@ scripts/*.tmp
 scripts/*.txt
 scripts/*.log
 
-
-
-
-.HA_VERSION
-*.log*
-secrets.yaml
 # Local/generated runtime state
 .cache/
 .claude/tsc-cache/
@@ -70,3 +64,8 @@ secrets.yaml
 tts/
 www/community/
 
+.HA_VERSION
+*.log*
+secrets.yaml
+custom_components/hacs/hacs_frontend/
+custom_components/*/translations/*.json
