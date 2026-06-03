@@ -71,5 +71,6 @@ custom_components/hacs/hacs_frontend/
 custom_components/*/translations/*.json
 
 # Runtime/generated Home Assistant local state
+www/
 custom_components/
 www/doorbell/doorbell_snapshot.jpg
