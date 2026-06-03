@@ -9,26 +9,33 @@ automation:
     condition:
       - condition: template
         value_template: >
-          {% set camera = trigger.payload_json['after']['camera'] %} {% if
-          camera in ['living_room'] %}
+          {% set event = trigger.payload_json | default({}, true) %}
+          {% set after = event.get('after') or {} %}
+          {% set camera = after.get('camera', 'unknown') %}
+          {% if camera in ['living_room'] %}
             {{ is_state('input_boolean.notification_camera_indoor', 'on') }}
           {% elif camera in ['front_drive', 'back_door', 'front_doorbell'] %}
             {{ is_state('input_boolean.notification_camera_outdoor', 'on') }}
+          {% else %}
+            {{ false }}
           {% endif %}
     action:
       - variables:
           base_url: "https://home.hblucas.org/api/frigate/notifications/"
-          event: "{{ trigger.payload_json }}"
-          detections: "{{ event['after']['data']['detections'] }}"
-          review_id: "{{event['after']['id']}}"
-          id: "{{ detections[0] }}"
-          objects: "{{ event['after']['data']['objects'] }}"
-          sub_labels: "{{ event['after']['data']['sub_labels'] }}"
-          label: "{{ objects | list | join(', ') | title }}"
-          camera: "{{ event['after']['camera'] }}"
-          camera_name: "{{ camera | replace('_', ' ') | title}}"
-          start_time: "{{ event['after']['start_time'] | int }}"
-          notification_tag: "frigate_{{id}}"
+          event: "{{ trigger.payload_json | default({}, true) }}"
+          after: "{{ event.get('after') or {} }}"
+          after_data: "{{ after.get('data') or {} }}"
+          detections: "{{ after_data.get('detections', []) }}"
+          review_id: "{{ after.get('id', 'unknown') }}"
+          id: "{{ detections[0] if detections | length > 0 else 'unknown' }}"
+          objects: "{{ after_data.get('objects', []) }}"
+          sub_labels: "{{ after_data.get('sub_labels', []) }}"
+          label: >
+            {{ objects | list | join(', ') | title if objects | length > 0 else 'Unknown' }}
+          camera: "{{ after.get('camera', 'unknown') }}"
+          camera_name: "{{ camera | replace('_', ' ') | title }}"
+          start_time: "{{ after.get('start_time', 0) | int }}"
+          notification_tag: "frigate_{{ id }}"
       - service: notify.all_mobile_devices
         data:
           title: "{{ camera_name }}"
