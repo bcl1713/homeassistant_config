@@ -84,6 +84,36 @@ def test_camera_variables_fallback_when_detection_payload_is_partial():
     assert variables["notification_tag"] == "frigate_unknown"
 
 
+def test_camera_condition_tolerates_null_after_payload():
+    result = evaluate_camera_condition(
+        {"after": None},
+        {"input_boolean.notification_camera_outdoor": "on"},
+    )
+
+    assert result is False
+
+
+def test_camera_variables_fallback_when_after_data_is_null():
+    payload = {
+        "after": {
+            "camera": "front_drive",
+            "data": None,
+        }
+    }
+
+    variables = evaluate_camera_variables(payload)
+
+    assert variables["camera"] == "front_drive"
+    assert variables["detections"] == []
+    assert variables["id"] == "unknown"
+    assert variables["objects"] == []
+    assert variables["sub_labels"] == []
+    assert variables["label"] == "Unknown"
+    assert variables["review_id"] == "unknown"
+    assert variables["start_time"] == 0
+    assert variables["notification_tag"] == "frigate_unknown"
+
+
 def test_camera_variables_preserve_valid_payload_behavior():
     payload = {
         "after": {

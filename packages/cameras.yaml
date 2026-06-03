@@ -10,7 +10,7 @@ automation:
       - condition: template
         value_template: >
           {% set event = trigger.payload_json | default({}, true) %}
-          {% set after = event.get('after', {}) %}
+          {% set after = event.get('after') or {} %}
           {% set camera = after.get('camera', 'unknown') %}
           {% if camera in ['living_room'] %}
             {{ is_state('input_boolean.notification_camera_indoor', 'on') }}
@@ -23,8 +23,8 @@ automation:
       - variables:
           base_url: "https://home.hblucas.org/api/frigate/notifications/"
           event: "{{ trigger.payload_json | default({}, true) }}"
-          after: "{{ event.get('after', {}) }}"
-          after_data: "{{ after.get('data', {}) }}"
+          after: "{{ event.get('after') or {} }}"
+          after_data: "{{ after.get('data') or {} }}"
           detections: "{{ after_data.get('detections', []) }}"
           review_id: "{{ after.get('id', 'unknown') }}"
           id: "{{ detections[0] if detections | length > 0 else 'unknown' }}"
