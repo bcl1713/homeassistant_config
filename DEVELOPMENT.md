@@ -17,13 +17,13 @@ When selecting a new feature or automation to implement:
 
 ### 2. Branch Management
 
-1. **Always start from the latest main branch**:
+1. **Always start from the latest `dev` branch**:
    ```bash
-   git checkout main
-   git pull origin main
+   git checkout dev
+   git pull origin dev
    ```
 
-2. **Create feature branches** with consistent naming:
+2. **Create focused branches** with consistent naming:
    ```bash
    git checkout -b feature/descriptive-name
    ```
@@ -31,12 +31,24 @@ When selecting a new feature or automation to implement:
    ```bash
    git checkout -b fix/descriptive-name
    ```
+   For documentation or maintenance work:
+   ```bash
+   git checkout -b docs/descriptive-name
+   git checkout -b chore/descriptive-name
+   ```
 
 3. **Keep branches focused** on a single feature or bug fix
+4. **Target pull requests at `dev`**. Do not merge automation changes directly to `main`.
 
 ### 3. Implementation Standards
 
 Follow these standards for all Home Assistant configuration changes:
+
+0. **Repository structure**:
+   - `packages: !include_dir_named packages` loads feature packages
+   - `automation: !include_dir_merge_list automation` loads standalone automation files
+   - `input_boolean: !include_dir_merge_named input_boolean` loads helper toggles
+   - Prefer extending the existing modular structure instead of placing unrelated logic in `configuration.yaml`
 
 1. **Package structure**:
    - Place new integrations in appropriate `packages/` directories
@@ -70,19 +82,22 @@ Follow these standards for all Home Assistant configuration changes:
 
 Before considering a feature complete:
 
-1. **Check configuration validity** with Home Assistant's built-in checker:
-   ```bash
-   hass --script check_config
-   ```
+1. **Prefer safe static validation first**:
+   - Parse changed YAML files
+   - Run repository-provided documentation or lint checks when available
+   - Review diffs for accidental entity renames, indentation problems, or package loading mistakes
 
-2. **Test in isolation** when possible:
+2. **Run a Home Assistant config check only when the task or repo provides a known-safe local command/environment**:
+   - Do not assume ad hoc access to a live instance is safe
+   - Do not rely on live reloads or restarts as part of normal development verification
+
+3. **Test in isolation** when possible:
    - Validate scripts independently
-   - Test automations by manually triggering conditions
-   - Verify template syntax in the Developer Tools
+   - Verify template syntax in a safe development context
 
-3. **Verify Lovelace integration** if adding UI elements
+4. **Verify Lovelace integration** if adding UI elements
 
-4. **Monitor logs** for any errors or warnings related to your changes
+5. **Monitor logs** for any errors or warnings related to your changes when a task explicitly includes a safe log-review path
 
 ### 5. Commit Guidelines
 
@@ -131,19 +146,21 @@ For completing a feature:
    git push origin feature/feature-name
    ```
 
-3. **Create a pull request** to merge into main:
+3. **Create a pull request** to merge into `dev`:
    ```bash
-   gh pr create --title "Feature: Add descriptive name" --body "Description and closes #ISSUE_NUMBER" --base main
+   gh pr create --title "Feature: Add descriptive name" --body "Description and closes #ISSUE_NUMBER" --base dev
    ```
 
 4. **Wait for review** if working with others, or verify quality if self-reviewing
 
-5. **Merge to main** once approved:
+5. **Merge to `dev`** once approved:
    ```bash
    gh pr merge --squash
    ```
 
-6. **Close related GitHub issue** if not auto-closed:
+6. **Do not self-merge automation changes**; wait for reviewer approval and the established integration flow.
+
+7. **Close related GitHub issue** if not auto-closed:
    ```bash
    gh issue close ISSUE_NUMBER
    ```
@@ -224,25 +241,22 @@ When adding new device integrations:
 
 5. **Document any special setup requirements** for the device
 
-## Common Troubleshooting
+### Common Troubleshooting
 
 When troubleshooting issues:
 
-1. **Check Home Assistant logs** for errors:
+1. **Check Home Assistant logs** for errors when the task explicitly includes a safe way to do so:
    ```bash
    tail -f home-assistant.log
    ```
 
 2. **Verify YAML syntax** is correct
 
-3. **Test templates** in Developer Tools > Template
+3. **Test templates** in a safe development environment before relying on live behavior
 
 4. **Check entity availability** before referencing in automations
 
-5. **Restart Home Assistant** after configuration changes:
-   ```bash
-   ha core restart
-   ```
+5. **Do not restart or reload Home Assistant as part of routine development work unless the task explicitly authorizes the live action and rollback plan**
 
 6. **Review entity history** to understand state changes
 
