@@ -10,13 +10,17 @@ input_boolean:
 script:
   lamp_dim_sequence:
     variables:
-      lamp: null
-      direction: null # 'up' or 'down'
-      dimming_helper: null
+      lamp: ""
+      direction: "" # 'up' or 'down'
+      dimming_helper: ""
       transition_step: 5
       transition_time: 500
     mode: restart
     sequence:
+      - condition: template
+        value_template: >
+          {{ lamp | length > 0 and dimming_helper | length > 0 and direction in ['up', 'down'] }}
+
       # Start by making sure helper is in correct state
       - service: input_boolean.turn_on
         data:
