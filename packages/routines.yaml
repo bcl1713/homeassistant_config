@@ -20,13 +20,11 @@ script:
           dishwasher_state:
             "{{ states('sensor.kitchen_dishwasher_operation_state') }}"
           is_dishwasher_available: >
-            {{ not is_state('sensor.kitchen_dishwasher_operation_state',
-            'unavailable') and
-               not is_state('sensor.kitchen_dishwasher_operation_state',
-            'unknown') }}
+            {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+            {{ dishwasher_state not in invalid_states }}
           is_dishwasher_running: >
             {{ is_dishwasher_available and
-               states('sensor.kitchen_dishwasher_operation_state') == "run" }}
+               dishwasher_state == "run" }}
 
       # Always: Turn on bedside lamps to 50% with a nice transition
       - service: light.turn_on
