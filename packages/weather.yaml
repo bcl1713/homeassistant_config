@@ -51,7 +51,8 @@ automation:
       - condition: template
         value_template: >
           {% set sensor_state = states('sensor.weather_hourly_forecast') %}
-          {{ sensor_state not in ('unknown', 'unavailable') }}
+          {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {{ sensor_state not in invalid_states }}
       # Only notify during reasonable hours
       - condition: time
         after: "05:00:00"
@@ -96,7 +97,8 @@ automation:
         value_template: >
           {% set last_updated = states('sensor.weather_last_updated') %}
           {% set min_interval = states('input_number.weather_update_frequency') | int %}
-          {% if last_updated == 'unknown' or last_updated == 'unavailable' %}
+          {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% if last_updated in invalid_states %}
             true
           {% else %}
             {% set time_diff = (now().timestamp() - as_timestamp(last_updated)) / 60 %}
@@ -182,7 +184,8 @@ template:
         unique_id: weather_forecast_condition_next_hour
         state: >
           {% set sensor_state = states('sensor.weather_hourly_forecast') %}
-          {% if sensor_state not in ('unknown', 'unavailable') %}
+          {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% if sensor_state not in invalid_states %}
             {% set forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {{ forecast[0].condition | default('unknown') }}
@@ -197,7 +200,8 @@ template:
         unique_id: weather_forecast_condition_today
         state: >
           {% set sensor_state = states('sensor.weather_daily_forecast') %}
-          {% if sensor_state not in ('unknown', 'unavailable') %}
+          {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% if sensor_state not in invalid_states %}
             {% set forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {{ forecast[0].condition | default('unknown') }}
@@ -212,7 +216,8 @@ template:
         unique_id: weather_forecast_precipitation_next_hour
         state: >
           {% set sensor_state = states('sensor.weather_hourly_forecast') %}
-          {% if sensor_state not in ('unknown', 'unavailable') %}
+          {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% if sensor_state not in invalid_states %}
             {% set forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {% if forecast[0].precipitation is defined %}
@@ -232,7 +237,8 @@ template:
         unique_id: weather_forecast_temperature_high_today
         state: >
           {% set sensor_state = states('sensor.weather_daily_forecast') %}
-          {% if sensor_state not in ('unknown', 'unavailable') %}
+          {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% if sensor_state not in invalid_states %}
             {% set forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {% if forecast[0].temperature is defined %}

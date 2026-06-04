@@ -12,13 +12,11 @@ script:
       dishwasher_state:
         "{{ states('sensor.kitchen_dishwasher_operation_state') }}"
       dishwasher_available: >
-        {{ not is_state('sensor.kitchen_dishwasher_operation_state',
-        'unavailable') and
-           not is_state('sensor.kitchen_dishwasher_operation_state', 'unknown')
-        }}
+        {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+        {{ dishwasher_state not in invalid_states }}
       dishwasher_running: >
         {{ dishwasher_available and
-           states('sensor.kitchen_dishwasher_operation_state') == "run" }}
+           dishwasher_state == "run" }}
       # Dishwasher maintenance sensors - checks if salt or rinse aid is low
       needs_salt: >
         {{ states('sensor.kitchen_dishwasher_salt_nearly_empty') == 'on' }}

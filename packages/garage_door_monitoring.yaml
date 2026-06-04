@@ -152,8 +152,8 @@ automation:
       - if:
           - condition: template
             value_template:
-              "{{ active_tag != 'unknown' and active_tag != '' and active_tag !=
-              'unset' }}"
+              "{% set invalid_states = ['unknown', 'unavailable', '', none,
+              'unset'] %}{{ active_tag not in invalid_states }}"
         then:
           - service: notify.all_mobile_devices
             data:
@@ -240,8 +240,8 @@ automation:
               - if:
                   - condition: template
                     value_template:
-                      "{{ active_tag != 'unknown' and active_tag != '' and
-                      active_tag != 'unset' }}"
+                      "{% set invalid_states = ['unknown', 'unavailable', '',
+                      none, 'unset'] %}{{ active_tag not in invalid_states }}"
                 then:
                   - service: notify.all_mobile_devices
                     data:
@@ -284,8 +284,8 @@ automation:
               - if:
                   - condition: template
                     value_template:
-                      "{{ active_tag != 'unknown' and active_tag != '' and
-                      active_tag != 'unset' }}"
+                      "{% set invalid_states = ['unknown', 'unavailable', '',
+                      none, 'unset'] %}{{ active_tag not in invalid_states }}"
                 then:
                   - service: notify.all_mobile_devices
                     data:
