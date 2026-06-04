@@ -16,6 +16,7 @@ This Home Assistant configuration provides a comprehensive smart home automation
 - **Lighting Control**: Automated lighting based on presence, time of day, and security events
 - **Routine Automation**: Good night routines, morning wake-up sequences, and presence-based automations
 - **Notification System**: Multi-device alerts for critical events and daily briefings
+- **Device Health Monitoring**: Battery, Z-Wave connectivity, and stale-device visibility
 - **Weather Integration**: Automated responses to weather conditions
 - **Chore Management**: Tracking and rotation of household responsibilities
 
@@ -41,6 +42,7 @@ This Home Assistant configuration provides a comprehensive smart home automation
 This configuration uses Home Assistant's packages feature to organize functionality into discrete modules:
 
 - **cameras.yaml**: Camera integration with motion detection and notifications
+- **device_health.yaml**: Battery monitoring plus conservative device connectivity alerts
 - **chores.yaml**: Household chore rotation and tracking system
 - **light_groups.yaml**: Logical grouping of lights for easier control
 - **presence.yaml**: Presence detection and related automations
