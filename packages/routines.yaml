@@ -25,7 +25,13 @@ script:
           is_dishwasher_running: >
             {{ is_dishwasher_available and
                dishwasher_state == "run" }}
-
+          garage_door_state: "{{ states('cover.garage_door') }}"
+          is_garage_open: "{{ garage_door_state == 'open' }}"
+          has_garage_obstruction: >
+            {{ is_state('binary_sensor.garage_door_obstruction', 'on') }}
+          garage_notification_tag: >
+            good-night-garage-door-{{ (now().timestamp() * 1000) | int }}-{{ range(0,
+            999) | random }}
       # Always: Turn on bedside lamps to 50% with a nice transition
       - service: light.turn_on
         target:
@@ -58,6 +64,96 @@ script:
             target:
               entity_id:
                 - remote.tv_living_room
+
+      # If garage door is open: prompt before continuing with the rest of the
+      # routine
+      - if:
+          - condition: template
+            value_template: "{{ is_garage_open }}"
+        then:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ not has_garage_obstruction }}"
+                sequence:
+                  - service: notify.all_mobile_devices
+                    data:
+                      title: "Good Night Routine"
+                      message: >
+                        Garage door is still open. Close it now before Good
+                        Night continues?
+                      data:
+                        tag: "{{ garage_notification_tag }}"
+                        when: "{{ now().timestamp() | int }}"
+                        priority: "high"
+                        ttl: 0
+                        actions:
+                          - action: "good_night_close_garage_door"
+                            title: "Close Door"
+                          - action: "good_night_continue"
+                            title: "Continue"
+            default:
+              - service: notify.all_mobile_devices
+                data:
+                  title: "Good Night Routine"
+                  message: >
+                    Garage door is still open, but obstruction is detected so
+                    remote close is unavailable. Close it manually, continue, or
+                    Good Night will continue shortly.
+                  data:
+                    tag: "{{ garage_notification_tag }}"
+                    when: "{{ now().timestamp() | int }}"
+                    priority: "high"
+                    ttl: 0
+                    actions:
+                      - action: "good_night_continue"
+                        title: "Continue"
+
+          - wait_for_trigger:
+              - platform: event
+                event_type: mobile_app_notification_action
+                event_data:
+                  action: good_night_close_garage_door
+              - platform: event
+                event_type: mobile_app_notification_action
+                event_data:
+                  action: good_night_continue
+              - platform: state
+                entity_id: cover.garage_door
+                to: "closed"
+            continue_on_timeout: true
+            timeout: "00:03:00"
+
+          - service: notify.all_mobile_devices
+            data:
+              message: "clear_notification"
+              data:
+                tag: "{{ garage_notification_tag }}"
+
+          - if:
+              - condition: template
+                value_template: >
+                  {{ wait.trigger is defined and
+                     wait.trigger.platform == 'event' and
+                     wait.trigger.event.data.action == 'good_night_close_garage_door' }}
+            then:
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.garage_door_obstruction
+                    state: "off"
+                then:
+                  - service: cover.close_cover
+                    target:
+                      entity_id: cover.garage_door
+                else:
+                  - service: notify.all_mobile_devices
+                    data:
+                      title: "Good Night Routine"
+                      message: >
+                        Garage door is still open, but obstruction is now
+                        detected so remote close was skipped.
+                      data:
+                        priority: "high"
 
       # Main logic branch for dishwasher state
       - choose:
