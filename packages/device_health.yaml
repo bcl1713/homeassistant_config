@@ -342,14 +342,14 @@ template:
         unique_id: device_connectivity_summary
         state: >
           {{
-            states('sensor.device_connectivity_zwave_problems') | int(0)
+            states('sensor.device_connectivity_z_wave_problems') | int(0)
             + states('sensor.device_connectivity_stale_last_seen') | int(0)
             + states('sensor.device_connectivity_integration_problems') | int(0)
           }}
         unit_of_measurement: "issues"
         attributes:
           zwave_problem_nodes: >
-            {{ state_attr('sensor.device_connectivity_zwave_problems', 'problem_nodes') }}
+            {{ state_attr('sensor.device_connectivity_z_wave_problems', 'problem_nodes') }}
           stale_devices: >
             {{ state_attr('sensor.device_connectivity_stale_last_seen', 'stale_devices') }}
           integration_problems: >
@@ -550,10 +550,10 @@ automation:
           entity_id: input_boolean.device_connectivity_alert_sent
       - variables:
           total_issues: "{{ states('sensor.device_connectivity_summary') | int(0) }}"
-          zwave_count: "{{ states('sensor.device_connectivity_zwave_problems') | int(0) }}"
+          zwave_count: "{{ states('sensor.device_connectivity_z_wave_problems') | int(0) }}"
           stale_count: "{{ states('sensor.device_connectivity_stale_last_seen') | int(0) }}"
           integration_count: "{{ states('sensor.device_connectivity_integration_problems') | int(0) }}"
-          zwave_summary: "{{ state_attr('sensor.device_connectivity_zwave_problems', 'problem_nodes') }}"
+          zwave_summary: "{{ state_attr('sensor.device_connectivity_z_wave_problems', 'problem_nodes') }}"
           stale_summary: "{{ state_attr('sensor.device_connectivity_stale_last_seen', 'stale_devices') }}"
           integration_summary: "{{ state_attr('sensor.device_connectivity_integration_problems', 'problem_updates') }}"
       - service: notify.all_mobile_devices
