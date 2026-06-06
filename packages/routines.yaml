@@ -14,19 +14,8 @@ script:
       home"
     mode: restart
     sequence:
-      # Set up variables we'll need
-      - variables:
-          is_mode_guest: "{{ is_state('input_boolean.mode_guest', 'on') }}"
-          dishwasher_state:
-            "{{ states('sensor.kitchen_dishwasher_operation_state') }}"
-          is_dishwasher_available: >
-            {% set invalid_states = ['unknown', 'unavailable', '', none] %}
-            {{ dishwasher_state not in invalid_states }}
-          is_dishwasher_running: >
-            {{ is_dishwasher_available and
-               dishwasher_state == "run" }}
-
-      # Always: Turn on bedside lamps to 50% with a nice transition
+      # First: turn on bedside lamps so the remote press has visible feedback
+      # before any appliance refresh, notification wait, or other slow path.
       - service: light.turn_on
         target:
           entity_id:
@@ -35,6 +24,39 @@ script:
         data:
           brightness_pct: 50
           transition: 3
+
+      # Refresh Home Connect entities before evaluating dishwasher state. These
+      # can otherwise be stale when Good Night starts.
+      - service: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.kitchen_dishwasher_operation_state
+            - sensor.kitchen_dishwasher_door
+            - switch.kitchen_dishwasher_power
+            - sensor.kitchen_dishwasher_program_progress
+            - sensor.kitchen_dishwasher_program_finish_time
+      - delay: "00:00:05"
+
+      # Set up variables we'll need after the refresh settles.
+      - variables:
+          is_mode_guest: "{{ is_state('input_boolean.mode_guest', 'on') }}"
+          dishwasher_state: >
+            {{ states('sensor.kitchen_dishwasher_operation_state') }}
+          dishwasher_progress: >
+            {{ states('sensor.kitchen_dishwasher_program_progress') }}
+          dishwasher_finish_time: >
+            {{ states('sensor.kitchen_dishwasher_program_finish_time') }}
+          is_dishwasher_available: >
+            {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+            {{ dishwasher_state not in invalid_states }}
+          is_dishwasher_running: >
+            {% set operation = states('sensor.kitchen_dishwasher_operation_state') %}
+            {% set progress = states('sensor.kitchen_dishwasher_program_progress') | float(-1) %}
+            {% set finish_raw = states('sensor.kitchen_dishwasher_program_finish_time') %}
+            {% set finish = as_datetime(finish_raw) if finish_raw not in ['unavailable', 'unknown', 'none', ''] else none %}
+            {{ operation in ['run', 'delayedstart', 'pause'] or
+               (progress > 0 and progress < 100) or
+               (finish is not none and finish > now()) }}
 
       # Always: Turn off outside lights
       - service: light.turn_off
@@ -150,7 +172,7 @@ script:
               name: "Good Night Routine"
               message: "Waiting for dishwasher to start or user action"
 
-          # Wait for either user action or dishwasher to start
+          # Wait for either user action or dishwasher to enter an active state.
           - wait_for_trigger:
               - platform: event
                 event_type: mobile_app_notification_action
@@ -159,6 +181,12 @@ script:
               - platform: state
                 entity_id: sensor.kitchen_dishwasher_operation_state
                 to: "run"
+              - platform: state
+                entity_id: sensor.kitchen_dishwasher_operation_state
+                to: "delayedstart"
+              - platform: state
+                entity_id: sensor.kitchen_dishwasher_operation_state
+                to: "pause"
             continue_on_timeout: true
             timeout: "00:05:00"
 
