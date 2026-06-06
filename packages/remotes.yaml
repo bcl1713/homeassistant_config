@@ -41,14 +41,17 @@ script:
 
 automation:
   - id: "blueprint_brian_remote"
-    mode: restart
+    mode: parallel
+    max: 10
     alias: "blueprint_brian_remote"
     use_blueprint:
       path: zwave_remote.yaml
       input:
         remote_device: 7208c07c752cc38fd6b147f38261f829
         scene_001_press:
-          - service: script.good_night
+          - service: script.turn_on
+            target:
+              entity_id: script.good_night
         scene_004_press:
           - service: light.turn_on
             data:
@@ -90,14 +93,17 @@ automation:
               entity_id: input_boolean.dimming_lamp_brian
 
   - id: "blueprint_hester_remote"
-    mode: restart
+    mode: parallel
+    max: 10
     alias: "blueprint_hester_remote"
     use_blueprint:
       path: zwave_remote.yaml
       input:
         remote_device: b9e908c896f44c782113acbaf0985571
         scene_001_press:
-          - service: script.good_night
+          - service: script.turn_on
+            target:
+              entity_id: script.good_night
         scene_003_press:
           - service: light.turn_on
             data:
