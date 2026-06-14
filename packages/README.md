@@ -26,7 +26,6 @@ This directory contains modular packages that group related functionality. Each 
 
 | Package                  | Description                                          |
 |--------------------------|------------------------------------------------------|
-| `brief/`                 | Daily briefing system with AI-generated home updates |
 | `aircraft.yaml.disabled` | Aircraft tracking (currently disabled)               |
 | `seasonal.yaml.disabled` | Seasonal automation features (currently disabled)    |
 

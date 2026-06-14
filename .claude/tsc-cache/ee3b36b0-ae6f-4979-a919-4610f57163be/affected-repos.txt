@@ -1,2 +1,0 @@
-packages/device_health.yaml
-packages/brief
