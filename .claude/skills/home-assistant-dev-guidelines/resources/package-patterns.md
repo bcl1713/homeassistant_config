@@ -30,16 +30,16 @@ packages/
 ├── device_health.yaml
 ├── garage_door_monitoring.yaml
 ├── towner_notifications.yaml
-└── brief/
-    ├── brief_main.yaml
-    ├── brief_weather_data.yaml
-    └── brief_context_collection.yaml
+└── complex_feature/
+    ├── main.yaml
+    ├── sensors.yaml
+    └── automations.yaml
 ```
 
 ### Package File Naming
 - Use descriptive names that match the functionality
 - Separate words with underscores
-- Create subdirectories for complex features (like `brief/`)
+- Create subdirectories for complex multi-file features when warranted
 - Keep file names short but clear
 
 ## Package Content Patterns
@@ -220,51 +220,49 @@ automation:
 ```
 
 ### 3. Complex Package with Submodules
-For large features like the daily briefing system, organize into subdirectories:
+For large features, organize related pieces into a named subdirectory:
 
 ```yaml
-# packages/brief/brief_main.yaml
+# packages/complex_feature/main.yaml
 # ============================================================================
-# Daily Briefing System - Main Coordinator
+# Complex Feature - Main Coordinator
 # ============================================================================
 #
-# Orchestrates daily briefing generation with modular data collection.
-# Processes data from separate briefing modules and generates output.
+# Coordinates the feature workflow and delegates focused work to submodules.
 
 input_boolean:
-  briefing_enabled:
-    name: "Daily Briefing"
+  complex_feature_enabled:
+    name: "Complex Feature Enabled"
     initial: on
 
 input_number:
-  briefing_hour:
-    name: "Briefing Time"
+  complex_feature_hour:
+    name: "Complex Feature Hour"
     unit_of_measurement: "hours"
     min: 0
     max: 23
     initial: 6
 
 automation:
-  - alias: "Daily briefing: generate"
+  - alias: "Complex feature: run scheduled workflow"
     trigger:
       - platform: time
         at: "06:30:00"
     action:
-      - service: script.generate_daily_briefing
+      - service: script.run_complex_feature
 
 script:
-  generate_daily_briefing:
-    alias: "Generate Daily Briefing"
+  run_complex_feature:
+    alias: "Run Complex Feature"
     sequence:
-      - service: script.collect_briefing_weather
-      - service: script.collect_briefing_context
-      - service: script.send_briefing_to_mqtt
+      - service: script.collect_complex_feature_inputs
+      - service: script.process_complex_feature_context
 
-# packages/brief/brief_weather_data.yaml
-# Specific weather data collection and formatting
+# packages/complex_feature/sensors.yaml
+# Feature-specific sensors and template entities
 
-# packages/brief/brief_context_collection.yaml
-# Time-sensitive context and observations
+# packages/complex_feature/automations.yaml
+# Feature-specific automations
 ```
 
 ## Best Practices

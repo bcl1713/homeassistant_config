@@ -8,7 +8,6 @@
 # - CO2 buildup monitoring with 15-minute delay for stability
 # - Historical trending and pattern analysis
 # - Integration with weather data for context
-# - Daily air quality summary in morning briefing
 #
 # Uses existing thermostat sensors:
 # - sensor.thermostat_air_quality_index
@@ -375,47 +374,3 @@ script:
               data:
                 tag: "air-quality-recheck"
                 priority: "normal"
-
-  collect_air_quality_summary:
-    alias: "Collect Air Quality Summary"
-    description: "Generate air quality summary for daily brief"
-    sequence:
-      - variables:
-          current_status: "{{ states('sensor.air_quality_composite_status') }}"
-          aqi: "{{ state_attr('sensor.air_quality_composite_status', 'aqi_value') }}"
-          co2: "{{ state_attr('sensor.air_quality_composite_status', 'co2_value') }}"
-          voc: "{{ state_attr('sensor.air_quality_composite_status', 'voc_value') }}"
-          trend: "{{ states('sensor.air_quality_trend') }}"
-          
-          air_quality_data:
-            status: "{{ current_status }}"
-            aqi_value: "{{ aqi }}"
-            co2_value: "{{ co2 }}"
-            voc_value: "{{ voc }}"
-            trend: "{{ trend }}"
-            relevant: >
-              {% set relevant_conditions = ['poor', 'moderate'] %}
-              {{ current_status in relevant_conditions or trend == 'worsening' }}
-            summary: >
-              {% if current_status == 'poor' %}
-                Air quality is poor (AQI: {{ aqi }}, CO2: {{ co2 }}ppm)
-              {% elif current_status == 'moderate' %}
-              Air quality is moderate (AQI: {{ aqi }}, CO2: {{ co2 }}ppm, VOCs: {{ voc }}µg/m³)
-              {% elif trend == 'worsening' %}
-                Air quality is declining ({{ trend }})
-              {% else %}
-                Air quality is good
-              {% endif %}
-      
-      - service: mqtt.publish
-        data:
-          topic: "home/brief/data/air_quality"
-          payload: "{{ air_quality_data | tojson }}"
-
-# MQTT sensor for storing air quality data for briefing system
-mqtt:
-  sensor:
-    - name: "Brief Data Air Quality"
-      state_topic: "home/brief/data/air_quality"
-      value_template: "{{ now().isoformat() }}"
-      json_attributes_topic: "home/brief/data/air_quality"

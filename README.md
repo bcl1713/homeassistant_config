@@ -15,7 +15,7 @@ This Home Assistant configuration provides a comprehensive smart home automation
 - **Security and Monitoring**: Camera integrations, motion detection alerts, and alarm system management
 - **Lighting Control**: Automated lighting based on presence, time of day, and security events
 - **Routine Automation**: Good night routines, morning wake-up sequences, and presence-based automations
-- **Notification System**: Multi-device alerts for critical events and daily briefings
+- **Notification System**: Multi-device alerts for critical events
 - **Device Health Monitoring**: Battery, Z-Wave connectivity, and stale-device visibility
 - **Weather Integration**: Automated responses to weather conditions
 - **Chore Management**: Tracking and rotation of household responsibilities
@@ -28,7 +28,6 @@ This Home Assistant configuration provides a comprehensive smart home automation
 ├── blueprints/              # Reusable automation blueprints
 ├── input_boolean/           # Boolean switch definitions
 ├── packages/                # Feature-specific configuration packages
-│   ├── brief/              # Daily briefing system
 │   ├── cameras.yaml        # Camera configuration
 │   ├── chores.yaml         # Chore management
 │   └── ...                 # Other feature packages
