@@ -52,7 +52,7 @@ The `.github/yamllint-config.yaml` file contains custom rules optimized for Home
 
 The workflow creates dummy versions of:
 - SERVICE_ACCOUNT.json
-- secrets.yaml (if used)
+- secrets.yaml with non-sensitive placeholder values for committed `!secret` references
 
 This allows validation without exposing sensitive information in the repository.
 

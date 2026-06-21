@@ -23,6 +23,9 @@ jobs:
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
             "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/dummy.iam.gserviceaccount.com"
           }' > SERVICE_ACCOUNT.json
+
+          # Create dummy secrets required by committed !secret references.
+          printf '%s\n' 'trusted_proxy_cidr: "192.0.2.0/24"' > secrets.yaml
           
           # Create any other required files/directories
           mkdir -p .storage

@@ -15,9 +15,9 @@ scene: !include scenes.yaml
 http:
   use_x_forwarded_for: true
   trusted_proxies:
-    # Interim issue #93 fix: trust only the current server-VLAN CIDR until
-    # Cloudflare tunnel traffic is bound to a single stable proxy IP.
-    - 10.10.50.0/24
+    # trusted_proxy_cidr preserves the interim issue #93 server-VLAN trust
+    # while keeping deployment-specific proxy topology out of version control.
+    - !secret trusted_proxy_cidr
 
 google_assistant:
   project_id: homeassistant-32654
