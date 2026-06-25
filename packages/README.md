@@ -6,12 +6,13 @@ This directory contains modular packages that group related functionality. Each 
 
 ### Core Functionality
 
-| Package                | Description                                                |
-|------------------------|------------------------------------------------------------|
-| `cameras.yaml`         | Camera integration with motion detection and notifications |
-| `presence.yaml`        | Presence detection and related automations                 |
-| `security_lights.yaml` | Security-focused lighting automations                      |
-| `weather.yaml`         | Weather data processing and event monitoring               |
+| Package                     | Description                                                        |
+|-----------------------------|--------------------------------------------------------------------|
+| `cameras.yaml`              | Camera integration with motion detection and notifications         |
+| `presence.yaml`             | Presence detection and related automations                         |
+| `security_lights.yaml`      | Security-focused lighting automations                              |
+| `weather.yaml`              | Weather data processing and event monitoring                       |
+| `window_ventilation.yaml`   | Advisory window ventilation recommendations and notification logic |
 
 ### Daily Living
 
