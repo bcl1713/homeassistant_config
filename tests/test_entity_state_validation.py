@@ -52,6 +52,14 @@ def normalize_bool(value):
     raise AssertionError(f"expected boolean-like render, got {value!r}")
 
 
+def routine_variables(script_name: str):
+    sequence = load_yaml(ROUTINES_YAML)["script"][script_name]["sequence"]
+    for step in sequence:
+        if "variables" in step:
+            return step["variables"]
+    raise AssertionError(f"script {script_name!r} has no variables step")
+
+
 def weather_automation(automation_id: str):
     for automation in load_yaml(WEATHER_YAML)["automation"]:
         if automation["id"] == automation_id:
@@ -93,7 +101,7 @@ def test_weather_refresh_treats_empty_and_none_last_updated_as_invalid():
 
 
 def test_good_night_dishwasher_availability_handles_empty_and_none_states():
-    variables = load_yaml(ROUTINES_YAML)["script"]["good_night"]["sequence"][0]["variables"]
+    variables = routine_variables("good_night")
     template_string = variables["is_dishwasher_available"]
 
     for invalid_value in ("unknown", "unavailable", "", None):
