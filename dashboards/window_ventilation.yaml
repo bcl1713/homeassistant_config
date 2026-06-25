@@ -54,21 +54,12 @@ views:
             name: "Indoor humidity"
           - entity: sensor.window_ventilation_indoor_dew_point
             name: "Indoor dew point"
-          - type: attribute
-            entity: weather.forecast_home
-            attribute: temperature
+          - entity: sensor.weather_outdoor_temperature
             name: "Outdoor temperature"
-            suffix: "°F"
-          - type: attribute
-            entity: weather.forecast_home
-            attribute: humidity
+          - entity: sensor.weather_outdoor_humidity
             name: "Outdoor humidity"
-            suffix: "%"
-          - type: attribute
-            entity: weather.forecast_home
-            attribute: dew_point
+          - entity: sensor.weather_outdoor_dew_point
             name: "Outdoor dew point"
-            suffix: "°F"
 
       - type: entities
         title: "Rain and HVAC context"
