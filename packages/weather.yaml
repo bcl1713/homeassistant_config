@@ -121,26 +121,38 @@ automation:
           entity_id: weather.forecast_home
         response_variable: daily_forecast
 
-      # Publish forecast data to MQTT topics
+      # Publish normalized forecast data to MQTT topics. weather.get_forecasts
+      # returns a response keyed by source entity; downstream sensors should only
+      # depend on this package's stable top-level forecast attribute.
       - service: mqtt.publish
         data:
           topic: "home/weather/hourly_forecast"
           payload: >
-            {% if hourly_forecast is defined %}
-              {{ hourly_forecast | tojson }}
-            {% else %}
-              {"forecast": []}
-            {% endif %}
+            {% set source = 'weather.forecast_home' %}
+            {% set payload = hourly_forecast.get(source, {}) if hourly_forecast is defined and hourly_forecast is mapping else {} %}
+            {% set forecast = payload.get('forecast', []) if payload is mapping else [] %}
+            {{ {
+              'source_entity': source,
+              'forecast_type': 'hourly',
+              'retrieved_at': now().isoformat(),
+              'forecast_count': forecast | count,
+              'forecast': forecast,
+            } | tojson }}
 
       - service: mqtt.publish
         data:
           topic: "home/weather/daily_forecast"
           payload: >
-            {% if daily_forecast is defined %}
-              {{ daily_forecast | tojson }}
-            {% else %}
-              {"forecast": []}
-            {% endif %}
+            {% set source = 'weather.forecast_home' %}
+            {% set payload = daily_forecast.get(source, {}) if daily_forecast is defined and daily_forecast is mapping else {} %}
+            {% set forecast = payload.get('forecast', []) if payload is mapping else [] %}
+            {{ {
+              'source_entity': source,
+              'forecast_type': 'daily',
+              'retrieved_at': now().isoformat(),
+              'forecast_count': forecast | count,
+              'forecast': forecast,
+            } | tojson }}
       - service: input_datetime.set_datetime
         target:
           entity_id: input_datetime.weather_last_updated
@@ -162,23 +174,41 @@ mqtt:
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/weather/hourly_forecast"
       unique_id: "weather_hourly_forecast"
-      availability_topic: "home/weather/hourly_forecast"
-      payload_available: "{"
-      payload_not_available: ""
 
     - name: "Weather Daily Forecast"
       state_topic: "home/weather/daily_forecast"
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/weather/daily_forecast"
       unique_id: "weather_daily_forecast"
-      availability_topic: "home/weather/daily_forecast"
-      payload_available: "{"
-      payload_not_available: ""
 template:
   - sensor:
       - name: "Weather Last Updated"
         unique_id: weather_last_updated
         state: "{{ states('input_datetime.weather_last_updated') | default('unknown') }}"
+
+      - name: "Weather Outdoor Temperature"
+        unique_id: weather_outdoor_temperature
+        unit_of_measurement: "°F"
+        device_class: temperature
+        state_class: measurement
+        availability: "{{ state_attr('weather.forecast_home', 'temperature') is not none }}"
+        state: "{{ state_attr('weather.forecast_home', 'temperature') | float(none) | round(1) }}"
+
+      - name: "Weather Outdoor Humidity"
+        unique_id: weather_outdoor_humidity
+        unit_of_measurement: "%"
+        device_class: humidity
+        state_class: measurement
+        availability: "{{ state_attr('weather.forecast_home', 'humidity') is not none }}"
+        state: "{{ state_attr('weather.forecast_home', 'humidity') | float(none) | round(0) }}"
+
+      - name: "Weather Outdoor Dew Point"
+        unique_id: weather_outdoor_dew_point
+        unit_of_measurement: "°F"
+        device_class: temperature
+        state_class: measurement
+        availability: "{{ state_attr('weather.forecast_home', 'dew_point') is not none }}"
+        state: "{{ state_attr('weather.forecast_home', 'dew_point') | float(none) | round(1) }}"
 
       - name: "Condition forecast next hour"
         unique_id: weather_forecast_condition_next_hour
@@ -186,7 +216,9 @@ template:
           {% set sensor_state = states('sensor.weather_hourly_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
           {% if sensor_state not in invalid_states %}
-            {% set forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
+            {% set direct_forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
+            {% set source_payload = state_attr('sensor.weather_hourly_forecast', 'weather.forecast_home') %}
+            {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {{ forecast[0].condition | default('unknown') }}
             {% else %}
@@ -202,7 +234,9 @@ template:
           {% set sensor_state = states('sensor.weather_daily_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
           {% if sensor_state not in invalid_states %}
-            {% set forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
+            {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
+            {% set source_payload = state_attr('sensor.weather_daily_forecast', 'weather.forecast_home') %}
+            {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {{ forecast[0].condition | default('unknown') }}
             {% else %}
@@ -218,7 +252,9 @@ template:
           {% set sensor_state = states('sensor.weather_hourly_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
           {% if sensor_state not in invalid_states %}
-            {% set forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
+            {% set direct_forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
+            {% set source_payload = state_attr('sensor.weather_hourly_forecast', 'weather.forecast_home') %}
+            {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {% if forecast[0].precipitation is defined %}
                 {{ forecast[0].precipitation | float(0) | round(2) }}
@@ -239,7 +275,9 @@ template:
           {% set sensor_state = states('sensor.weather_daily_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
           {% if sensor_state not in invalid_states %}
-            {% set forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
+            {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
+            {% set source_payload = state_attr('sensor.weather_daily_forecast', 'weather.forecast_home') %}
+            {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {% if forecast[0].temperature is defined %}
                 {{ forecast[0].temperature | float | round(1) }}
@@ -252,5 +290,5 @@ template:
           {% else %}
             {{ state_attr('weather.forecast_home', 'temperature') | default('unknown') }}
           {% endif %}
-        unit_of_measurement: "°C"
+        unit_of_measurement: "°F"
         device_class: temperature

@@ -55,7 +55,9 @@ def test_window_ventilation_dashboard_surfaces_required_context():
         "sensor.dining_room_thermostat_temperature",
         "sensor.thermostat_humidity",
         "sensor.window_ventilation_indoor_dew_point",
-        "weather.forecast_home",
+        "sensor.weather_outdoor_temperature",
+        "sensor.weather_outdoor_humidity",
+        "sensor.weather_outdoor_dew_point",
         "sensor.precipitation_forecast_next_hour",
         "sensor.condition_forecast_next_hour",
         "climate.dining_room_thermostat",
@@ -80,9 +82,13 @@ def test_window_ventilation_dashboard_surfaces_required_context():
     ]
     assert {row["attribute"] for row in attribute_rows} >= {
         "mode",
-        "temperature",
-        "humidity",
-        "dew_point",
         "hvac_action",
         "hvac_mode",
     }
+
+    assert not any(
+        row.get("entity") == "weather.forecast_home"
+        for card in cards
+        for row in card.get("entities", [])
+        if isinstance(row, dict)
+    )

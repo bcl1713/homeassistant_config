@@ -6,7 +6,8 @@
 # v1 is advisory only: dedicated window-contact coverage is not confirmed.
 #
 # Entity mapping is based on GitHub issue #103 triage/recon:
-# - weather.forecast_home attributes: temperature, humidity, dew_point
+# - normalized weather seam sensors from packages/weather.yaml:
+#   sensor.weather_outdoor_temperature / sensor.weather_outdoor_dew_point
 # - sensor.precipitation_forecast_next_hour / sensor.condition_forecast_next_hour
 # - sensor.dining_room_thermostat_temperature and sensor.thermostat_humidity,
 #   with climate.dining_room_thermostat current attributes as fallback context
@@ -118,8 +119,8 @@ template:
           {% set humidity_sensor = states('sensor.thermostat_humidity') %}
           {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
           {% set indoor_humidity = (humidity_sensor | float(none)) if humidity_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_humidity') | float(none)) %}
-          {% set outdoor = state_attr('weather.forecast_home', 'temperature') | float(none) %}
-          {% set outdoor_dew = state_attr('weather.forecast_home', 'dew_point') | float(none) %}
+          {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
+          {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
           {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
           {% set rain = states('sensor.precipitation_forecast_next_hour') | float(0) %}
           {% set condition = states('sensor.condition_forecast_next_hour') %}
@@ -165,7 +166,7 @@ template:
         attributes:
           advisory_only: true
           mode: >
-            {% set outdoor = state_attr('weather.forecast_home', 'temperature') | float(none) %}
+            {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
             {% set winter_threshold = states('input_number.window_ventilation_winter_threshold') | float(55) %}
             {% if outdoor is not none and outdoor < winter_threshold %}
               winter_purge
@@ -173,9 +174,9 @@ template:
               comfort
             {% endif %}
           indoor_temperature: "{{ states('sensor.dining_room_thermostat_temperature') }}"
-          outdoor_temperature: "{{ state_attr('weather.forecast_home', 'temperature') }}"
+          outdoor_temperature: "{{ states('sensor.weather_outdoor_temperature') }}"
           indoor_dew_point: "{{ states('sensor.window_ventilation_indoor_dew_point') }}"
-          outdoor_dew_point: "{{ state_attr('weather.forecast_home', 'dew_point') }}"
+          outdoor_dew_point: "{{ states('sensor.weather_outdoor_dew_point') }}"
           precipitation_next_hour: "{{ states('sensor.precipitation_forecast_next_hour') }}"
           hvac_action: "{{ state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) }}"
           co2_current: "{{ states('sensor.thermostat_carbon_dioxide') }}"
@@ -194,9 +195,9 @@ template:
           {% set humidity_sensor = states('sensor.thermostat_humidity') %}
           {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
           {% set indoor_humidity = (humidity_sensor | float(none)) if humidity_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_humidity') | float(none)) %}
-          {% set outdoor = state_attr('weather.forecast_home', 'temperature') | float(none) %}
+          {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
           {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
-          {% set outdoor_dew = state_attr('weather.forecast_home', 'dew_point') | float(none) %}
+          {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
           {% set rain = states('sensor.precipitation_forecast_next_hour') | float(0) %}
           {% set condition = states('sensor.condition_forecast_next_hour') %}
           {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
