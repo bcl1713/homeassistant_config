@@ -1,0 +1,116 @@
+# dashboards/window_ventilation.yaml
+#
+# Focused operator view for the window ventilation advisor.
+#
+# This dashboard is wired from configuration.yaml as a YAML-managed Lovelace
+# dashboard with show_in_sidebar: false. That keeps it available by direct URL
+# without promoting another item into the default sidebar.
+
+title: "Ventilation Advisor"
+views:
+  - title: "Window Ventilation"
+    path: "ventilation-advisor"
+    icon: mdi:window-open-variant
+    badges: []
+    cards:
+      - type: markdown
+        title: "Current advice"
+        content: >-
+          ## {{ states('sensor.window_ventilation_recommendation') | title }}
+
+          **Mode:** {{ state_attr('sensor.window_ventilation_recommendation', 'mode') }}
+
+          {{ states('sensor.window_ventilation_reason') }}
+
+          _This is advisory-only. It does not confirm individual window-contact
+          state or change HVAC behavior._
+
+      - type: entities
+        title: "Advisor status"
+        show_header_toggle: false
+        entities:
+          - entity: input_boolean.window_ventilation_advisor_enabled
+            name: "Advisor notifications enabled"
+          - entity: sensor.window_ventilation_recommendation
+            name: "Recommendation"
+          - entity: sensor.window_ventilation_reason
+            name: "Reason"
+          - type: attribute
+            entity: sensor.window_ventilation_recommendation
+            attribute: mode
+            name: "Mode"
+          - entity: binary_sensor.window_ventilation_favorable
+            name: "Favorable for opening"
+          - entity: binary_sensor.window_ventilation_unfavorable
+            name: "Unfavorable / close windows"
+
+      - type: entities
+        title: "Comfort and dew point context"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.dining_room_thermostat_temperature
+            name: "Indoor temperature"
+          - entity: sensor.thermostat_humidity
+            name: "Indoor humidity"
+          - entity: sensor.window_ventilation_indoor_dew_point
+            name: "Indoor dew point"
+          - type: attribute
+            entity: weather.forecast_home
+            attribute: temperature
+            name: "Outdoor temperature"
+            suffix: "°F"
+          - type: attribute
+            entity: weather.forecast_home
+            attribute: humidity
+            name: "Outdoor humidity"
+            suffix: "%"
+          - type: attribute
+            entity: weather.forecast_home
+            attribute: dew_point
+            name: "Outdoor dew point"
+            suffix: "°F"
+
+      - type: entities
+        title: "Rain and HVAC context"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.precipitation_forecast_next_hour
+            name: "Precipitation next hour"
+          - entity: sensor.condition_forecast_next_hour
+            name: "Next-hour condition"
+          - entity: climate.dining_room_thermostat
+            name: "Thermostat"
+          - type: attribute
+            entity: climate.dining_room_thermostat
+            attribute: hvac_action
+            name: "HVAC action"
+          - type: attribute
+            entity: climate.dining_room_thermostat
+            attribute: hvac_mode
+            name: "HVAC mode"
+
+      - type: entities
+        title: "Air quality current vs baseline"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.thermostat_carbon_dioxide
+            name: "CO2 current"
+          - entity: sensor.window_ventilation_co2_baseline
+            name: "CO2 24h baseline"
+          - entity: sensor.thermostat_vocs
+            name: "VOC current"
+          - entity: sensor.window_ventilation_voc_baseline
+            name: "VOC 24h baseline"
+
+      - type: entities
+        title: "Tuning helpers"
+        show_header_toggle: false
+        entities:
+          - entity: input_number.window_ventilation_cooler_delta
+            name: "Required cooler delta"
+          - entity: input_number.window_ventilation_max_outdoor_dew_point
+            name: "Max outdoor dew point"
+          - entity: input_number.window_ventilation_winter_threshold
+            name: "Winter purge threshold"
+          - entity: input_number.window_ventilation_high_indoor_humidity
+            name: "High indoor humidity threshold"
