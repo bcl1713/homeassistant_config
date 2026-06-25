@@ -86,3 +86,23 @@ def test_window_ventilation_notifications_are_advisory_and_gated():
         assert automation["action"][-1]["service"] == "notify.all_mobile_devices"
 
     assert neutral_clear["action"][0]["data"]["message"] == "clear_notification"
+
+
+def test_window_ventilation_close_advisory_only_fires_after_open_advisory():
+    package = load_package()
+    close_advisory = automation_by_id(package, "window_ventilation_close_advisory")
+    trigger = close_advisory["trigger"][0]
+
+    assert trigger["from"] == "open"
+    assert trigger["to"] == "close"
+
+
+def test_window_ventilation_neutral_to_close_does_not_match_close_advisory():
+    package = load_package()
+    close_advisory = automation_by_id(package, "window_ventilation_close_advisory")
+    trigger = close_advisory["trigger"][0]
+
+    assert not (
+        trigger.get("from") in (None, "neutral")
+        and trigger["to"] == "close"
+    )

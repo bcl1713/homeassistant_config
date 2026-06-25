@@ -284,10 +284,11 @@ automation:
 
   - alias: "window_ventilation_close_advisory"
     id: "window_ventilation_close_advisory"
-    description: "Notify on stable close window ventilation recommendation"
+    description: "Notify when a stable open recommendation becomes close"
     trigger:
       - platform: state
         entity_id: sensor.window_ventilation_recommendation
+        from: "open"
         to: "close"
         for:
           minutes: 7
