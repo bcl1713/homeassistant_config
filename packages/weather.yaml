@@ -174,18 +174,12 @@ mqtt:
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/weather/hourly_forecast"
       unique_id: "weather_hourly_forecast"
-      availability_topic: "home/weather/hourly_forecast"
-      payload_available: "{"
-      payload_not_available: ""
 
     - name: "Weather Daily Forecast"
       state_topic: "home/weather/daily_forecast"
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/weather/daily_forecast"
       unique_id: "weather_daily_forecast"
-      availability_topic: "home/weather/daily_forecast"
-      payload_available: "{"
-      payload_not_available: ""
 template:
   - sensor:
       - name: "Weather Last Updated"
@@ -296,5 +290,5 @@ template:
           {% else %}
             {{ state_attr('weather.forecast_home', 'temperature') | default('unknown') }}
           {% endif %}
-        unit_of_measurement: "°C"
+        unit_of_measurement: "°F"
         device_class: temperature

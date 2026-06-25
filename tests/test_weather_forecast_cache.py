@@ -58,6 +58,13 @@ def test_weather_derivative_sensors_accept_normalized_and_legacy_cache_shapes():
     assert "state_attr('sensor.weather_daily_forecast', 'weather.forecast_home')" in weather_text
 
 
+def mqtt_sensor(name):
+    for sensor in load_weather()["mqtt"]["sensor"]:
+        if sensor["name"] == name:
+            return sensor
+    raise AssertionError(f"mqtt sensor {name!r} not found")
+
+
 def test_weather_package_exposes_current_condition_seam_sensors():
     expected = {
         "Weather Outdoor Temperature": "weather_outdoor_temperature",
@@ -70,3 +77,22 @@ def test_weather_package_exposes_current_condition_seam_sensors():
         assert sensor["unique_id"] == unique_id
         assert "weather.forecast_home" in sensor["availability"]
         assert "weather.forecast_home" in sensor["state"]
+
+
+def test_forecast_mqtt_sensors_do_not_require_literal_open_brace_availability_payload():
+    for name, topic in (
+        ("Weather Hourly Forecast", "home/weather/hourly_forecast"),
+        ("Weather Daily Forecast", "home/weather/daily_forecast"),
+    ):
+        sensor = mqtt_sensor(name)
+        assert sensor["state_topic"] == topic
+        assert sensor["json_attributes_topic"] == topic
+        assert sensor.get("availability_topic") != topic
+        assert sensor.get("payload_available") != "{"
+
+
+def test_temperature_forecast_high_today_uses_deployment_fahrenheit_units():
+    sensor = template_sensor("Temperature forecast high today")
+
+    assert sensor["unit_of_measurement"] == "°F"
+    assert "forecast[0].temperature | float | round(1)" in sensor["state"]
