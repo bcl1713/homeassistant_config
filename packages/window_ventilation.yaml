@@ -63,6 +63,9 @@ input_text:
     max: 100
 
 sensor:
+  # Ecobee thermostat CO2/VOC updates arrive roughly every 30 seconds. A
+  # 24-hour statistics window therefore needs about 2,880 samples; keep 3,600
+  # so max_age, not sampling_size, controls the day-scale household baseline.
   - platform: statistics
     name: "Window Ventilation CO2 Baseline"
     unique_id: window_ventilation_co2_baseline
@@ -70,7 +73,7 @@ sensor:
     state_characteristic: mean
     max_age:
       hours: 24
-    sampling_size: 288
+    sampling_size: 3600
 
   - platform: statistics
     name: "Window Ventilation VOC Baseline"
@@ -79,7 +82,7 @@ sensor:
     state_characteristic: mean
     max_age:
       hours: 24
-    sampling_size: 288
+    sampling_size: 3600
 
 template:
   - sensor:

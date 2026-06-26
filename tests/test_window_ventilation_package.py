@@ -51,6 +51,9 @@ def test_window_ventilation_uses_household_relative_air_quality_baselines():
     } == {"sensor.thermostat_carbon_dioxide", "sensor.thermostat_vocs"}
     assert all(sensor["platform"] == "statistics" for sensor in statistic_sensors)
     assert all(sensor["state_characteristic"] == "mean" for sensor in statistic_sensors)
+    assert all(sensor["max_age"] == {"hours": 24} for sensor in statistic_sensors)
+    assert all(sensor["sampling_size"] >= 2880 for sensor in statistic_sensors)
+    assert all(sensor["sampling_size"] == 3600 for sensor in statistic_sensors)
 
     package_text = PACKAGE.read_text()
     assert "sensor.window_ventilation_co2_baseline" in package_text
