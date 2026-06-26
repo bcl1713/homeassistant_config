@@ -86,6 +86,13 @@ def test_window_ventilation_dashboard_surfaces_required_context():
         "hvac_mode",
     }
 
+    assert any(
+        row.get("entity") == "sensor.precipitation_forecast_next_hour"
+        and row.get("name") == "Rain probability next hour"
+        for card in cards
+        for row in card.get("entities", [])
+        if isinstance(row, dict)
+    )
     assert not any(
         row.get("entity") == "weather.forecast_home"
         for card in cards

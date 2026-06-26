@@ -64,6 +64,8 @@ def test_window_ventilation_uses_household_relative_air_quality_baselines():
     assert "states('sensor.weather_outdoor_dew_point')" in package_text
     assert "state_attr('weather.forecast_home', 'temperature')" not in package_text
     assert "state_attr('weather.forecast_home', 'dew_point')" not in package_text
+    assert "rain_probability >= 30" in package_text
+    assert "rain > 0.1" not in package_text
 
 
 def test_window_ventilation_notifications_are_advisory_and_gated():

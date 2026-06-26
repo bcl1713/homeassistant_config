@@ -4,8 +4,16 @@
 #
 # Features:
 # - Event-based triggers instead of time-pattern polling
-# - Cache weather forecasts to reduce API calls
-# - Maintain forecast predictions for the next hour and day
+# - Cache NWS forecasts to reduce API calls
+# - Maintain normalized forecast predictions for the next hour and day/night period
+#
+# NWS source entities verified from the live integration:
+# - weather.nws_home_kmle
+# - sensor.nws_41_17166991853366_96_04711058392532_kmle_temperature
+# - sensor.nws_41_17166991853366_96_04711058392532_kmle_relative_humidity
+# - sensor.nws_41_17166991853366_96_04711058392532_kmle_dew_point
+# If the auxiliary NWS current-condition sensors are disabled in HA, enable them
+# before expecting the normalized current-condition seam below to populate.
 
 # Input variables for controlling refresh frequency
 input_number:
@@ -21,13 +29,13 @@ input_number:
 automation:
   - alias: "Rain Forecast Alert"
     id: "notification_rain_forecast"
-    description: "Multi-source rain detection and notification"
+    description: "NWS-backed rain probability and condition notification"
     trigger:
-      # Primary: Precipitation amount sensor
+      # Primary: NWS precipitation probability sensor (percent chance)
       - platform: numeric_state
         entity_id: sensor.precipitation_forecast_next_hour
-        above: 0.1
-        id: "precipitation_trigger"
+        above: 30
+        id: "precipitation_probability_trigger"
       # Backup: Condition-based detection
       - platform: state
         entity_id: sensor.condition_forecast_next_hour
@@ -37,9 +45,9 @@ automation:
           - "snowy"
           - "snowy-rainy"
         id: "condition_trigger"
-      # Fallback: Main weather entity
+      # Fallback: Main NWS weather entity
       - platform: state
-        entity_id: weather.forecast_home
+        entity_id: weather.nws_home_kmle
         to:
           - "rainy"
           - "pouring"
@@ -70,25 +78,26 @@ automation:
       - action: notify.mobile_app_brian_phone
         data:
           message: >
-            {% if trigger.id == 'precipitation_trigger' %}
-              ☔ Rain expected in the next hour: {{ states('sensor.precipitation_forecast_next_hour') }}mm
+            {% if trigger.id == 'precipitation_probability_trigger' %}
+              ☔ Rain chance in the next hour: {{ states('sensor.precipitation_forecast_next_hour') }}%
             {% elif trigger.id == 'condition_trigger' %}
               ☔ {{ states('sensor.condition_forecast_next_hour') | title }} weather expected in the next hour
             {% else %}
-              ☔ {{ states('weather.forecast_home') | title }} weather conditions expected
+              ☔ {{ states('weather.nws_home_kmle') | title }} weather conditions expected
             {% endif %}
           title: "Rain Alert"
     mode: single
+
   - alias: "weather_data_refresh"
     id: "weather_data_refresh"
-    description: "Update weather data"
+    description: "Update NWS-backed normalized weather data"
     trigger:
       # Time-based backup trigger (fixed at 15 minutes)
       - platform: time_pattern
         minutes: "/15"
       # Event-based trigger for weather alerts
       - platform: state
-        entity_id: weather.forecast_home
+        entity_id: weather.nws_home_kmle
         attribute: weather_alert
         to: "true"
     condition:
@@ -105,21 +114,21 @@ automation:
             {{ time_diff > min_interval }}
           {% endif %}
     action:
-      # Get the hourly forecast
+      # Get the NWS hourly forecast
       - service: weather.get_forecasts
         data:
           type: hourly
         target:
-          entity_id: weather.forecast_home
+          entity_id: weather.nws_home_kmle
         response_variable: hourly_forecast
 
-      # Get the daily forecast
+      # NWS supports twice_daily in this deployment; daily returns 500.
       - service: weather.get_forecasts
         data:
-          type: daily
+          type: twice_daily
         target:
-          entity_id: weather.forecast_home
-        response_variable: daily_forecast
+          entity_id: weather.nws_home_kmle
+        response_variable: twice_daily_forecast
 
       # Publish normalized forecast data to MQTT topics. weather.get_forecasts
       # returns a response keyed by source entity; downstream sensors should only
@@ -128,7 +137,7 @@ automation:
         data:
           topic: "home/weather/hourly_forecast"
           payload: >
-            {% set source = 'weather.forecast_home' %}
+            {% set source = 'weather.nws_home_kmle' %}
             {% set payload = hourly_forecast.get(source, {}) if hourly_forecast is defined and hourly_forecast is mapping else {} %}
             {% set forecast = payload.get('forecast', []) if payload is mapping else [] %}
             {{ {
@@ -143,12 +152,12 @@ automation:
         data:
           topic: "home/weather/daily_forecast"
           payload: >
-            {% set source = 'weather.forecast_home' %}
-            {% set payload = daily_forecast.get(source, {}) if daily_forecast is defined and daily_forecast is mapping else {} %}
+            {% set source = 'weather.nws_home_kmle' %}
+            {% set payload = twice_daily_forecast.get(source, {}) if twice_daily_forecast is defined and twice_daily_forecast is mapping else {} %}
             {% set forecast = payload.get('forecast', []) if payload is mapping else [] %}
             {{ {
               'source_entity': source,
-              'forecast_type': 'daily',
+              'forecast_type': 'twice_daily',
               'retrieved_at': now().isoformat(),
               'forecast_count': forecast | count,
               'forecast': forecast,
@@ -180,6 +189,7 @@ mqtt:
       value_template: "{{ now().isoformat() }}"
       json_attributes_topic: "home/weather/daily_forecast"
       unique_id: "weather_daily_forecast"
+
 template:
   - sensor:
       - name: "Weather Last Updated"
@@ -191,41 +201,51 @@ template:
         unit_of_measurement: "°F"
         device_class: temperature
         state_class: measurement
-        availability: "{{ state_attr('weather.forecast_home', 'temperature') is not none }}"
-        state: "{{ state_attr('weather.forecast_home', 'temperature') | float(none) | round(1) }}"
+        availability: >
+          {% set value = states('sensor.nws_41_17166991853366_96_04711058392532_kmle_temperature') %}
+          {{ value not in ['unknown', 'unavailable', '', none] }}
+        state: >
+          {{ states('sensor.nws_41_17166991853366_96_04711058392532_kmle_temperature') | float(none) | round(1) }}
 
       - name: "Weather Outdoor Humidity"
         unique_id: weather_outdoor_humidity
         unit_of_measurement: "%"
         device_class: humidity
         state_class: measurement
-        availability: "{{ state_attr('weather.forecast_home', 'humidity') is not none }}"
-        state: "{{ state_attr('weather.forecast_home', 'humidity') | float(none) | round(0) }}"
+        availability: >
+          {% set value = states('sensor.nws_41_17166991853366_96_04711058392532_kmle_relative_humidity') %}
+          {{ value not in ['unknown', 'unavailable', '', none] }}
+        state: >
+          {{ states('sensor.nws_41_17166991853366_96_04711058392532_kmle_relative_humidity') | float(none) | round(0) }}
 
       - name: "Weather Outdoor Dew Point"
         unique_id: weather_outdoor_dew_point
         unit_of_measurement: "°F"
         device_class: temperature
         state_class: measurement
-        availability: "{{ state_attr('weather.forecast_home', 'dew_point') is not none }}"
-        state: "{{ state_attr('weather.forecast_home', 'dew_point') | float(none) | round(1) }}"
+        availability: >
+          {% set value = states('sensor.nws_41_17166991853366_96_04711058392532_kmle_dew_point') %}
+          {{ value not in ['unknown', 'unavailable', '', none] }}
+        state: >
+          {{ states('sensor.nws_41_17166991853366_96_04711058392532_kmle_dew_point') | float(none) | round(1) }}
 
       - name: "Condition forecast next hour"
         unique_id: weather_forecast_condition_next_hour
         state: >
           {% set sensor_state = states('sensor.weather_hourly_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% set source_entity = state_attr('sensor.weather_hourly_forecast', 'source_entity') | default('weather.nws_home_kmle', true) %}
           {% if sensor_state not in invalid_states %}
             {% set direct_forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
-            {% set source_payload = state_attr('sensor.weather_hourly_forecast', 'weather.forecast_home') %}
+            {% set source_payload = state_attr('sensor.weather_hourly_forecast', source_entity) %}
             {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {{ forecast[0].condition | default('unknown') }}
             {% else %}
-              {{ states('weather.forecast_home') | default('unknown') }}
+              {{ states('weather.nws_home_kmle') | default('unknown') }}
             {% endif %}
           {% else %}
-            {{ states('weather.forecast_home') | default('unknown') }}
+            {{ states('weather.nws_home_kmle') | default('unknown') }}
           {% endif %}
 
       - name: "Condition forecast today"
@@ -233,17 +253,18 @@ template:
         state: >
           {% set sensor_state = states('sensor.weather_daily_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% set source_entity = state_attr('sensor.weather_daily_forecast', 'source_entity') | default('weather.nws_home_kmle', true) %}
           {% if sensor_state not in invalid_states %}
             {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
-            {% set source_payload = state_attr('sensor.weather_daily_forecast', 'weather.forecast_home') %}
+            {% set source_payload = state_attr('sensor.weather_daily_forecast', source_entity) %}
             {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
               {{ forecast[0].condition | default('unknown') }}
             {% else %}
-              {{ states('weather.forecast_home') | default('unknown') }}
+              {{ states('weather.nws_home_kmle') | default('unknown') }}
             {% endif %}
           {% else %}
-            {{ states('weather.forecast_home') | default('unknown') }}
+            {{ states('weather.nws_home_kmle') | default('unknown') }}
           {% endif %}
 
       - name: "Precipitation forecast next hour"
@@ -251,44 +272,45 @@ template:
         state: >
           {% set sensor_state = states('sensor.weather_hourly_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% set source_entity = state_attr('sensor.weather_hourly_forecast', 'source_entity') | default('weather.nws_home_kmle', true) %}
           {% if sensor_state not in invalid_states %}
             {% set direct_forecast = state_attr('sensor.weather_hourly_forecast', 'forecast') %}
-            {% set source_payload = state_attr('sensor.weather_hourly_forecast', 'weather.forecast_home') %}
+            {% set source_payload = state_attr('sensor.weather_hourly_forecast', source_entity) %}
             {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
             {% if forecast is defined and forecast is not none and forecast | length > 0 %}
-              {% if forecast[0].precipitation is defined %}
-                {{ forecast[0].precipitation | float(0) | round(2) }}
-              {% else %}
-                0
-              {% endif %}
+              {{ forecast[0].precipitation_probability | default(0) | float(0) | round(0) }}
             {% else %}
               0
             {% endif %}
           {% else %}
             0
           {% endif %}
-        unit_of_measurement: "mm"
+        unit_of_measurement: "%"
 
       - name: "Temperature forecast high today"
         unique_id: weather_forecast_temperature_high_today
         state: >
           {% set sensor_state = states('sensor.weather_daily_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
+          {% set source_entity = state_attr('sensor.weather_daily_forecast', 'source_entity') | default('weather.nws_home_kmle', true) %}
           {% if sensor_state not in invalid_states %}
             {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
-            {% set source_payload = state_attr('sensor.weather_daily_forecast', 'weather.forecast_home') %}
+            {% set source_payload = state_attr('sensor.weather_daily_forecast', source_entity) %}
             {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
-            {% if forecast is defined and forecast is not none and forecast | length > 0 %}
-              {% if forecast[0].temperature is defined %}
-                {{ forecast[0].temperature | float | round(1) }}
-              {% else %}
-                {{ state_attr('weather.forecast_home', 'temperature') | default('unknown') }}
+            {% set ns = namespace(high=none) %}
+            {% for period in forecast[:2] %}
+              {% set temp = period.temperature | float(none) %}
+              {% if temp is not none and (ns.high is none or temp > ns.high) %}
+                {% set ns.high = temp %}
               {% endif %}
+            {% endfor %}
+            {% if ns.high is not none %}
+              {{ ns.high | round(1) }}
             {% else %}
-              {{ state_attr('weather.forecast_home', 'temperature') | default('unknown') }}
+              {{ states('sensor.weather_outdoor_temperature') | default('unknown') }}
             {% endif %}
           {% else %}
-            {{ state_attr('weather.forecast_home', 'temperature') | default('unknown') }}
+            {{ states('sensor.weather_outdoor_temperature') | default('unknown') }}
           {% endif %}
         unit_of_measurement: "°F"
         device_class: temperature

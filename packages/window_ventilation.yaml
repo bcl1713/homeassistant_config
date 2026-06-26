@@ -122,7 +122,7 @@ template:
           {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
           {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
           {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
-          {% set rain = states('sensor.precipitation_forecast_next_hour') | float(0) %}
+          {% set rain_probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
           {% set condition = states('sensor.condition_forecast_next_hour') %}
           {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
           {% set cooler_delta = states('input_number.window_ventilation_cooler_delta') | float(3) %}
@@ -133,7 +133,7 @@ template:
           {% set voc = states('sensor.thermostat_vocs') | float(0) %}
           {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
           {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
-          {% set raining = rain > 0.1 or condition in ['rainy', 'pouring', 'snowy-rainy'] %}
+          {% set raining = rain_probability >= 30 or condition in ['rainy', 'pouring', 'snowy-rainy'] %}
           {% set hvac_running = hvac_action in ['heating', 'cooling'] %}
           {% set data_ready = indoor is not none and outdoor is not none and outdoor_dew is not none and indoor_dew is not none %}
           {% set outdoor_cooler = data_ready and (indoor - outdoor) >= cooler_delta %}
@@ -177,7 +177,7 @@ template:
           outdoor_temperature: "{{ states('sensor.weather_outdoor_temperature') }}"
           indoor_dew_point: "{{ states('sensor.window_ventilation_indoor_dew_point') }}"
           outdoor_dew_point: "{{ states('sensor.weather_outdoor_dew_point') }}"
-          precipitation_next_hour: "{{ states('sensor.precipitation_forecast_next_hour') }}"
+          rain_probability_next_hour: "{{ states('sensor.precipitation_forecast_next_hour') }}"
           hvac_action: "{{ state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) }}"
           co2_current: "{{ states('sensor.thermostat_carbon_dioxide') }}"
           co2_baseline: "{{ states('sensor.window_ventilation_co2_baseline') }}"
@@ -198,7 +198,7 @@ template:
           {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
           {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
           {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
-          {% set rain = states('sensor.precipitation_forecast_next_hour') | float(0) %}
+          {% set rain_probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
           {% set condition = states('sensor.condition_forecast_next_hour') %}
           {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
           {% set co2 = states('sensor.thermostat_carbon_dioxide') | float(0) %}
@@ -206,7 +206,7 @@ template:
           {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
           {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
           {% set high_humidity = states('input_number.window_ventilation_high_indoor_humidity') | float(58) %}
-          {% set raining = rain > 0.1 or condition in ['rainy', 'pouring', 'snowy-rainy'] %}
+          {% set raining = rain_probability >= 30 or condition in ['rainy', 'pouring', 'snowy-rainy'] %}
           {% set hvac_running = hvac_action in ['heating', 'cooling'] %}
           {% set co2_relative = co2_base > 0 and co2 >= 900 and co2 >= (co2_base + 175) %}
           {% set voc_relative = voc_base > 0 and voc >= 250 and voc >= (voc_base * 1.35) %}
