@@ -66,7 +66,7 @@ views:
         show_header_toggle: false
         entities:
           - entity: sensor.precipitation_forecast_next_hour
-            name: "Precipitation next hour"
+            name: "Rain probability next hour"
           - entity: sensor.condition_forecast_next_hour
             name: "Next-hour condition"
           - entity: climate.dining_room_thermostat
