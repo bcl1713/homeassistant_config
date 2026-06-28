@@ -309,3 +309,10 @@ script:
           - service: alarm_control_panel.alarm_arm_night
             target:
               entity_id: alarm_control_panel.home_alarm
+
+      # Final security sanity check: alert only if the house is still not
+      # secure after Good Night has had a moment to run its arm/lock handlers.
+      - delay: "00:00:15"
+      - service: script.secure_house_sanity_check
+        data:
+          check_context: "night"
