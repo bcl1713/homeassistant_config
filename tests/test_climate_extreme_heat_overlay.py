@@ -26,6 +26,28 @@ def binary_sensor(name):
     raise AssertionError(f"binary sensor {name!r} not found")
 
 
+SCHEDULE_SETPOINT_HELPERS = {
+    "climate_heat_morning",
+    "climate_heat_day",
+    "climate_heat_bedtime",
+    "climate_heat_sleep",
+    "climate_heat_away",
+    "climate_cool_morning",
+    "climate_cool_day",
+    "climate_cool_bedtime",
+    "climate_cool_sleep",
+    "climate_cool_away",
+}
+
+
+def test_climate_schedule_setpoint_helpers_restore_last_ui_value():
+    config = load_climate()
+
+    for helper in SCHEDULE_SETPOINT_HELPERS:
+        assert helper in config["input_number"]
+        assert "initial" not in config["input_number"][helper]
+
+
 def test_extreme_heat_helpers_are_configurable_in_fahrenheit():
     config = load_climate()
 

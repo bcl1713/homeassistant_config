@@ -42,6 +42,10 @@ homeassistant:
       cool_away: &cool_away 78
 
 # Helper entities for temperature setpoints
+#
+# Do not set `initial` on schedule setpoint helpers. Home Assistant restores
+# input_number state across restarts only when `initial` is omitted; setting it
+# here would overwrite UI-tuned schedule values on every restart.
 input_number:
   climate_heat_morning:
     name: "Climate Heat - Morning"
@@ -50,7 +54,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:thermometer-chevron-up
-    initial: *heat_morning
 
   climate_heat_day:
     name: "Climate Heat - Daytime"
@@ -59,7 +62,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:thermometer
-    initial: *heat_day
 
   climate_heat_bedtime:
     name: "Climate Heat - Bedtime"
@@ -68,7 +70,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:thermometer-chevron-up
-    initial: *heat_bedtime
 
   climate_heat_sleep:
     name: "Climate Heat - Sleep"
@@ -77,7 +78,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:thermometer-chevron-down
-    initial: *heat_sleep
 
   climate_heat_away:
     name: "Climate Heat - Away"
@@ -86,7 +86,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:thermometer-low
-    initial: *heat_away
 
   climate_cool_morning:
     name: "Climate Cool - Morning"
@@ -95,7 +94,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:snowflake
-    initial: *cool_morning
 
   climate_cool_day:
     name: "Climate Cool - Daytime"
@@ -104,7 +102,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:snowflake
-    initial: *cool_day
 
   climate_cool_bedtime:
     name: "Climate Cool - Bedtime"
@@ -113,7 +110,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:snowflake
-    initial: *cool_bedtime
 
   climate_cool_sleep:
     name: "Climate Cool - Sleep"
@@ -122,7 +118,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:snowflake
-    initial: *cool_sleep
 
   climate_cool_away:
     name: "Climate Cool - Away"
@@ -131,7 +126,6 @@ input_number:
     step: 1
     unit_of_measurement: "°F"
     icon: mdi:snowflake-thermometer
-    initial: *cool_away
 
   climate_extreme_heat_threshold:
     name: "Climate Extreme Heat Threshold"
