@@ -1,0 +1,236 @@
+# packages/security_sanity.yaml
+#
+# Security sanity check workflow
+#
+# Features:
+# - Reusable secure-house sanity check script for routines and presence
+# - Aggregates front door, garage door, and alarm mismatches into one alert
+# - Notification actions remediate only when explicitly selected
+# - Guest mode is documented as an intentional advisory exception
+
+script:
+  secure_house_sanity_check:
+    alias: "Secure House Sanity Check"
+    description: >
+      Check front door, garage door, and alarm state for a securing context and
+      send one actionable notification only when the house is not fully secure.
+    mode: parallel
+    fields:
+      check_context:
+        name: "Security context"
+        description: "Expected security mode: night or away"
+        example: "night"
+        default: "night"
+        selector:
+          select:
+            options:
+              - "night"
+              - "away"
+    sequence:
+      - variables:
+          security_context: "{{ check_context | default('night') }}"
+          expected_alarm_state: >
+            {{ 'armed_away' if security_context == 'away' else 'armed_night' }}
+          expected_alarm_label: >
+            {{ 'away' if security_context == 'away' else 'night' }}
+          is_guest_mode: "{{ is_state('input_boolean.mode_guest', 'on') }}"
+          front_door_state: "{{ states('lock.front_door') }}"
+          garage_door_state: "{{ states('cover.garage_door') }}"
+          alarm_state: "{{ states('alarm_control_panel.home_alarm') }}"
+          garage_obstructed: >
+            {{ is_state('binary_sensor.garage_door_obstruction', 'on') }}
+          front_door_needs_lock: "{{ front_door_state != 'locked' }}"
+          garage_needs_close: "{{ garage_door_state != 'closed' }}"
+          alarm_needs_arm: "{{ alarm_state != expected_alarm_state }}"
+          security_findings: >
+            {% set findings = namespace(items=[]) %}
+            {% if front_door_state != 'locked' %}
+              {% set findings.items = findings.items +
+                ['Front door is ' ~ front_door_state ~ ' instead of locked.'] %}
+            {% endif %}
+            {% if garage_door_state != 'closed' %}
+              {% set garage_note = 'Garage door is ' ~ garage_door_state ~
+                ' instead of closed.' %}
+              {% if is_state('binary_sensor.garage_door_obstruction', 'on') %}
+                {% set garage_note = garage_note ~
+                  ' Obstruction is detected; remote close may be skipped.' %}
+              {% endif %}
+              {% set findings.items = findings.items + [garage_note] %}
+            {% endif %}
+            {% if alarm_state != expected_alarm_state %}
+              {% set findings.items = findings.items +
+                ['Alarm is ' ~ alarm_state ~ ' instead of armed ' ~
+                 expected_alarm_label ~ '.'] %}
+            {% endif %}
+            {{ findings.items | join('\n') }}
+          mismatch_count: >
+            {{ (1 if front_door_state != 'locked' else 0) +
+               (1 if garage_door_state != 'closed' else 0) +
+               (1 if alarm_state != expected_alarm_state else 0) }}
+          notification_tag: >
+            secure-house-{{ security_context }}-{{ (now().timestamp() * 1000) |
+            int }}-{{ range(0, 999) | random }}
+          context_label: >
+            {{ 'Everyone left' if security_context == 'away' else 'Good Night' }}
+          guest_mode_note: >
+            {% if is_guest_mode %}
+            Guest Mode is on, so this alert is advisory and may reflect an
+            intentional exception.
+            {% endif %}
+
+      - if:
+          - condition: template
+            value_template: "{{ mismatch_count | int > 0 }}"
+        then:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {{ is_state('binary_sensor.garage_door_obstruction', 'off') }}
+                sequence:
+                  - service: notify.all_mobile_devices
+                    data:
+                      title: "Secure House Check"
+                      message: >
+                        {{ context_label }} found {{ mismatch_count }} security
+                        item{{ '' if mismatch_count | int == 1 else 's' }} to
+                        review:
+                        {{ security_findings }}
+                        {{ guest_mode_note }}
+                      data:
+                        tag: "{{ notification_tag }}"
+                        when: "{{ now().timestamp() | int }}"
+                        priority: "high"
+                        ttl: 0
+                        actions:
+                          - action: "secure_house_lock_front_door"
+                            title: "Lock Door"
+                          - action: "secure_house_close_garage"
+                            title: "Close Garage"
+                          - action: "secure_house_arm_{{ security_context }}"
+                            title: "Arm {{ expected_alarm_label | title }}"
+                          - action: "secure_house_acknowledge"
+                            title: "Acknowledge"
+            default:
+              - service: notify.all_mobile_devices
+                data:
+                  title: "Secure House Check"
+                  message: >
+                    {{ context_label }} found {{ mismatch_count }} security
+                    item{{ '' if mismatch_count | int == 1 else 's' }} to
+                    review:
+                    {{ security_findings }}
+                    {{ guest_mode_note }}
+                  data:
+                    tag: "{{ notification_tag }}"
+                    when: "{{ now().timestamp() | int }}"
+                    priority: "high"
+                    ttl: 0
+                    actions:
+                      - action: "secure_house_lock_front_door"
+                        title: "Lock Door"
+                      - action: "secure_house_arm_{{ security_context }}"
+                        title: "Arm {{ expected_alarm_label | title }}"
+                      - action: "secure_house_acknowledge"
+                        title: "Acknowledge"
+
+      - service: logbook.log
+        data:
+          name: "Secure House Check"
+          message: >
+            {{ context_label }} check completed with {{ mismatch_count }}
+            mismatch{{ '' if mismatch_count | int == 1 else 'es' }}.
+
+automation:
+  - alias: "secure_house_notification_actions"
+    id: "secure_house_notification_actions"
+    description: "Handle explicit remediation actions from secure-house alerts"
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: secure_house_lock_front_door
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: secure_house_close_garage
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: secure_house_arm_night
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: secure_house_arm_away
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: secure_house_acknowledge
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.event.data.action == 'secure_house_lock_front_door' }}
+            sequence:
+              - service: lock.lock
+                target:
+                  entity_id: lock.front_door
+
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.event.data.action == 'secure_house_close_garage' }}
+            sequence:
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.garage_door_obstruction
+                    state: "off"
+                then:
+                  - service: cover.close_cover
+                    target:
+                      entity_id: cover.garage_door
+                  - service: notify.all_mobile_devices
+                    data:
+                      title: "Secure House Check"
+                      message: "Closing garage door remotely..."
+                      data:
+                        tag: "secure-house-garage-closing"
+                else:
+                  - service: notify.all_mobile_devices
+                    data:
+                      title: "Secure House Check"
+                      message: >
+                        Garage door close skipped because obstruction is
+                        currently detected.
+                      data:
+                        tag: "secure-house-garage-obstructed"
+                        priority: "high"
+
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.event.data.action == 'secure_house_arm_night' }}
+            sequence:
+              - service: alarm_control_panel.alarm_arm_night
+                target:
+                  entity_id: alarm_control_panel.home_alarm
+
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.event.data.action == 'secure_house_arm_away' }}
+            sequence:
+              - service: alarm_control_panel.alarm_arm_away
+                target:
+                  entity_id: alarm_control_panel.home_alarm
+
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.event.data.action == 'secure_house_acknowledge' }}
+            sequence:
+              - service: logbook.log
+                data:
+                  name: "Secure House Check"
+                  message: "Secure-house alert acknowledged from notification."

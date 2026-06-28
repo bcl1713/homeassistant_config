@@ -68,6 +68,11 @@ automation:
       - service: light.turn_off
         target:
           entity_id: all
+      # Notify only if away-mode security did not settle as expected.
+      - delay: "00:00:15"
+      - service: script.secure_house_sanity_check
+        data:
+          check_context: "away"
 
   - alias: "presence_someone_returned"
     id: "presence_someone_returned"
