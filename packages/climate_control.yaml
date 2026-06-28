@@ -228,6 +228,31 @@ template:
           forecast_unit_assumption: "NWS forecast temperature attribute is Fahrenheit"
           decision_scope: "maximum temperature from the first two twice-daily periods"
 
+  - trigger:
+      # Trigger-based template entity with explicit inputs. The pre-arrival
+      # decision previously used dynamically constructed entity IDs inside the
+      # template body; live verification showed Home Assistant did not reliably
+      # re-render it when the raw person/proximity states changed.
+      - platform: homeassistant
+        event: start
+        id: ha_start
+      - platform: state
+        entity_id:
+          - person.brian
+          - person.hester
+          - sensor.home_brian_distance
+          - sensor.home_brian_direction_of_travel
+          - sensor.home_hester_distance
+          - sensor.home_hester_direction_of_travel
+          - input_number.climate_precool_arrival_distance_ft
+          - input_number.climate_precool_arrival_signal_max_age
+        id: prearrival_input_changed
+      # Time ticks allow fresh inbound signals to age out even if the proximity
+      # integration stops publishing before the abandoned-trip restore window.
+      - platform: time_pattern
+        minutes: "/1"
+        id: prearrival_signal_age_tick
+    binary_sensor:
       - name: "Climate Pre-arrival Expected"
         unique_id: climate_pre_arrival_expected
         icon: mdi:home-import-outline
