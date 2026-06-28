@@ -569,10 +569,13 @@ automation:
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ trigger.id == 'prearrival_cleared' }}"
-              - condition: state
-                entity_id: input_boolean.climate_automation_enabled
-                state: "on"
+                value_template: >
+                  {{ trigger.id in [
+                    'prearrival_cleared',
+                    'overlay_window_end',
+                    'overlay_disabled',
+                    'climate_disabled'
+                  ] }}
               - condition: numeric_state
                 entity_id: zone.home
                 below: 1

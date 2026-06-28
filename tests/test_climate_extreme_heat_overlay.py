@@ -203,10 +203,46 @@ def test_precool_restore_cancels_abandoned_prearrival_to_away_targets():
         "for": {"minutes": 10},
         "id": "prearrival_cleared",
     }
-    assert "trigger.id == 'prearrival_cleared'" in text
+    assert "prearrival_cleared" in text
     assert "input_number.climate_cool_away" in text
     assert "input_number.climate_heat_away" in text
     assert "trigger.id != 'away_started'" in text
     assert "input_boolean.turn_off" in text
     assert "states('input_number.climate_cool_day')" in text
     assert "states('input_number.climate_heat_day')" in text
+
+
+def test_precool_restore_overlay_end_restores_away_prearrival_targets():
+    item = automation("climate_extreme_heat_precool_restore")
+    away_branch = item["action"][1]["choose"][0]
+    conditions = away_branch["conditions"]
+    sequence = away_branch["sequence"]
+
+    trigger_condition = next(
+        condition for condition in conditions if condition.get("condition") == "template"
+    )
+    assert "overlay_window_end" in trigger_condition["value_template"]
+    assert "overlay_disabled" in trigger_condition["value_template"]
+    assert "climate_disabled" in trigger_condition["value_template"]
+    assert "prearrival_cleared" in trigger_condition["value_template"]
+    assert any(
+        condition.get("condition") == "numeric_state"
+        and condition.get("entity_id") == "zone.home"
+        and condition.get("below") == 1
+        for condition in conditions
+    )
+    assert any(
+        condition.get("entity_id") == "input_boolean.mode_guest"
+        and condition.get("state") == "off"
+        for condition in conditions
+    )
+    assert not any(
+        condition.get("entity_id") == "input_boolean.climate_automation_enabled"
+        for condition in conditions
+    )
+    assert any(
+        "input_number.climate_cool_away" in step.get("data", {}).get("target_temp_high", "")
+        and "input_number.climate_heat_away" in step.get("data", {}).get("target_temp_low", "")
+        for step in sequence
+        if step.get("service") == "climate.set_temperature"
+    )
