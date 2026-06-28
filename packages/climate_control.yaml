@@ -344,6 +344,14 @@ automation:
         entity_id: binary_sensor.climate_extreme_heat_day
         to: "on"
         id: hot_day_detected
+      - platform: numeric_state
+        entity_id: zone.home
+        above: 0
+        id: return_home
+      - platform: state
+        entity_id: input_boolean.mode_guest
+        to: "on"
+        id: guest_mode_enabled
     condition:
       - condition: state
         entity_id: input_boolean.climate_automation_enabled

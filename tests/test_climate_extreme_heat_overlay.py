@@ -64,6 +64,8 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
     assert {trigger.get("id") for trigger in item["trigger"]} == {
         "overlay_window_start",
         "hot_day_detected",
+        "return_home",
+        "guest_mode_enabled",
     }
     assert any(trigger.get("at") == "13:00:00" for trigger in item["trigger"])
     assert "before: \"18:00:00\"" in text
@@ -74,6 +76,32 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
     assert "input_boolean.mode_guest" in text
     assert "day - offset" in text
     assert "input_boolean.turn_on" in text
+
+
+def test_precool_apply_rearms_when_occupied_mid_window_without_churn():
+    item = automation("climate_extreme_heat_precool_apply")
+
+    return_home = next(
+        trigger for trigger in item["trigger"] if trigger.get("id") == "return_home"
+    )
+    guest_enabled = next(
+        trigger for trigger in item["trigger"] if trigger.get("id") == "guest_mode_enabled"
+    )
+
+    assert return_home["platform"] == "numeric_state"
+    assert return_home["entity_id"] == "zone.home"
+    assert return_home["above"] == 0
+    assert guest_enabled == {
+        "platform": "state",
+        "entity_id": "input_boolean.mode_guest",
+        "to": "on",
+        "id": "guest_mode_enabled",
+    }
+    assert any(
+        condition.get("entity_id") == "input_boolean.climate_extreme_heat_precool_active"
+        and condition.get("state") == "off"
+        for condition in item["condition"]
+    )
 
 
 def test_precool_restore_returns_day_targets_without_fighting_away_mode():
