@@ -151,6 +151,24 @@ input_number:
     icon: mdi:snowflake-thermometer
     initial: 1
 
+  climate_precool_arrival_distance_ft:
+    name: "Climate Pre-arrival Distance"
+    min: 1000
+    max: 60000
+    step: 500
+    unit_of_measurement: "ft"
+    icon: mdi:map-marker-distance
+    initial: 30000
+
+  climate_precool_arrival_signal_max_age:
+    name: "Climate Pre-arrival Signal Max Age"
+    min: 5
+    max: 60
+    step: 5
+    unit_of_measurement: "min"
+    icon: mdi:timer-alert-outline
+    initial: 20
+
 # State tracking helpers
 input_boolean:
   climate_automation_enabled:
@@ -215,6 +233,98 @@ template:
           forecast_source: "sensor.weather_daily_forecast"
           forecast_unit_assumption: "NWS forecast temperature attribute is Fahrenheit"
           decision_scope: "maximum temperature from the first two twice-daily periods"
+
+      - name: "Climate Pre-arrival Expected"
+        unique_id: climate_pre_arrival_expected
+        icon: mdi:home-import-outline
+        availability: >
+          {{ states('input_number.climate_precool_arrival_distance_ft') not in ['unknown', 'unavailable', '', none]
+             and states('input_number.climate_precool_arrival_signal_max_age') not in ['unknown', 'unavailable', '', none] }}
+        state: >
+          {#
+            Pre-arrival uses person-level Home Assistant abstractions plus
+            proximity sensors, not raw tracker entities.
+            To add another climate pre-arrival person, add one entry to this
+            map with that person entity and its Home proximity distance/direction
+            sensors.
+          #}
+          {% set tracked = {
+            'person.brian': {
+              'name': 'Brian',
+              'distance': 'sensor.home_brian_distance',
+              'direction': 'sensor.home_brian_direction_of_travel'
+            },
+            'person.hester': {
+              'name': 'Hester',
+              'distance': 'sensor.home_hester_distance',
+              'direction': 'sensor.home_hester_direction_of_travel'
+            }
+          } %}
+          {% set max_distance = states('input_number.climate_precool_arrival_distance_ft') | float(30000) %}
+          {% set max_age = states('input_number.climate_precool_arrival_signal_max_age') | float(20) * 60 %}
+          {% set now_ts = as_timestamp(now()) %}
+          {% set ns = namespace(expected=false) %}
+          {% for person, signals in tracked.items() %}
+            {% set distance_state = states(signals.distance) %}
+            {% set distance = distance_state | float(none) %}
+            {% set direction = states(signals.direction) %}
+            {% set person_state = states(person) %}
+            {% set distance_obj = states[signals.distance] if signals.distance in states else none %}
+            {% set direction_obj = states[signals.direction] if signals.direction in states else none %}
+            {% set distance_age = now_ts - as_timestamp(distance_obj.last_updated, 0) if distance_obj is not none else max_age + 1 %}
+            {% set direction_age = now_ts - as_timestamp(direction_obj.last_updated, 0) if direction_obj is not none else max_age + 1 %}
+            {% if person_state != 'home'
+                  and distance is not none
+                  and distance <= max_distance
+                  and direction == 'towards'
+                  and distance_age <= max_age
+                  and direction_age <= max_age %}
+              {% set ns.expected = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.expected }}
+        attributes:
+          eligible_people: "Brian, Hester"
+          source_pattern: "person entity plus Home proximity distance/direction sensors"
+          max_distance_ft: "{{ states('input_number.climate_precool_arrival_distance_ft') | float(30000) }}"
+          max_signal_age_min: "{{ states('input_number.climate_precool_arrival_signal_max_age') | float(20) }}"
+          expected_people: >
+            {% set tracked = {
+              'person.brian': {
+                'name': 'Brian',
+                'distance': 'sensor.home_brian_distance',
+                'direction': 'sensor.home_brian_direction_of_travel'
+              },
+              'person.hester': {
+                'name': 'Hester',
+                'distance': 'sensor.home_hester_distance',
+                'direction': 'sensor.home_hester_direction_of_travel'
+              }
+            } %}
+            {% set max_distance = states('input_number.climate_precool_arrival_distance_ft') | float(30000) %}
+            {% set max_age = states('input_number.climate_precool_arrival_signal_max_age') | float(20) * 60 %}
+            {% set now_ts = as_timestamp(now()) %}
+            {% set ns = namespace(names=[]) %}
+            {% for person, signals in tracked.items() %}
+              {% set distance = states(signals.distance) | float(none) %}
+              {% set direction = states(signals.direction) %}
+              {% set distance_obj = states[signals.distance] if signals.distance in states else none %}
+              {% set direction_obj = states[signals.direction] if signals.direction in states else none %}
+              {% set distance_age = now_ts - as_timestamp(distance_obj.last_updated, 0) if distance_obj is not none else max_age + 1 %}
+              {% set direction_age = now_ts - as_timestamp(direction_obj.last_updated, 0) if direction_obj is not none else max_age + 1 %}
+              {% if states(person) != 'home'
+                    and distance is not none
+                    and distance <= max_distance
+                    and direction == 'towards'
+                    and distance_age <= max_age
+                    and direction_age <= max_age %}
+                {% set ns.names = ns.names + [signals.name] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.names | join(', ') if ns.names else 'none' }}
+          reason: >
+            Requires an eligible person not already home, a fresh proximity
+            direction of 'towards', and distance below the configured threshold.
 
 # Automations
 automation:
@@ -348,6 +458,12 @@ automation:
         entity_id: input_boolean.mode_guest
         to: "on"
         id: guest_mode_enabled
+      - platform: state
+        entity_id: binary_sensor.climate_pre_arrival_expected
+        to: "on"
+        for:
+          minutes: 2
+        id: prearrival_expected
     condition:
       - condition: state
         entity_id: input_boolean.climate_automation_enabled
@@ -364,8 +480,9 @@ automation:
       - condition: time
         after: "12:59:00"
         before: "18:00:00"
-      # Not away: someone is home, or guest mode is intentionally preserving
-      # occupied-house behavior while residents may be absent.
+      # Occupied/guest path preserves the original overlay. Pre-arrival may
+      # also apply while nobody is home when a fresh aggregate person/proximity
+      # signal says an eligible resident is heading home soon.
       - condition: or
         conditions:
           - condition: numeric_state
@@ -373,6 +490,9 @@ automation:
             above: 0
           - condition: state
             entity_id: input_boolean.mode_guest
+            state: "on"
+          - condition: state
+            entity_id: binary_sensor.climate_pre_arrival_expected
             state: "on"
     action:
       - service: climate.set_hvac_mode
@@ -417,15 +537,65 @@ automation:
         for:
           minutes: 5
         id: away_started
+      - platform: state
+        entity_id: binary_sensor.climate_pre_arrival_expected
+        to: "off"
+        for:
+          minutes: 10
+        id: prearrival_cleared
     condition:
       - condition: state
         entity_id: input_boolean.climate_extreme_heat_precool_active
         state: "on"
+      # Only use the pre-arrival clear trigger as an abandoned-trip cancel.
+      # If someone has arrived, let the normal occupied overlay continue until
+      # the existing end-of-window/away-mode restore paths run.
+      - condition: or
+        conditions:
+          - condition: template
+            value_template: "{{ trigger.id != 'prearrival_cleared' }}"
+          - condition: and
+            conditions:
+              - condition: numeric_state
+                entity_id: zone.home
+                below: 1
+              - condition: state
+                entity_id: input_boolean.mode_guest
+                state: "off"
     action:
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.climate_extreme_heat_precool_active
       - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.id in [
+                    'prearrival_cleared',
+                    'overlay_window_end',
+                    'overlay_disabled',
+                    'climate_disabled'
+                  ] }}
+              - condition: numeric_state
+                entity_id: zone.home
+                below: 1
+              - condition: state
+                entity_id: input_boolean.mode_guest
+                state: "off"
+            sequence:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  hvac_mode: heat_cool
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {{ states('input_number.climate_cool_away') | float }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_away') | float }}
           - conditions:
               - condition: template
                 value_template: "{{ trigger.id != 'away_started' }}"

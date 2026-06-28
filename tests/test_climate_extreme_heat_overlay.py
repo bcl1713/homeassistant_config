@@ -65,6 +65,7 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
         "overlay_window_start",
         "hot_day_detected",
         "guest_mode_enabled",
+        "prearrival_expected",
     }
     assert any(trigger.get("at") == "13:00:00" for trigger in item["trigger"])
     assert "before: \"18:00:00\"" in text
@@ -145,13 +146,103 @@ def test_return_home_deactivate_applies_extreme_heat_overlay_before_day_restore(
     ]
 
 
-def test_precool_restore_returns_day_targets_without_fighting_away_mode():
+def test_precool_prearrival_helpers_use_person_level_proximity_abstractions():
+    config = load_climate()
+    text = CLIMATE.read_text()
+
+    assert config["input_number"]["climate_precool_arrival_distance_ft"]["initial"] == 30000
+    assert config["input_number"]["climate_precool_arrival_signal_max_age"]["initial"] == 20
+
+    sensor = binary_sensor("Climate Pre-arrival Expected")
+    state = sensor["state"]
+    assert "person.brian" in state
+    assert "person.hester" in state
+    assert "sensor.home_brian_distance" in state
+    assert "sensor.home_hester_direction_of_travel" in state
+    assert "device_tracker" not in state
+    assert "direction == 'towards'" in state
+    assert "last_updated" in state
+    assert "climate_precool_arrival_distance_ft" in state
+    assert sensor["attributes"]["eligible_people"] == "Brian, Hester"
+    assert "To add another climate pre-arrival person" in text
+
+
+def test_precool_apply_can_start_from_debounced_prearrival_expectation():
+    item = automation("climate_extreme_heat_precool_apply")
+
+    prearrival_trigger = next(
+        trigger for trigger in item["trigger"] if trigger.get("id") == "prearrival_expected"
+    )
+    assert prearrival_trigger == {
+        "platform": "state",
+        "entity_id": "binary_sensor.climate_pre_arrival_expected",
+        "to": "on",
+        "for": {"minutes": 2},
+        "id": "prearrival_expected",
+    }
+
+    condition_text = str(item["condition"])
+    assert "binary_sensor.climate_pre_arrival_expected" in condition_text
+    assert "zone.home" in condition_text
+    assert "input_boolean.mode_guest" in condition_text
+
+
+def test_precool_restore_cancels_abandoned_prearrival_to_away_targets():
     item = automation("climate_extreme_heat_precool_restore")
     text = CLIMATE.read_text()
 
     assert any(trigger.get("at") == "18:00:00" for trigger in item["trigger"])
     assert any(trigger.get("id") == "away_started" for trigger in item["trigger"])
+    abandoned = next(
+        trigger for trigger in item["trigger"] if trigger.get("id") == "prearrival_cleared"
+    )
+    assert abandoned == {
+        "platform": "state",
+        "entity_id": "binary_sensor.climate_pre_arrival_expected",
+        "to": "off",
+        "for": {"minutes": 10},
+        "id": "prearrival_cleared",
+    }
+    assert "prearrival_cleared" in text
+    assert "input_number.climate_cool_away" in text
+    assert "input_number.climate_heat_away" in text
     assert "trigger.id != 'away_started'" in text
     assert "input_boolean.turn_off" in text
     assert "states('input_number.climate_cool_day')" in text
     assert "states('input_number.climate_heat_day')" in text
+
+
+def test_precool_restore_overlay_end_restores_away_prearrival_targets():
+    item = automation("climate_extreme_heat_precool_restore")
+    away_branch = item["action"][1]["choose"][0]
+    conditions = away_branch["conditions"]
+    sequence = away_branch["sequence"]
+
+    trigger_condition = next(
+        condition for condition in conditions if condition.get("condition") == "template"
+    )
+    assert "overlay_window_end" in trigger_condition["value_template"]
+    assert "overlay_disabled" in trigger_condition["value_template"]
+    assert "climate_disabled" in trigger_condition["value_template"]
+    assert "prearrival_cleared" in trigger_condition["value_template"]
+    assert any(
+        condition.get("condition") == "numeric_state"
+        and condition.get("entity_id") == "zone.home"
+        and condition.get("below") == 1
+        for condition in conditions
+    )
+    assert any(
+        condition.get("entity_id") == "input_boolean.mode_guest"
+        and condition.get("state") == "off"
+        for condition in conditions
+    )
+    assert not any(
+        condition.get("entity_id") == "input_boolean.climate_automation_enabled"
+        for condition in conditions
+    )
+    assert any(
+        "input_number.climate_cool_away" in step.get("data", {}).get("target_temp_high", "")
+        and "input_number.climate_heat_away" in step.get("data", {}).get("target_temp_low", "")
+        for step in sequence
+        if step.get("service") == "climate.set_temperature"
+    )
