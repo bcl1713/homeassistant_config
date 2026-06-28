@@ -64,7 +64,6 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
     assert {trigger.get("id") for trigger in item["trigger"]} == {
         "overlay_window_start",
         "hot_day_detected",
-        "return_home",
         "guest_mode_enabled",
     }
     assert any(trigger.get("at") == "13:00:00" for trigger in item["trigger"])
@@ -78,19 +77,14 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
     assert "input_boolean.turn_on" in text
 
 
-def test_precool_apply_rearms_when_occupied_mid_window_without_churn():
+def test_precool_apply_rearms_for_guest_mode_without_return_home_race():
     item = automation("climate_extreme_heat_precool_apply")
 
-    return_home = next(
-        trigger for trigger in item["trigger"] if trigger.get("id") == "return_home"
-    )
     guest_enabled = next(
         trigger for trigger in item["trigger"] if trigger.get("id") == "guest_mode_enabled"
     )
 
-    assert return_home["platform"] == "numeric_state"
-    assert return_home["entity_id"] == "zone.home"
-    assert return_home["above"] == 0
+    assert "return_home" not in {trigger.get("id") for trigger in item["trigger"]}
     assert guest_enabled == {
         "platform": "state",
         "entity_id": "input_boolean.mode_guest",
@@ -102,6 +96,53 @@ def test_precool_apply_rearms_when_occupied_mid_window_without_churn():
         and condition.get("state") == "off"
         for condition in item["condition"]
     )
+
+
+def test_return_home_deactivate_applies_extreme_heat_overlay_before_day_restore():
+    apply = automation("climate_extreme_heat_precool_apply")
+    deactivate = automation("climate_away_mode_deactivate")
+    extreme_heat_branch = deactivate["action"][1]["choose"][1]
+    daytime_branch = deactivate["action"][1]["choose"][2]
+
+    assert not any(
+        trigger.get("entity_id") == "zone.home" for trigger in apply["trigger"]
+    )
+    assert deactivate["trigger"] == [
+        {"platform": "numeric_state", "entity_id": "zone.home", "above": 0}
+    ]
+    assert any(
+        condition.get("entity_id") == "input_boolean.climate_extreme_heat_overlay_enabled"
+        and condition.get("state") == "on"
+        for condition in extreme_heat_branch["conditions"]
+    )
+    assert any(
+        condition.get("entity_id") == "binary_sensor.climate_extreme_heat_day"
+        and condition.get("state") == "on"
+        for condition in extreme_heat_branch["conditions"]
+    )
+    assert any(
+        condition.get("condition") == "time"
+        and condition.get("after") == "12:59:00"
+        and condition.get("before") == "18:00:00"
+        for condition in extreme_heat_branch["conditions"]
+    )
+
+    set_temperature_steps = [
+        step
+        for step in extreme_heat_branch["sequence"]
+        if step.get("service") == "climate.set_temperature"
+    ]
+    assert len(set_temperature_steps) == 1
+    assert "day - offset" in set_temperature_steps[0]["data"]["target_temp_high"]
+    assert any(
+        step.get("service") == "input_boolean.turn_on"
+        and step.get("target", {}).get("entity_id")
+        == "input_boolean.climate_extreme_heat_precool_active"
+        for step in extreme_heat_branch["sequence"]
+    )
+    assert daytime_branch["conditions"] == [
+        {"condition": "time", "after": "09:00:00", "before": "21:00:00"}
+    ]
 
 
 def test_precool_restore_returns_day_targets_without_fighting_away_mode():

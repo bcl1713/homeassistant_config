@@ -344,10 +344,6 @@ automation:
         entity_id: binary_sensor.climate_extreme_heat_day
         to: "on"
         id: hot_day_detected
-      - platform: numeric_state
-        entity_id: zone.home
-        above: 0
-        id: return_home
       - platform: state
         entity_id: input_boolean.mode_guest
         to: "on"
@@ -619,6 +615,33 @@ automation:
                     {{ states('input_number.climate_cool_morning') | float }}
                   target_temp_low: >
                     {{ states('input_number.climate_heat_morning') | float }}
+          # Extreme heat overlay window (13:00-17:59). Handle return-home here
+          # instead of in a second zone.home automation so this path is not
+          # order-dependent with the normal daytime restore.
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.climate_extreme_heat_overlay_enabled
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.climate_extreme_heat_day
+                state: "on"
+              - condition: time
+                after: "12:59:00"
+                before: "18:00:00"
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {% set day = states('input_number.climate_cool_day') | float %}
+                    {% set offset = states('input_number.climate_extreme_heat_precool_offset') | float(1) %}
+                    {{ [day - offset, 65] | max }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_day') | float }}
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.climate_extreme_heat_precool_active
           # Daytime (9:00-20:59)
           - conditions:
               - condition: time
