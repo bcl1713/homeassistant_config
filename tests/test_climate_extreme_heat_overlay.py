@@ -65,6 +65,7 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
         "overlay_window_start",
         "hot_day_detected",
         "guest_mode_enabled",
+        "prearrival_expected",
     }
     assert any(trigger.get("at") == "13:00:00" for trigger in item["trigger"])
     assert "before: \"18:00:00\"" in text
@@ -145,12 +146,66 @@ def test_return_home_deactivate_applies_extreme_heat_overlay_before_day_restore(
     ]
 
 
-def test_precool_restore_returns_day_targets_without_fighting_away_mode():
+def test_precool_prearrival_helpers_use_person_level_proximity_abstractions():
+    config = load_climate()
+    text = CLIMATE.read_text()
+
+    assert config["input_number"]["climate_precool_arrival_distance_ft"]["initial"] == 30000
+    assert config["input_number"]["climate_precool_arrival_signal_max_age"]["initial"] == 20
+
+    sensor = binary_sensor("Climate Pre-arrival Expected")
+    state = sensor["state"]
+    assert "person.brian" in state
+    assert "person.hester" in state
+    assert "sensor.home_brian_distance" in state
+    assert "sensor.home_hester_direction_of_travel" in state
+    assert "device_tracker" not in state
+    assert "direction == 'towards'" in state
+    assert "last_updated" in state
+    assert "climate_precool_arrival_distance_ft" in state
+    assert sensor["attributes"]["eligible_people"] == "Brian, Hester"
+    assert "To add another climate pre-arrival person" in text
+
+
+def test_precool_apply_can_start_from_debounced_prearrival_expectation():
+    item = automation("climate_extreme_heat_precool_apply")
+
+    prearrival_trigger = next(
+        trigger for trigger in item["trigger"] if trigger.get("id") == "prearrival_expected"
+    )
+    assert prearrival_trigger == {
+        "platform": "state",
+        "entity_id": "binary_sensor.climate_pre_arrival_expected",
+        "to": "on",
+        "for": {"minutes": 2},
+        "id": "prearrival_expected",
+    }
+
+    condition_text = str(item["condition"])
+    assert "binary_sensor.climate_pre_arrival_expected" in condition_text
+    assert "zone.home" in condition_text
+    assert "input_boolean.mode_guest" in condition_text
+
+
+def test_precool_restore_cancels_abandoned_prearrival_to_away_targets():
     item = automation("climate_extreme_heat_precool_restore")
     text = CLIMATE.read_text()
 
     assert any(trigger.get("at") == "18:00:00" for trigger in item["trigger"])
     assert any(trigger.get("id") == "away_started" for trigger in item["trigger"])
+    abandoned = next(
+        trigger for trigger in item["trigger"] if trigger.get("id") == "prearrival_cleared"
+    )
+    assert abandoned == {
+        "platform": "state",
+        "entity_id": "binary_sensor.climate_pre_arrival_expected",
+        "to": "off",
+        "for": {"minutes": 10},
+        "id": "prearrival_cleared",
+    }
+    assert "trigger.id == 'prearrival_cleared'" in text
+    assert "input_number.climate_cool_away" in text
+    assert "input_number.climate_heat_away" in text
     assert "trigger.id != 'away_started'" in text
     assert "input_boolean.turn_off" in text
     assert "states('input_number.climate_cool_day')" in text
