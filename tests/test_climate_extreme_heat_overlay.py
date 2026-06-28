@@ -26,6 +26,14 @@ def binary_sensor(name):
     raise AssertionError(f"binary sensor {name!r} not found")
 
 
+def template_block_for_binary_sensor(name):
+    for block in load_climate()["template"]:
+        for sensor in block.get("binary_sensor", []):
+            if sensor["name"] == name:
+                return block
+    raise AssertionError(f"template block for binary sensor {name!r} not found")
+
+
 SCHEDULE_SETPOINT_HELPERS = {
     "climate_heat_morning",
     "climate_heat_day",
@@ -187,6 +195,36 @@ def test_precool_prearrival_helpers_use_person_level_proximity_abstractions():
     assert "climate_precool_arrival_distance_ft" in state
     assert sensor["attributes"]["eligible_people"] == "Brian, Hester"
     assert "To add another climate pre-arrival person" in text
+
+
+def test_precool_prearrival_template_has_explicit_update_triggers():
+    block = template_block_for_binary_sensor("Climate Pre-arrival Expected")
+    triggers = block["trigger"]
+
+    state_trigger = next(
+        trigger for trigger in triggers if trigger.get("id") == "prearrival_input_changed"
+    )
+    triggered_entities = set(state_trigger["entity_id"])
+
+    assert state_trigger["platform"] == "state"
+    assert {
+        "person.brian",
+        "person.hester",
+        "sensor.home_brian_distance",
+        "sensor.home_brian_direction_of_travel",
+        "sensor.home_hester_distance",
+        "sensor.home_hester_direction_of_travel",
+        "input_number.climate_precool_arrival_distance_ft",
+        "input_number.climate_precool_arrival_signal_max_age",
+    }.issubset(triggered_entities)
+    assert any(
+        trigger.get("platform") == "homeassistant" and trigger.get("event") == "start"
+        for trigger in triggers
+    )
+    assert any(
+        trigger.get("platform") == "time_pattern" and trigger.get("minutes") == "/1"
+        for trigger in triggers
+    )
 
 
 def test_precool_apply_can_start_from_debounced_prearrival_expectation():
