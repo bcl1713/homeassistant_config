@@ -289,28 +289,39 @@ template:
 
       - name: "Temperature forecast high today"
         unique_id: weather_forecast_temperature_high_today
-        state: >
+        availability: >
           {% set sensor_state = states('sensor.weather_daily_forecast') %}
           {% set invalid_states = ['unknown', 'unavailable', '', none] %}
           {% set source_entity = state_attr('sensor.weather_daily_forecast', 'source_entity') | default('weather.nws_home_kmle', true) %}
+          {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
+          {% set source_payload = state_attr('sensor.weather_daily_forecast', source_entity) %}
+          {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
+          {% set ns = namespace(high=none) %}
           {% if sensor_state not in invalid_states %}
-            {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
-            {% set source_payload = state_attr('sensor.weather_daily_forecast', source_entity) %}
-            {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
-            {% set ns = namespace(high=none) %}
             {% for period in forecast[:2] %}
               {% set temp = period.temperature | float(none) %}
               {% if temp is not none and (ns.high is none or temp > ns.high) %}
                 {% set ns.high = temp %}
               {% endif %}
             {% endfor %}
-            {% if ns.high is not none %}
-              {{ ns.high | round(1) }}
-            {% else %}
-              {{ states('sensor.weather_outdoor_temperature') | default('unknown') }}
-            {% endif %}
-          {% else %}
-            {{ states('sensor.weather_outdoor_temperature') | default('unknown') }}
           {% endif %}
+          {{ ns.high is not none }}
+        state: >
+          {% set source_entity = state_attr('sensor.weather_daily_forecast', 'source_entity') | default('weather.nws_home_kmle', true) %}
+          {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
+          {% set source_payload = state_attr('sensor.weather_daily_forecast', source_entity) %}
+          {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
+          {% set ns = namespace(high=none) %}
+          {% for period in forecast[:2] %}
+            {% set temp = period.temperature | float(none) %}
+            {% if temp is not none and (ns.high is none or temp > ns.high) %}
+              {% set ns.high = temp %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.high | round(1) if ns.high is not none else 'unknown' }}
+        attributes:
+          forecast_source: "sensor.weather_daily_forecast"
+          forecast_unit_assumption: "NWS forecast temperature attribute is Fahrenheit"
+          decision_scope: "maximum temperature from the first two twice-daily periods"
         unit_of_measurement: "°F"
         device_class: temperature
