@@ -60,6 +60,37 @@ input_number:
     icon: mdi:air-filter
     initial: *aqi_threshold
 
+sensor:
+  # Ecobee air-quality sensors update frequently enough that 1-hour statistics
+  # sensors provide a real recent-history baseline without relying on mirrored
+  # attributes from the current composite status template.
+  - platform: statistics
+    name: "Air Quality AQI 1h Mean"
+    unique_id: air_quality_aqi_1h_mean
+    entity_id: sensor.thermostat_air_quality_index
+    state_characteristic: mean
+    max_age:
+      hours: 1
+    sampling_size: 240
+
+  - platform: statistics
+    name: "Air Quality CO2 1h Mean"
+    unique_id: air_quality_co2_1h_mean
+    entity_id: sensor.thermostat_carbon_dioxide
+    state_characteristic: mean
+    max_age:
+      hours: 1
+    sampling_size: 240
+
+  - platform: statistics
+    name: "Air Quality VOC 1h Mean"
+    unique_id: air_quality_voc_1h_mean
+    entity_id: sensor.thermostat_vocs
+    state_characteristic: mean
+    max_age:
+      hours: 1
+    sampling_size: 240
+
 template:
   - sensor:
       - name: "Air Quality Composite Status"
@@ -159,12 +190,12 @@ template:
         state: >
           {% set current_aqi = states('sensor.thermostat_air_quality_index') | int(0) %}
           {% set current_co2 = states('sensor.thermostat_carbon_dioxide') | int(0) %}
-          {% set current_voc = states('sensero.thermostat_vocs') | int(0) %}
+          {% set current_voc = states('sensor.thermostat_vocs') | int(0) %}
           
-          {# Get previous hour's average (simplified for template) #}
-          {% set prev_aqi = state_attr('sensor.air_quality_composite_status', 'aqi_value') | int(0) %}
-          {% set prev_co2 = state_attr('sensor.air_quality_composite_status', 'co2_value') | int(0) %}
-          {% set prev_voc = state_attr('sensor.air_quality_composite_status', 'voc_value') | int(0) %}
+          {# Compare current readings to real 1-hour statistics means. #}
+          {% set prev_aqi = states('sensor.air_quality_aqi_1h_mean') | int(current_aqi) %}
+          {% set prev_co2 = states('sensor.air_quality_co2_1h_mean') | int(current_co2) %}
+          {% set prev_voc = states('sensor.air_quality_voc_1h_mean') | int(current_voc) %}
           
           {% set aqi_diff = current_aqi - prev_aqi %}
           {% set co2_diff = current_co2 - prev_co2 %}
@@ -180,16 +211,17 @@ template:
         attributes:
           aqi_change: >
             {% set current = states('sensor.thermostat_air_quality_index') | int(0) %}
-            {% set previous = state_attr('sensor.air_quality_composite_status', 'aqi_value') | int(0) %}
+            {% set previous = states('sensor.air_quality_aqi_1h_mean') | int(current) %}
             {{ current - previous }}
           co2_change: >
             {% set current = states('sensor.thermostat_carbon_dioxide') | int(0) %}
-            {% set previous = state_attr('sensor.air_quality_composite_status', 'co2_value') | int(0) %}
+            {% set previous = states('sensor.air_quality_co2_1h_mean') | int(current) %}
             {{ current - previous }}
           voc_change: >
             {% set current = states('sensor.thermostat_vocs') | int(0) %}
-            {% set previous = state_attr('sensor.air_quality_composite_status', 'voc_value') | int(0) %}
+            {% set previous = states('sensor.air_quality_voc_1h_mean') | int(current) %}
             {{ current - previous }}
+          comparison_basis: "Current readings minus 1-hour statistics mean"
 
   - binary_sensor:
       - name: "Air Quality Poor"
