@@ -94,16 +94,8 @@ views:
         show:
           legend: true
           labels: true
-          labels_secondary: false
           points: false
           extrema: true
-        lower_bound_secondary: 0
-        upper_bound_secondary: 1
-        state_map:
-          - value: "off"
-            label: "Inactive"
-          - value: "on"
-            label: "Active"
         entities:
           - entity: sensor.dining_room_thermostat_temperature
             name: "Dining room"
@@ -118,18 +110,50 @@ views:
           - entity: sensor.weather_outdoor_temperature
             name: "Outdoor"
             color: "#42a5f5"
+
+      - type: custom:mini-graph-card
+        name: "HVAC activity ribbon"
+        hours_to_show: 24
+        points_per_hour: 4
+        hour24: true
+        animate: false
+        height: 48
+        line_width: 1
+        lower_bound_secondary: 0
+        upper_bound_secondary: 1
+        state_map:
+          - value: "off"
+            label: "Inactive"
+          - value: "on"
+            label: "Active"
+        show:
+          name: true
+          icon: false
+          state: false
+          legend: true
+          labels: false
+          labels_secondary: false
+          points: false
+          extrema: false
+        entities:
           - entity: binary_sensor.climate_heating_active
             name: "Heating"
-            color: "#ef5350"
+            color: "rgba(239, 83, 80, 0.35)"
             y_axis: secondary
             aggregate_func: max
+            show_line: false
+            show_fill: true
+            show_points: false
             show_state: false
             smoothing: false
           - entity: binary_sensor.climate_cooling_active
             name: "Cooling"
-            color: "#29b6f6"
+            color: "rgba(41, 182, 246, 0.35)"
             y_axis: secondary
             aggregate_func: max
+            show_line: false
+            show_fill: true
+            show_points: false
             show_state: false
             smoothing: false
 
@@ -145,11 +169,6 @@ views:
           labels_secondary: true
           points: false
           extrema: true
-        state_map:
-          - value: "off"
-            label: "Inactive"
-          - value: "on"
-            label: "Active"
         entities:
           - entity: sensor.thermostat_vocs
             name: "VOC"
@@ -158,18 +177,6 @@ views:
             name: "CO2"
             color: "#66bb6a"
             y_axis: secondary
-          - entity: binary_sensor.climate_heating_active
-            name: "Heating"
-            color: "#ef5350"
-            aggregate_func: max
-            show_state: false
-            smoothing: false
-          - entity: binary_sensor.climate_cooling_active
-            name: "Cooling"
-            color: "#29b6f6"
-            aggregate_func: max
-            show_state: false
-            smoothing: false
 
       - type: grid
         title: "Schedule tuning"

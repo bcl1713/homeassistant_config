@@ -72,40 +72,56 @@ def test_average_indoor_temperature_uses_dining_room_and_bedroom():
     assert "/ 2" in sensor["state"]
 
 
-def test_temperature_trends_use_mini_graph_with_average_and_hvac_activity():
+def test_temperature_trends_use_mini_graph_with_average_indoor_temperature():
     card = graph_card("Temperature trends")
 
     assert "history-graph" not in DASHBOARD.read_text()
     assert card["hours_to_show"] == 24
-    assert card["lower_bound_secondary"] == 0
-    assert card["upper_bound_secondary"] == 1
-    assert_binary_state_map(card)
+    assert "lower_bound" not in card
+    assert "upper_bound" not in card
+    assert "lower_bound_secondary" not in card
+    assert "upper_bound_secondary" not in card
     assert entity_ids(card) == [
         "sensor.dining_room_thermostat_temperature",
         "sensor.master_bedroom_sensor_temperature",
         "sensor.average_indoor_temperature",
         "sensor.weather_outdoor_temperature",
+    ]
+
+
+def test_hvac_activity_uses_dedicated_filled_ribbon_card():
+    card = graph_card("HVAC activity ribbon")
+
+    assert card["hours_to_show"] == 24
+    assert card["height"] == 48
+    assert card["lower_bound_secondary"] == 0
+    assert card["upper_bound_secondary"] == 1
+    assert_binary_state_map(card)
+    assert entity_ids(card) == [
         "binary_sensor.climate_heating_active",
         "binary_sensor.climate_cooling_active",
     ]
-    activity_entities = card["entities"][-2:]
-    assert all(entity["y_axis"] == "secondary" for entity in activity_entities)
-    assert all(entity["aggregate_func"] == "max" for entity in activity_entities)
+    assert card["show"]["labels"] is False
+    assert card["show"]["labels_secondary"] is False
+    for entity in card["entities"]:
+        assert entity["y_axis"] == "secondary"
+        assert entity["aggregate_func"] == "max"
+        assert entity["show_line"] is False
+        assert entity["show_fill"] is True
+        assert entity["show_points"] is False
+        assert entity["show_state"] is False
+        assert entity["smoothing"] is False
+        assert entity["color"].startswith("rgba(")
 
 
-def test_air_quality_trends_use_mini_graph_with_hvac_activity():
+def test_air_quality_trends_keep_voc_and_co2_axes_without_hvac_trace_noise():
     card = graph_card("Air quality trends")
 
     assert card["hours_to_show"] == 24
-    assert_binary_state_map(card)
+    assert "state_map" not in card
     assert entity_ids(card) == [
         "sensor.thermostat_vocs",
         "sensor.thermostat_carbon_dioxide",
-        "binary_sensor.climate_heating_active",
-        "binary_sensor.climate_cooling_active",
     ]
     co2 = card["entities"][1]
-    activity_entities = card["entities"][-2:]
     assert co2["y_axis"] == "secondary"
-    assert all(entity["aggregate_func"] == "max" for entity in activity_entities)
-    assert all(entity["show_state"] is False for entity in activity_entities)
