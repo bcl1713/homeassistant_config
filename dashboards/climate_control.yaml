@@ -13,79 +13,33 @@ views:
     icon: mdi:thermostat-auto
     badges: []
     cards:
-      - type: markdown
-        title: "Climate now"
-        content: >-
-          {% set action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
-          {% set mode = state_attr('climate.dining_room_thermostat', 'hvac_mode') | default(states('climate.dining_room_thermostat'), true) %}
-          {% set current = state_attr('climate.dining_room_thermostat', 'current_temperature') %}
-          {% set low = state_attr('climate.dining_room_thermostat', 'target_temp_low') %}
-          {% set high = state_attr('climate.dining_room_thermostat', 'target_temp_high') %}
-          {% set people = states('zone.home') | int(0) %}
-          {% set automation = is_state('input_boolean.climate_automation_enabled', 'on') %}
-          {% set guest = is_state('input_boolean.mode_guest', 'on') %}
-          {% set hot_day = is_state('binary_sensor.climate_extreme_heat_day', 'on') %}
-          {% set precool = is_state('input_boolean.climate_extreme_heat_precool_active', 'on') %}
+      - type: conditional
+        conditions:
+          - entity: input_boolean.climate_automation_enabled
+            state: "off"
+        card:
+          type: markdown
+          title: "Climate automation paused"
+          content: >-
+            ## Climate automation is off
 
-          ## {{ current if current is not none else states('sensor.dining_room_thermostat_temperature') }}°F · {{ action | replace('_', ' ') | title }}
+            Schedule, away, pre-arrival, and extreme-heat automations will not
+            manage the thermostat until automation is re-enabled.
 
-          **Target band:** {{ low if low is not none else '—' }}–{{ high if high is not none else '—' }}°F  
-          **Mode:** {{ mode | replace('_', ' ') | title }}  
-          **Automation:** {{ 'On' if automation else 'Off' }} · **Home:** {{ people }} · **Guest:** {{ 'On' if guest else 'Off' }}
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.climate_extreme_heat_day
+            state: "on"
+          - entity: input_boolean.climate_extreme_heat_overlay_enabled
+            state: "off"
+        card:
+          type: markdown
+          title: "Extreme heat overlay disabled"
+          content: >-
+            ## Extreme heat expected, overlay disabled
 
-          {% if precool %}
-          🧊 **Extreme-heat pre-cool is active now.** Cooling is temporarily biased lower until the restore path runs.
-          {% elif hot_day and automation %}
-          ☀️ **Extreme heat day detected.** The overlay can pre-cool during the afternoon window when occupancy, guest mode, or pre-arrival allows it.
-          {% elif not automation %}
-          ⚠️ **Climate automation is disabled.** The thermostat can still be controlled manually, but schedule/away/overlay automations will not manage it.
-          {% else %}
-          ✅ **Normal schedule behavior is in charge.**
-          {% endif %}
-
-      - type: thermostat
-        entity: climate.dining_room_thermostat
-        name: "Dining Room Thermostat"
-
-      - type: grid
-        title: "Quick status"
-        columns: 2
-        square: false
-        cards:
-          - type: tile
-            entity: input_boolean.climate_automation_enabled
-            name: "Automation"
-            icon: mdi:thermostat-auto
-            vertical: true
-            tap_action:
-              action: toggle
-          - type: tile
-            entity: input_boolean.climate_extreme_heat_overlay_enabled
-            name: "Heat overlay"
-            icon: mdi:sun-thermometer
-            vertical: true
-            tap_action:
-              action: toggle
-          - type: tile
-            entity: binary_sensor.climate_extreme_heat_day
-            name: "Hot day"
-            icon: mdi:white-balance-sunny
-            vertical: true
-          - type: tile
-            entity: input_boolean.climate_extreme_heat_precool_active
-            name: "Pre-cool active"
-            icon: mdi:snowflake-alert
-            vertical: true
-          - type: tile
-            entity: zone.home
-            name: "People home"
-            icon: mdi:home-account
-            vertical: true
-          - type: tile
-            entity: input_boolean.mode_guest
-            name: "Guest mode"
-            icon: mdi:account-heart
-            vertical: true
+            Forecast high: {{ state_attr('binary_sensor.climate_extreme_heat_day', 'forecast_high_f') | default('unknown', true) }}°F<br>
+            Threshold: {{ states('input_number.climate_extreme_heat_threshold') }}°F
 
       - type: conditional
         conditions:
@@ -95,67 +49,62 @@ views:
           type: markdown
           title: "Pre-cool active"
           content: >-
-            ## 🧊 Cooling ahead of the heat
+            ## Extreme-heat pre-cool is active
 
-            The extreme-heat overlay is currently active. The thermostat target
-            high should be the daytime cooling setpoint minus the configured
-            pre-cool offset, bounded by the automation package.
+            Current cooling bias: {{ states('input_number.climate_extreme_heat_precool_offset') }}°F below the daytime cooling target.
 
-            **Configured offset:** {{ states('input_number.climate_extreme_heat_precool_offset') }}°F  
-            **Normal daytime cool target:** {{ states('input_number.climate_cool_day') }}°F  
-            **Expected active cool target:** {{ [states('input_number.climate_cool_day') | float(76) - states('input_number.climate_extreme_heat_precool_offset') | float(1), 65] | max }}°F
-
-      - type: entities
-        title: "Quick actions"
-        show_header_toggle: false
-        entities:
-          - entity: input_boolean.climate_automation_enabled
-            name: "Climate automation enabled"
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.climate_extreme_heat_day
+            state: "on"
           - entity: input_boolean.climate_extreme_heat_overlay_enabled
-            name: "Allow extreme-heat overlay"
-          - entity: input_number.climate_cool_day
-            name: "Daytime cooling target"
-          - entity: input_number.climate_cool_bedtime
-            name: "Bedtime cooling target"
-          - entity: input_number.climate_heat_morning
-            name: "Morning heating target"
-          - entity: input_number.climate_heat_sleep
-            name: "Sleep heating target"
+            state: "on"
+        card:
+          type: markdown
+          title: "Extreme heat day"
+          content: >-
+            ## Extreme heat expected
 
-      - type: markdown
-        title: "Today / expected behavior"
-        content: >-
-          {% set hot_day = is_state('binary_sensor.climate_extreme_heat_day', 'on') %}
-          {% set overlay = is_state('input_boolean.climate_extreme_heat_overlay_enabled', 'on') %}
-          {% set automation = is_state('input_boolean.climate_automation_enabled', 'on') %}
-          {% set occupied = states('zone.home') | int(0) > 0 %}
-          {% set guest = is_state('input_boolean.mode_guest', 'on') %}
-          {% set prearrival = is_state('binary_sensor.climate_pre_arrival_expected', 'on') %}
-          {% set forecast_high = state_attr('binary_sensor.climate_extreme_heat_day', 'forecast_high_f') %}
-          {% set threshold = states('input_number.climate_extreme_heat_threshold') %}
+            Forecast high: {{ state_attr('binary_sensor.climate_extreme_heat_day', 'forecast_high_f') | default('unknown', true) }}°F<br>
+            Overlay is armed and may pre-cool during eligible occupied,
+            guest, or pre-arrival windows.
 
-          {% if hot_day %}
-          ## ☀️ Extreme heat is expected
-          {% else %}
-          ## Mild enough for normal climate scheduling
-          {% endif %}
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.climate_pre_arrival_expected
+            state: "on"
+        card:
+          type: markdown
+          title: "Pre-arrival expected"
+          content: >-
+            ## Climate pre-arrival is eligible
 
-          **Forecast high:** {{ forecast_high if forecast_high not in [none, '', 'unknown'] else 'unknown' }}°F  
-          **Extreme-heat threshold:** {{ threshold }}°F  
-          **Overlay armed:** {{ 'Yes' if overlay else 'No' }}  
-          **Automation enabled:** {{ 'Yes' if automation else 'No' }}
+            Expected arrivals: {{ state_attr('binary_sensor.climate_pre_arrival_expected', 'expected_people') | default('unknown', true) }}<br>
+            Rule: {{ state_attr('binary_sensor.climate_pre_arrival_expected', 'reason') | default('active', true) }}
 
-          {% if automation and overlay and hot_day and (occupied or guest or prearrival) %}
-          Expected behavior: afternoon pre-cool may run or remain active while the house is occupied, guest mode is on, or an eligible resident is approaching home.
-          {% elif automation and overlay and hot_day %}
-          Expected behavior: hot-day logic is armed, but the overlay waits for occupancy, guest mode, or a fresh pre-arrival signal before applying cooling bias.
-          {% elif automation and not hot_day %}
-          Expected behavior: normal schedule setpoints apply; no hot-day cooling bias is expected.
-          {% elif not automation %}
-          Expected behavior: no schedule, away, or hot-day automation will apply until automation is enabled again.
-          {% else %}
-          Expected behavior: check overlay and automation toggles before expecting pre-cool behavior.
-          {% endif %}
+      - type: thermostat
+        entity: climate.dining_room_thermostat
+        name: "Dining Room Thermostat"
+
+      - type: history-graph
+        title: "Temperature trends"
+        hours_to_show: 24
+        entities:
+          - entity: sensor.dining_room_thermostat_temperature
+            name: "Dining room"
+          - entity: sensor.master_bedroom_sensor_temperature
+            name: "Bedroom"
+          - entity: sensor.weather_outdoor_temperature
+            name: "Outdoor"
+
+      - type: history-graph
+        title: "Air quality trends"
+        hours_to_show: 24
+        entities:
+          - entity: sensor.thermostat_vocs
+            name: "VOC"
+          - entity: sensor.thermostat_carbon_dioxide
+            name: "CO2"
 
       - type: grid
         title: "Schedule tuning"
