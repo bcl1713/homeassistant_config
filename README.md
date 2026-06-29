@@ -44,6 +44,10 @@ This configuration uses Home Assistant's packages feature to organize functional
 - **device_batteries.yaml**: Battery inventory, summary sensors, and battery alerts
 - **device_connectivity.yaml**: Conservative Z-Wave, stale-device, and integration-health alerts
 - **chores.yaml**: Household chore rotation and tracking system
+- **climate_schedule.yaml**: Baseline HVAC setpoint helpers, schedule application, and occupied restart resync
+- **climate_occupancy.yaml**: Away, return-home, and pre-arrival climate recovery behavior
+- **climate_extreme_heat.yaml**: Extreme-heat day detection plus bounded pre-cool overlay behavior
+- **climate_diagnostics.yaml**: Dashboard-facing climate activity and temperature diagnostic sensors
 - **light_groups.yaml**: Logical grouping of lights for easier control
 - **presence.yaml**: Presence detection and related automations
 - **remotes.yaml**: Z-Wave remote control configuration

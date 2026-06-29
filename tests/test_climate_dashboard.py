@@ -2,14 +2,15 @@ from pathlib import Path
 
 import yaml
 
+from climate_package_helpers import load_climate_packages
+
 
 ROOT = Path(__file__).resolve().parents[1]
-CLIMATE = ROOT / "packages" / "climate_control.yaml"
 DASHBOARD = ROOT / "dashboards" / "climate_control.yaml"
 
 
 def load_climate():
-    return yaml.safe_load(CLIMATE.read_text())
+    return load_climate_packages()
 
 
 def load_dashboard():

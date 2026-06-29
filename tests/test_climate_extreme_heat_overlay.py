@@ -1,12 +1,12 @@
-from pathlib import Path
 from datetime import datetime, timedelta
 
 from jinja2 import Environment
-import yaml
 
-
-ROOT = Path(__file__).resolve().parents[1]
-CLIMATE = ROOT / "packages" / "climate_control.yaml"
+from climate_package_helpers import (
+    CLIMATE_PACKAGE_NAMES,
+    climate_package_text,
+    load_climate_packages,
+)
 
 
 class MockState:
@@ -54,7 +54,7 @@ def render_ha_template(template, states, updated_at=None, now=None):
 
 
 def load_climate():
-    return yaml.safe_load(CLIMATE.read_text())
+    return load_climate_packages()
 
 
 def automation(automation_id):
@@ -92,6 +92,25 @@ SCHEDULE_SETPOINT_HELPERS = {
     "climate_cool_sleep",
     "climate_cool_away",
 }
+
+
+EXPECTED_CLIMATE_PACKAGES = {
+    "climate_schedule.yaml",
+    "climate_occupancy.yaml",
+    "climate_extreme_heat.yaml",
+    "climate_diagnostics.yaml",
+}
+
+
+def test_climate_control_is_split_into_responsibility_packages():
+    assert EXPECTED_CLIMATE_PACKAGES.issubset(CLIMATE_PACKAGE_NAMES)
+    assert "climate_control.yaml" not in CLIMATE_PACKAGE_NAMES
+
+    package_text = climate_package_text()
+    assert "Baseline climate schedule helpers" in package_text
+    assert "Presence-aware climate behavior" in package_text
+    assert "Extreme-heat climate overlay" in package_text
+    assert "Dashboard-facing climate diagnostics" in package_text
 
 
 def test_climate_schedule_setpoint_helpers_restore_last_ui_value():
@@ -137,7 +156,7 @@ def test_extreme_heat_day_uses_weather_owned_high_temperature_helper():
 
 def test_precool_apply_is_bounded_occupied_and_one_shot():
     item = automation("climate_extreme_heat_precool_apply")
-    text = CLIMATE.read_text()
+    text = climate_package_text()
 
     assert {trigger.get("id") for trigger in item["trigger"]} == {
         "overlay_window_start",
@@ -153,7 +172,7 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
     assert "input_boolean.mode_guest" in text
     assert "day - offset" in text
     assert "input_boolean.turn_on" in text
-    assert "Generic\n      # pre-arrival recovery applies this offset separately" in text
+    assert "packages/climate_extreme_heat.yaml" in text
 
 
 def test_precool_apply_rearms_for_guest_mode_without_return_home_race():
@@ -226,7 +245,7 @@ def test_return_home_deactivate_applies_extreme_heat_overlay_before_day_restore(
 
 def test_precool_prearrival_helpers_use_person_level_proximity_abstractions():
     config = load_climate()
-    text = CLIMATE.read_text()
+    text = climate_package_text()
 
     assert config["input_number"]["climate_precool_arrival_distance_ft"]["initial"] == 30000
     assert config["input_number"]["climate_precool_arrival_signal_max_age"]["initial"] == 20
@@ -354,7 +373,7 @@ def test_generic_prearrival_apply_can_start_from_debounced_expectation():
 
 def test_precool_restore_cancels_abandoned_prearrival_to_away_targets():
     item = automation("climate_pre_arrival_recovery_restore")
-    text = CLIMATE.read_text()
+    text = climate_package_text()
 
     abandoned = next(
         trigger for trigger in item["trigger"] if trigger.get("id") == "prearrival_cleared"
@@ -412,7 +431,7 @@ def test_precool_restore_overlay_end_restores_away_prearrival_targets():
 
 def test_restart_resync_runs_on_start_only_when_occupied_or_guest_and_stale():
     item = automation("climate_restart_occupied_resync")
-    text = CLIMATE.read_text()
+    text = climate_package_text()
 
     assert item["trigger"] == [
         {"platform": "homeassistant", "event": "start", "id": "ha_start"}
@@ -438,7 +457,7 @@ def test_restart_resync_runs_on_start_only_when_occupied_or_guest_and_stale():
     assert "target_temp_high" in stale_guard["value_template"]
     assert "target_temp_low" in stale_guard["value_template"]
     assert "states('climate.dining_room_thermostat') != 'heat_cool'" in stale_guard["value_template"]
-    assert "climate_cool_away" not in text.split("id: \"climate_restart_occupied_resync\"", 1)[1]
+    assert "climate_cool_away" not in text.split("id: climate_restart_occupied_resync", 1)[1]
 
 
 def test_restart_resync_selects_current_occupied_schedule_and_overlay():

@@ -1,0 +1,36 @@
+# packages/climate_diagnostics.yaml
+#
+# Dashboard-facing climate diagnostics derived from built-in thermostat state
+# and room temperature sensors. No climate control behavior lives here.
+
+template:
+  - binary_sensor:
+      - name: Climate Heating Active
+        unique_id: climate_heating_active
+        icon: mdi:fire
+        state: |
+          {{ state_attr('climate.dining_room_thermostat', 'hvac_action') == 'heating' }}
+        attributes:
+          source: climate.dining_room_thermostat hvac_action
+      - name: Climate Cooling Active
+        unique_id: climate_cooling_active
+        icon: mdi:snowflake
+        state: |
+          {{ state_attr('climate.dining_room_thermostat', 'hvac_action') == 'cooling' }}
+        attributes:
+          source: climate.dining_room_thermostat hvac_action
+    sensor:
+      - name: Average Indoor Temperature
+        unique_id: average_indoor_temperature
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: °F
+        icon: mdi:home-thermometer-outline
+        availability: |
+          {{ states('sensor.dining_room_thermostat_temperature') | float(none) is not none
+             and states('sensor.master_bedroom_sensor_temperature') | float(none) is not none }}
+        state: |
+          {% set dining = states('sensor.dining_room_thermostat_temperature') | float(none) %} {% set bedroom = states('sensor.master_bedroom_sensor_temperature') | float(none) %} {{ ((dining + bedroom) / 2) | round(1) if dining is not none and bedroom is not none else 'unknown' }}
+        attributes:
+          source_entities: |
+            sensor.dining_room_thermostat_temperature, sensor.master_bedroom_sensor_temperature
