@@ -312,3 +312,54 @@ def test_precool_restore_overlay_end_restores_away_prearrival_targets():
         for step in sequence
         if step.get("service") == "climate.set_temperature"
     )
+
+
+def test_restart_resync_runs_on_start_only_when_occupied_or_guest_and_stale():
+    item = automation("climate_restart_occupied_resync")
+    text = CLIMATE.read_text()
+
+    assert item["trigger"] == [
+        {"platform": "homeassistant", "event": "start", "id": "ha_start"}
+    ]
+    assert any(
+        condition.get("entity_id") == "input_boolean.climate_automation_enabled"
+        and condition.get("state") == "on"
+        for condition in item["condition"]
+    )
+    occupancy_condition = next(
+        condition for condition in item["condition"] if condition.get("condition") == "or"
+    )
+    assert {
+        (condition.get("condition"), condition.get("entity_id"), condition.get("above"), condition.get("state"))
+        for condition in occupancy_condition["conditions"]
+    } == {
+        ("numeric_state", "zone.home", 0, None),
+        ("state", "input_boolean.mode_guest", None, "on"),
+    }
+    stale_guard = next(
+        condition for condition in item["condition"] if condition.get("condition") == "template"
+    )
+    assert "target_temp_high" in stale_guard["value_template"]
+    assert "target_temp_low" in stale_guard["value_template"]
+    assert "states('climate.dining_room_thermostat') != 'heat_cool'" in stale_guard["value_template"]
+    assert "climate_cool_away" not in text.split("id: \"climate_restart_occupied_resync\"", 1)[1]
+
+
+def test_restart_resync_selects_current_occupied_schedule_and_overlay():
+    item = automation("climate_restart_occupied_resync")
+    branches = item["action"][1]["choose"]
+    branch_text = [str(branch) for branch in branches]
+    default_text = str(item["action"][1]["default"])
+
+    assert len(branches) == 4
+    assert "climate_cool_morning" in branch_text[0]
+    assert "climate_heat_morning" in branch_text[0]
+    assert "binary_sensor.climate_extreme_heat_day" in branch_text[1]
+    assert "day - offset" in branch_text[1]
+    assert "input_boolean.climate_extreme_heat_precool_active" in branch_text[1]
+    assert "climate_cool_day" in branch_text[2]
+    assert "climate_heat_day" in branch_text[2]
+    assert "climate_cool_bedtime" in branch_text[3]
+    assert "climate_heat_bedtime" in branch_text[3]
+    assert "climate_cool_sleep" in default_text
+    assert "climate_heat_sleep" in default_text

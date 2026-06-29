@@ -1022,3 +1022,173 @@ automation:
                 {{ states('input_number.climate_cool_sleep') | float }}
               target_temp_low: >
                 {{ states('input_number.climate_heat_sleep') | float }}
+
+  - alias: "climate_restart_occupied_resync"
+    id: "climate_restart_occupied_resync"
+    description: >
+      On Home Assistant startup, reapply the current occupied or guest climate
+      schedule if the thermostat was restored with stale targets.
+    trigger:
+      - platform: homeassistant
+        event: start
+        id: ha_start
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
+      # Avoid startup service-call thrash when the live thermostat already
+      # matches the expected band. Ecobee commonly reports half-degree adjusted
+      # targets, so allow a small tolerance around helper values.
+      - condition: template
+        value_template: >
+          {% set current = now().strftime('%H:%M:%S') %}
+          {% set weekday = now().weekday() %}
+          {% set morning = (
+            (weekday < 5 and '05:00:00' <= current < '09:00:00')
+            or (weekday >= 5 and '07:00:00' <= current < '09:00:00')
+          ) %}
+          {% set extreme_heat = (
+            is_state('input_boolean.climate_extreme_heat_overlay_enabled', 'on')
+            and is_state('binary_sensor.climate_extreme_heat_day', 'on')
+            and '12:59:00' <= current < '18:00:00'
+          ) %}
+          {% if morning %}
+            {% set expected_high = states('input_number.climate_cool_morning') | float(none) %}
+            {% set expected_low = states('input_number.climate_heat_morning') | float(none) %}
+          {% elif extreme_heat %}
+            {% set day = states('input_number.climate_cool_day') | float(none) %}
+            {% set offset = states('input_number.climate_extreme_heat_precool_offset') | float(1) %}
+            {% set expected_high = ([day - offset, 65] | max) if day is not none else none %}
+            {% set expected_low = states('input_number.climate_heat_day') | float(none) %}
+          {% elif '09:00:00' <= current < '21:00:00' %}
+            {% set expected_high = states('input_number.climate_cool_day') | float(none) %}
+            {% set expected_low = states('input_number.climate_heat_day') | float(none) %}
+          {% elif '21:00:00' <= current < '22:30:00' %}
+            {% set expected_high = states('input_number.climate_cool_bedtime') | float(none) %}
+            {% set expected_low = states('input_number.climate_heat_bedtime') | float(none) %}
+          {% else %}
+            {% set expected_high = states('input_number.climate_cool_sleep') | float(none) %}
+            {% set expected_low = states('input_number.climate_heat_sleep') | float(none) %}
+          {% endif %}
+          {% set actual_high = state_attr('climate.dining_room_thermostat', 'target_temp_high') | float(none) %}
+          {% set actual_low = state_attr('climate.dining_room_thermostat', 'target_temp_low') | float(none) %}
+          {{ expected_high is not none and expected_low is not none and (
+            states('climate.dining_room_thermostat') != 'heat_cool'
+            or actual_high is none
+            or actual_low is none
+            or ((actual_high - expected_high) | abs > 0.6)
+            or ((actual_low - expected_low) | abs > 0.6)
+          ) }}
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - choose:
+          # Morning (5:00-8:59 weekdays, 7:00-8:59 weekends)
+          - conditions:
+              - condition: or
+                conditions:
+                  - condition: and
+                    conditions:
+                      - condition: time
+                        after: "05:00:00"
+                        before: "09:00:00"
+                      - condition: time
+                        weekday:
+                          - mon
+                          - tue
+                          - wed
+                          - thu
+                          - fri
+                  - condition: and
+                    conditions:
+                      - condition: time
+                        after: "07:00:00"
+                        before: "09:00:00"
+                      - condition: time
+                        weekday:
+                          - sat
+                          - sun
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {{ states('input_number.climate_cool_morning') | float }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_morning') | float }}
+          # Extreme heat overlay window (13:00-17:59) wins over normal day.
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.climate_extreme_heat_overlay_enabled
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.climate_extreme_heat_day
+                state: "on"
+              - condition: time
+                after: "12:59:00"
+                before: "18:00:00"
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {% set day = states('input_number.climate_cool_day') | float %}
+                    {% set offset = states('input_number.climate_extreme_heat_precool_offset') | float(1) %}
+                    {{ [day - offset, 65] | max }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_day') | float }}
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.climate_extreme_heat_precool_active
+          # Daytime (9:00-20:59)
+          - conditions:
+              - condition: time
+                after: "09:00:00"
+                before: "21:00:00"
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {{ states('input_number.climate_cool_day') | float }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_day') | float }}
+          # Bedtime (21:00-22:29)
+          - conditions:
+              - condition: time
+                after: "21:00:00"
+                before: "22:30:00"
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {{ states('input_number.climate_cool_bedtime') | float }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_bedtime') | float }}
+        # Default: Sleep temps (22:30-04:59)
+        default:
+          - service: climate.set_temperature
+            target:
+              entity_id: climate.dining_room_thermostat
+            data:
+              target_temp_high: >
+                {{ states('input_number.climate_cool_sleep') | float }}
+              target_temp_low: >
+                {{ states('input_number.climate_heat_sleep') | float }}
+    mode: single
