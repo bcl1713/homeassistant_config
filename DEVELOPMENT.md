@@ -46,6 +46,7 @@ Follow these standards for all Home Assistant configuration changes:
 
 0. **Repository structure**:
    - `packages: !include_dir_named packages` loads feature packages
+   - `packages/shared_infrastructure.yaml` owns shared package contracts such as `notify.all_mobile_devices` and YAML Lovelace dashboard registration; feature packages may consume these contracts but should not redefine them ad hoc
    - `automation: !include_dir_merge_list automation` loads standalone automation files
    - `input_boolean: !include_dir_merge_named input_boolean` loads helper toggles
    - Prefer extending the existing modular structure instead of placing unrelated logic in `configuration.yaml`

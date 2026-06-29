@@ -4,12 +4,16 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIGURATION = ROOT / "configuration.yaml"
+SHARED_INFRASTRUCTURE = ROOT / "packages" / "shared_infrastructure.yaml"
 DASHBOARD = ROOT / "dashboards" / "window_ventilation.yaml"
 
 
 def load_dashboard():
     return yaml.safe_load(DASHBOARD.read_text())
+
+
+def load_shared_infrastructure():
+    return yaml.safe_load(SHARED_INFRASTRUCTURE.read_text())
 
 
 def entity_refs(cards):
@@ -26,13 +30,13 @@ def entity_refs(cards):
 
 
 def test_window_ventilation_dashboard_is_yaml_managed_and_hidden():
-    config_text = CONFIGURATION.read_text()
+    dashboard_config = load_shared_infrastructure()["lovelace"]["dashboards"][
+        "window-ventilation"
+    ]
 
-    assert "lovelace:" in config_text
-    assert "window-ventilation:" in config_text
-    assert "mode: yaml" in config_text
-    assert "filename: dashboards/window_ventilation.yaml" in config_text
-    assert "show_in_sidebar: false" in config_text
+    assert dashboard_config["mode"] == "yaml"
+    assert dashboard_config["filename"] == "dashboards/window_ventilation.yaml"
+    assert dashboard_config["show_in_sidebar"] is False
 
 
 def test_window_ventilation_dashboard_surfaces_required_context():
