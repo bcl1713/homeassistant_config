@@ -91,34 +91,6 @@ views:
         points_per_hour: 4
         hour24: true
         animate: false
-        show:
-          legend: true
-          labels: true
-          points: false
-          extrema: true
-        entities:
-          - entity: sensor.dining_room_thermostat_temperature
-            name: "Dining room"
-            color: "#f9a825"
-          - entity: sensor.master_bedroom_sensor_temperature
-            name: "Bedroom"
-            color: "#7e57c2"
-          - entity: sensor.average_indoor_temperature
-            name: "Indoor avg"
-            color: "#26a69a"
-            line_width: 4
-          - entity: sensor.weather_outdoor_temperature
-            name: "Outdoor"
-            color: "#42a5f5"
-
-      - type: custom:mini-graph-card
-        name: "HVAC activity ribbon"
-        hours_to_show: 24
-        points_per_hour: 4
-        hour24: true
-        animate: false
-        height: 48
-        line_width: 1
         lower_bound_secondary: 0
         upper_bound_secondary: 1
         state_map:
@@ -127,15 +99,16 @@ views:
           - value: "on"
             label: "Active"
         show:
-          name: true
-          icon: false
-          state: false
           legend: true
-          labels: false
+          labels: true
           labels_secondary: false
           points: false
-          extrema: false
+          extrema: true
         entities:
+          - entity: sensor.average_indoor_temperature
+            name: "Indoor avg"
+            color: "#26a69a"
+            line_width: 4
           - entity: binary_sensor.climate_heating_active
             name: "Heating"
             color: "rgba(239, 83, 80, 0.35)"
@@ -157,26 +130,76 @@ views:
             show_state: false
             smoothing: false
 
+      - type: entities
+        title: "Room temperatures"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.average_indoor_temperature
+            name: "Indoor average"
+          - entity: sensor.dining_room_thermostat_temperature
+            name: "Dining room"
+          - entity: sensor.master_bedroom_sensor_temperature
+            name: "Master bedroom"
+          - entity: sensor.weather_outdoor_temperature
+            name: "Outdoor"
+
       - type: custom:mini-graph-card
         name: "Air quality trends"
         hours_to_show: 24
         points_per_hour: 4
         hour24: true
         animate: false
+        lower_bound_secondary: 0
+        upper_bound_secondary: 1
+        state_map:
+          - value: "off"
+            label: "Inactive"
+          - value: "on"
+            label: "Active"
         show:
           legend: true
           labels: true
-          labels_secondary: true
+          labels_secondary: false
           points: false
           extrema: true
         entities:
-          - entity: sensor.thermostat_vocs
-            name: "VOC"
-            color: "#ab47bc"
+          - entity: sensor.thermostat_air_quality_index
+            name: "AQI"
+            color: "#ff7043"
+            line_width: 4
+          - entity: binary_sensor.climate_heating_active
+            name: "Heating"
+            color: "rgba(239, 83, 80, 0.35)"
+            y_axis: secondary
+            aggregate_func: max
+            show_line: false
+            show_fill: true
+            show_points: false
+            show_state: false
+            smoothing: false
+          - entity: binary_sensor.climate_cooling_active
+            name: "Cooling"
+            color: "rgba(41, 182, 246, 0.35)"
+            y_axis: secondary
+            aggregate_func: max
+            show_line: false
+            show_fill: true
+            show_points: false
+            show_state: false
+            smoothing: false
+
+      - type: entities
+        title: "Air quality details"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.air_quality_composite_status
+            name: "Composite status"
+          - entity: sensor.thermostat_air_quality_index
+            name: "AQI"
           - entity: sensor.thermostat_carbon_dioxide
             name: "CO2"
-            color: "#66bb6a"
-            y_axis: secondary
+          - entity: sensor.thermostat_vocs
+            name: "VOC"
 
       - type: grid
         title: "Schedule tuning"

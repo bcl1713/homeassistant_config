@@ -37,6 +37,14 @@ def graph_card(name):
     raise AssertionError(f"mini graph card {name!r} not found")
 
 
+def entities_card(title):
+    cards = load_dashboard()["views"][0]["cards"]
+    for card in cards:
+        if card.get("type") == "entities" and card.get("title") == title:
+            return card
+    raise AssertionError(f"entities card {title!r} not found")
+
+
 def entity_ids(card):
     return [entity["entity"] for entity in card["entities"]]
 
@@ -46,6 +54,18 @@ def assert_binary_state_map(card):
         {"value": "off", "label": "Inactive"},
         {"value": "on", "label": "Active"},
     ]
+
+
+def assert_hvac_activity_entities(card):
+    for entity in card["entities"][1:]:
+        assert entity["y_axis"] == "secondary"
+        assert entity["aggregate_func"] == "max"
+        assert entity["show_line"] is False
+        assert entity["show_fill"] is True
+        assert entity["show_points"] is False
+        assert entity["show_state"] is False
+        assert entity["smoothing"] is False
+        assert entity["color"].startswith("rgba(")
 
 
 def test_climate_activity_helpers_derive_from_thermostat_hvac_action():
@@ -72,56 +92,60 @@ def test_average_indoor_temperature_uses_dining_room_and_bedroom():
     assert "/ 2" in sensor["state"]
 
 
-def test_temperature_trends_use_mini_graph_with_average_indoor_temperature():
+def test_temperature_trends_use_average_indoor_with_hvac_activity_correlation():
     card = graph_card("Temperature trends")
 
     assert "history-graph" not in DASHBOARD.read_text()
     assert card["hours_to_show"] == 24
-    assert "lower_bound" not in card
-    assert "upper_bound" not in card
-    assert "lower_bound_secondary" not in card
-    assert "upper_bound_secondary" not in card
-    assert entity_ids(card) == [
-        "sensor.dining_room_thermostat_temperature",
-        "sensor.master_bedroom_sensor_temperature",
-        "sensor.average_indoor_temperature",
-        "sensor.weather_outdoor_temperature",
-    ]
-
-
-def test_hvac_activity_uses_dedicated_filled_ribbon_card():
-    card = graph_card("HVAC activity ribbon")
-
-    assert card["hours_to_show"] == 24
-    assert card["height"] == 48
     assert card["lower_bound_secondary"] == 0
     assert card["upper_bound_secondary"] == 1
     assert_binary_state_map(card)
     assert entity_ids(card) == [
+        "sensor.average_indoor_temperature",
         "binary_sensor.climate_heating_active",
         "binary_sensor.climate_cooling_active",
     ]
-    assert card["show"]["labels"] is False
     assert card["show"]["labels_secondary"] is False
-    for entity in card["entities"]:
-        assert entity["y_axis"] == "secondary"
-        assert entity["aggregate_func"] == "max"
-        assert entity["show_line"] is False
-        assert entity["show_fill"] is True
-        assert entity["show_points"] is False
-        assert entity["show_state"] is False
-        assert entity["smoothing"] is False
-        assert entity["color"].startswith("rgba(")
+    assert card["entities"][0]["line_width"] == 4
+    assert_hvac_activity_entities(card)
 
 
-def test_air_quality_trends_keep_voc_and_co2_axes_without_hvac_trace_noise():
+def test_room_temperature_detail_card_keeps_underlying_sensor_readings():
+    card = entities_card("Room temperatures")
+
+    assert card["show_header_toggle"] is False
+    assert entity_ids(card) == [
+        "sensor.average_indoor_temperature",
+        "sensor.dining_room_thermostat_temperature",
+        "sensor.master_bedroom_sensor_temperature",
+        "sensor.weather_outdoor_temperature",
+    ]
+
+
+def test_air_quality_trends_use_aqi_with_hvac_activity_correlation():
     card = graph_card("Air quality trends")
 
     assert card["hours_to_show"] == 24
-    assert "state_map" not in card
+    assert card["lower_bound_secondary"] == 0
+    assert card["upper_bound_secondary"] == 1
+    assert_binary_state_map(card)
     assert entity_ids(card) == [
-        "sensor.thermostat_vocs",
-        "sensor.thermostat_carbon_dioxide",
+        "sensor.thermostat_air_quality_index",
+        "binary_sensor.climate_heating_active",
+        "binary_sensor.climate_cooling_active",
     ]
-    co2 = card["entities"][1]
-    assert co2["y_axis"] == "secondary"
+    assert card["show"]["labels_secondary"] is False
+    assert card["entities"][0]["line_width"] == 4
+    assert_hvac_activity_entities(card)
+
+
+def test_air_quality_detail_card_keeps_composite_and_sensor_readings():
+    card = entities_card("Air quality details")
+
+    assert card["show_header_toggle"] is False
+    assert entity_ids(card) == [
+        "sensor.air_quality_composite_status",
+        "sensor.thermostat_air_quality_index",
+        "sensor.thermostat_carbon_dioxide",
+        "sensor.thermostat_vocs",
+    ]
