@@ -19,6 +19,14 @@ def sensor_names(package):
     return names
 
 
+def template_sensor_by_name(package, name):
+    for block in package["template"]:
+        for sensor in block.get("sensor", []):
+            if sensor["name"] == name:
+                return sensor
+    raise AssertionError(f"template sensor {name!r} not found")
+
+
 def automation_by_id(package, automation_id):
     for automation in package["automation"]:
         if automation["id"] == automation_id:
@@ -30,6 +38,7 @@ def test_window_ventilation_required_entities_are_defined():
     package = load_package()
 
     assert "Window Ventilation Indoor Dew Point" in sensor_names(package)
+    assert "Window Ventilation Decision Context" in sensor_names(package)
     assert "Window Ventilation Recommendation" in sensor_names(package)
     assert "Window Ventilation Reason" in sensor_names(package)
 
@@ -69,6 +78,54 @@ def test_window_ventilation_uses_household_relative_air_quality_baselines():
     assert "state_attr('weather.forecast_home', 'dew_point')" not in package_text
     assert "rain_probability >= 30" in package_text
     assert "rain > 0.1" not in package_text
+
+
+def test_window_ventilation_reuses_canonical_decision_context():
+    package = load_package()
+
+    context = template_sensor_by_name(package, "Window Ventilation Decision Context")
+    recommendation = template_sensor_by_name(
+        package, "Window Ventilation Recommendation"
+    )
+    reason = template_sensor_by_name(package, "Window Ventilation Reason")
+
+    context_text = str(context)
+    recommendation_text = str(recommendation)
+    reason_text = str(reason)
+
+    assert context["unique_id"] == "window_ventilation_decision_context"
+    assert "sensor.window_ventilation_decision_context" in recommendation_text
+    assert "sensor.window_ventilation_decision_context" in reason_text
+    assert recommendation["attributes"]["context_entity"] == (
+        "sensor.window_ventilation_decision_context"
+    )
+
+    for canonical_attribute in (
+        "outdoor_cooler",
+        "outdoor_drier",
+        "raining",
+        "hvac_running",
+        "winter_mode",
+        "humidity_reason",
+        "air_quality_reason",
+        "mild_open",
+    ):
+        assert canonical_attribute in context["attributes"]
+        assert f"state_attr(ctx, '{canonical_attribute}')" in recommendation_text
+
+    for source_reference in (
+        "states('sensor.dining_room_thermostat_temperature')",
+        "states('sensor.thermostat_humidity')",
+        "states('sensor.weather_outdoor_temperature')",
+        "states('sensor.weather_outdoor_dew_point')",
+        "states('sensor.precipitation_forecast_next_hour')",
+        "states('sensor.condition_forecast_next_hour')",
+        "states('sensor.thermostat_carbon_dioxide')",
+        "states('sensor.thermostat_vocs')",
+    ):
+        assert source_reference in context_text
+        assert source_reference not in recommendation_text
+        assert source_reference not in reason_text
 
 
 def test_window_ventilation_notifications_are_advisory_and_gated():
