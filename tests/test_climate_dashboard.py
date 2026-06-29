@@ -37,12 +37,19 @@ def graph_card(name):
     raise AssertionError(f"mini graph card {name!r} not found")
 
 
-def entities_card(title):
-    cards = load_dashboard()["views"][0]["cards"]
-    for card in cards:
-        if card.get("type") == "entities" and card.get("title") == title:
-            return card
-    raise AssertionError(f"entities card {title!r} not found")
+def assert_graph_detail_card(name, expected_entities):
+    card = graph_card(name)
+
+    assert card["hours_to_show"] == 24
+    assert card["show"]["legend"] is True
+    assert card["show"]["labels"] is True
+    assert card["show"]["points"] is False
+    assert entity_ids(card) == expected_entities
+    assert "binary_sensor.climate_heating_active" not in expected_entities
+    assert "binary_sensor.climate_cooling_active" not in expected_entities
+    for entity in card["entities"]:
+        assert entity["show_fill"] is False
+        assert "y_axis" not in entity
 
 
 def entity_ids(card):
@@ -107,19 +114,17 @@ def test_temperature_trends_use_average_indoor_with_hvac_activity_correlation():
     ]
     assert card["show"]["labels_secondary"] is False
     assert card["entities"][0]["line_width"] == 4
+    assert card["entities"][0]["show_fill"] is False
     assert_hvac_activity_entities(card)
 
 
-def test_room_temperature_detail_card_keeps_underlying_sensor_readings():
-    card = entities_card("Room temperatures")
-
-    assert card["show_header_toggle"] is False
-    assert entity_ids(card) == [
+def test_room_temperature_detail_graph_keeps_underlying_sensor_readings_without_hvac_overlays():
+    assert_graph_detail_card("Room temperatures", [
         "sensor.average_indoor_temperature",
         "sensor.dining_room_thermostat_temperature",
         "sensor.master_bedroom_sensor_temperature",
         "sensor.weather_outdoor_temperature",
-    ]
+    ])
 
 
 def test_air_quality_trends_use_aqi_with_hvac_activity_correlation():
@@ -136,16 +141,13 @@ def test_air_quality_trends_use_aqi_with_hvac_activity_correlation():
     ]
     assert card["show"]["labels_secondary"] is False
     assert card["entities"][0]["line_width"] == 4
+    assert card["entities"][0]["show_fill"] is False
     assert_hvac_activity_entities(card)
 
 
-def test_air_quality_detail_card_keeps_composite_and_sensor_readings():
-    card = entities_card("Air quality details")
-
-    assert card["show_header_toggle"] is False
-    assert entity_ids(card) == [
-        "sensor.air_quality_composite_status",
+def test_air_quality_detail_graph_keeps_sensor_readings_without_hvac_overlays():
+    assert_graph_detail_card("Air quality details", [
         "sensor.thermostat_air_quality_index",
         "sensor.thermostat_carbon_dioxide",
         "sensor.thermostat_vocs",
-    ]
+    ])
