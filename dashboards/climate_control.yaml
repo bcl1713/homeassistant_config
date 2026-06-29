@@ -2,9 +2,8 @@
 #
 # Mobile-first operator view for climate control.
 #
-# This dashboard is YAML-managed from configuration.yaml. It intentionally uses
-# native Lovelace cards only: the climate system is household infrastructure, so
-# the control surface should stay portable and low-dependency.
+# This dashboard is YAML-managed from configuration.yaml. Trend cards use the
+# already-installed mini-graph-card custom card for compact operator history.
 
 title: "Climate Control"
 views:
@@ -86,25 +85,81 @@ views:
         entity: climate.dining_room_thermostat
         name: "Dining Room Thermostat"
 
-      - type: history-graph
-        title: "Temperature trends"
+      - type: custom:mini-graph-card
+        name: "Temperature trends"
         hours_to_show: 24
+        points_per_hour: 4
+        hour24: true
+        animate: false
+        show:
+          legend: true
+          labels: true
+          labels_secondary: false
+          points: false
+          extrema: true
+        lower_bound_secondary: 0
+        upper_bound_secondary: 1
         entities:
           - entity: sensor.dining_room_thermostat_temperature
             name: "Dining room"
+            color: "#f9a825"
           - entity: sensor.master_bedroom_sensor_temperature
             name: "Bedroom"
+            color: "#7e57c2"
+          - entity: sensor.average_indoor_temperature
+            name: "Indoor avg"
+            color: "#26a69a"
+            line_width: 4
           - entity: sensor.weather_outdoor_temperature
             name: "Outdoor"
+            color: "#42a5f5"
+          - entity: binary_sensor.climate_heating_active
+            name: "Heating"
+            color: "#ef5350"
+            y_axis: secondary
+            aggregate_func: max
+            show_state: false
+            smoothing: false
+          - entity: binary_sensor.climate_cooling_active
+            name: "Cooling"
+            color: "#29b6f6"
+            y_axis: secondary
+            aggregate_func: max
+            show_state: false
+            smoothing: false
 
-      - type: history-graph
-        title: "Air quality trends"
+      - type: custom:mini-graph-card
+        name: "Air quality trends"
         hours_to_show: 24
+        points_per_hour: 4
+        hour24: true
+        animate: false
+        show:
+          legend: true
+          labels: true
+          labels_secondary: true
+          points: false
+          extrema: true
         entities:
           - entity: sensor.thermostat_vocs
             name: "VOC"
+            color: "#ab47bc"
           - entity: sensor.thermostat_carbon_dioxide
             name: "CO2"
+            color: "#66bb6a"
+            y_axis: secondary
+          - entity: binary_sensor.climate_heating_active
+            name: "Heating"
+            color: "#ef5350"
+            aggregate_func: max
+            show_state: false
+            smoothing: false
+          - entity: binary_sensor.climate_cooling_active
+            name: "Cooling"
+            color: "#29b6f6"
+            aggregate_func: max
+            show_state: false
+            smoothing: false
 
       - type: grid
         title: "Schedule tuning"
