@@ -1,0 +1,221 @@
+# packages/device_connectivity.yaml
+#
+# Device Connectivity Monitoring Package
+#
+# Features:
+# - Z-Wave node health monitoring
+# - Stale last-seen entity detection
+# - Integration update entity availability checks
+
+input_boolean:
+  device_connectivity_monitoring_enabled:
+    name: "Device Connectivity Monitoring"
+    icon: mdi:access-point-network
+    initial: true
+
+  device_connectivity_alerts_enabled:
+    name: "Device Connectivity Alerts"
+    icon: mdi:network-alert
+    initial: true
+
+  device_connectivity_alert_sent:
+    name: "Device Connectivity Alert Status"
+    icon: mdi:bell-ring
+    initial: false
+
+input_number:
+  device_connectivity_last_seen_threshold_hours:
+    name: "Device Connectivity Last Seen Threshold"
+    min: 1
+    max: 168
+    step: 1
+    unit_of_measurement: "hours"
+    icon: mdi:clock-alert-outline
+    initial: 24
+
+template:
+  - sensor:
+      - name: "Device Connectivity Z-Wave Problems"
+        unique_id: device_connectivity_zwave_problems
+        state: >
+          {% set ns = namespace(problem_nodes=[]) %}
+          {% for entity in states.sensor %}
+            {% if entity.entity_id.endswith('_node_status') and not entity.entity_id.startswith('sensor.device_connectivity_') %}
+              {% set status = entity.state | string | lower %}
+              {% if status not in ['alive', 'asleep', 'awake'] %}
+                {% set ns.problem_nodes = ns.problem_nodes + [entity.name or entity.entity_id] %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.problem_nodes | length }}
+        unit_of_measurement: "nodes"
+        attributes:
+          problem_nodes: >
+            {% set ns = namespace(problem_nodes=[]) %}
+            {% for entity in states.sensor %}
+              {% if entity.entity_id.endswith('_node_status') and not entity.entity_id.startswith('sensor.device_connectivity_') %}
+                {% set status = entity.state | string | lower %}
+                {% if status not in ['alive', 'asleep', 'awake'] %}
+                  {% set ns.problem_nodes = ns.problem_nodes + [(entity.name or entity.entity_id) ~ ' (' ~ entity.state ~ ')'] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.problem_nodes | join(', ') if ns.problem_nodes else 'None' }}
+
+      - name: "Device Connectivity Stale Last Seen"
+        unique_id: device_connectivity_stale_last_seen
+        state: >
+          {% set threshold_hours = states('input_number.device_connectivity_last_seen_threshold_hours') | int(24) %}
+          {% set now_ts = as_timestamp(now()) %}
+          {% set ns = namespace(stale_devices=[]) %}
+          {% for entity in states.sensor %}
+            {% if entity.entity_id.endswith('_last_seen') and not entity.entity_id.startswith('sensor.device_connectivity_') %}
+              {% set last_seen = entity.state %}
+              {% if last_seen not in ['unknown', 'unavailable', '', none] %}
+                {% set age_hours = ((now_ts - as_timestamp(last_seen)) / 3600) | round(1) %}
+                {% if age_hours > threshold_hours %}
+                  {% set ns.stale_devices = ns.stale_devices + [(entity.name or entity.entity_id) ~ ' (' ~ age_hours ~ 'h)'] %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.stale_devices | length }}
+        unit_of_measurement: "devices"
+        attributes:
+          threshold_hours: >
+            {{ states('input_number.device_connectivity_last_seen_threshold_hours') | int(24) }}
+          stale_devices: >
+            {% set threshold_hours = states('input_number.device_connectivity_last_seen_threshold_hours') | int(24) %}
+            {% set now_ts = as_timestamp(now()) %}
+            {% set ns = namespace(stale_devices=[]) %}
+            {% for entity in states.sensor %}
+              {% if entity.entity_id.endswith('_last_seen') and not entity.entity_id.startswith('sensor.device_connectivity_') %}
+                {% set last_seen = entity.state %}
+                {% if last_seen not in ['unknown', 'unavailable', '', none] %}
+                  {% set age_hours = ((now_ts - as_timestamp(last_seen)) / 3600) | round(1) %}
+                  {% if age_hours > threshold_hours %}
+                    {% set ns.stale_devices = ns.stale_devices + [(entity.name or entity.entity_id) ~ ' (' ~ age_hours ~ 'h)'] %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.stale_devices | join(', ') if ns.stale_devices else 'None' }}
+
+      - name: "Device Connectivity Integration Problems"
+        unique_id: device_connectivity_integration_problems
+        state: >
+          {% set ns = namespace(problem_updates=[]) %}
+          {% for entity in states.update %}
+            {% if entity.state in ['unavailable', 'unknown'] %}
+              {% set ns.problem_updates = ns.problem_updates + [entity.name or entity.entity_id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.problem_updates | length }}
+        unit_of_measurement: "entities"
+        attributes:
+          problem_updates: >
+            {% set ns = namespace(problem_updates=[]) %}
+            {% for entity in states.update %}
+              {% if entity.state in ['unavailable', 'unknown'] %}
+                {% set ns.problem_updates = ns.problem_updates + [(entity.name or entity.entity_id) ~ ' (' ~ entity.state ~ ')'] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.problem_updates | join(', ') if ns.problem_updates else 'None' }}
+
+      - name: "Device Connectivity Summary"
+        unique_id: device_connectivity_summary
+        state: >
+          {{
+            states('sensor.device_connectivity_z_wave_problems') | int(0)
+            + states('sensor.device_connectivity_stale_last_seen') | int(0)
+            + states('sensor.device_connectivity_integration_problems') | int(0)
+          }}
+        unit_of_measurement: "issues"
+        attributes:
+          zwave_problem_nodes: >
+            {{ state_attr('sensor.device_connectivity_z_wave_problems', 'problem_nodes') }}
+          stale_devices: >
+            {{ state_attr('sensor.device_connectivity_stale_last_seen', 'stale_devices') }}
+          integration_problems: >
+            {{ state_attr('sensor.device_connectivity_integration_problems', 'problem_updates') }}
+
+  - binary_sensor:
+      - name: "Device Connectivity Has Issues"
+        unique_id: device_connectivity_has_issues
+        state: >
+          {{ states('sensor.device_connectivity_summary') | int(0) > 0 }}
+        device_class: problem
+
+automation:
+  - alias: "device_connectivity_issue_alert"
+    id: "device_connectivity_issue_alert"
+    description: "Alert when Z-Wave nodes, last_seen sensors, or integration update entities look unhealthy"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.device_connectivity_has_issues
+        to: "on"
+        for:
+          minutes: 15
+    condition:
+      - condition: state
+        entity_id: input_boolean.device_connectivity_monitoring_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.device_connectivity_alerts_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.device_connectivity_alert_sent
+        state: "off"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.device_connectivity_alert_sent
+      - variables:
+          total_issues: "{{ states('sensor.device_connectivity_summary') | int(0) }}"
+          zwave_count: "{{ states('sensor.device_connectivity_z_wave_problems') | int(0) }}"
+          stale_count: "{{ states('sensor.device_connectivity_stale_last_seen') | int(0) }}"
+          integration_count: "{{ states('sensor.device_connectivity_integration_problems') | int(0) }}"
+          zwave_summary: "{{ state_attr('sensor.device_connectivity_z_wave_problems', 'problem_nodes') }}"
+          stale_summary: "{{ state_attr('sensor.device_connectivity_stale_last_seen', 'stale_devices') }}"
+          integration_summary: "{{ state_attr('sensor.device_connectivity_integration_problems', 'problem_updates') }}"
+      - service: notify.all_mobile_devices
+        data:
+          title: "Device Connectivity Alert"
+          message: >
+            Detected {{ total_issues }} connectivity issue{{ 's' if total_issues != 1 else '' }}.
+            Z-Wave: {{ zwave_count }} ({{ zwave_summary }}).
+            Last seen: {{ stale_count }} ({{ stale_summary }}).
+            Integrations: {{ integration_count }} ({{ integration_summary }}).
+          data:
+            tag: "device-connectivity-alert"
+            priority: "high"
+            ttl: 0
+      - service: persistent_notification.create
+        data:
+          title: "Device Connectivity Alert"
+          notification_id: device_connectivity_alert
+          message: >
+            Z-Wave problem nodes: {{ zwave_summary }}
+
+            Stale last_seen devices: {{ stale_summary }}
+
+            Unavailable update entities: {{ integration_summary }}
+
+            Threshold: {{ states('input_number.device_connectivity_last_seen_threshold_hours') | int(24) }} hours
+
+  - alias: "device_connectivity_issue_alert_reset"
+    id: "device_connectivity_issue_alert_reset"
+    description: "Reset connectivity alert flag once all monitored entities recover"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.device_connectivity_has_issues
+        to: "off"
+        for:
+          minutes: 30
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.device_connectivity_alert_sent
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: device_connectivity_alert
