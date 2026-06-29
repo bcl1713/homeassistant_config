@@ -114,8 +114,13 @@ def test_temperature_forecast_high_today_uses_deployment_fahrenheit_units():
     sensor = template_sensor("Temperature forecast high today")
 
     assert sensor["unit_of_measurement"] == "°F"
+    assert "availability" in sensor
     assert "forecast[:2]" in sensor["state"]
     assert "ns.high" in sensor["state"]
+    assert "weather_outdoor_temperature" not in sensor["state"]
+    assert sensor["attributes"]["forecast_source"] == "sensor.weather_daily_forecast"
+    assert "Fahrenheit" in sensor["attributes"]["forecast_unit_assumption"]
+    assert "first two twice-daily periods" in sensor["attributes"]["decision_scope"]
 
 
 def test_precipitation_next_hour_uses_nws_probability_semantics():

@@ -119,19 +119,20 @@ def test_extreme_heat_helpers_are_configurable_in_fahrenheit():
     assert "initial" not in config["input_boolean"]["climate_pre_arrival_recovery_active"]
 
 
-def test_extreme_heat_day_uses_validated_daily_forecast_attributes_not_derived_sensor():
+def test_extreme_heat_day_uses_weather_owned_high_temperature_helper():
     sensor = binary_sensor("Climate Extreme Heat Day")
     state = sensor["state"]
+    availability = sensor["availability"]
     attrs = sensor["attributes"]
 
-    assert "state_attr('sensor.weather_daily_forecast', 'forecast')" in state
-    assert "state_attr('sensor.weather_daily_forecast', source_entity)" in state
-    assert "forecast[:2]" in state
-    assert "period.temperature" in state
+    assert "states('sensor.temperature_forecast_high_today')" in availability
+    assert "states('sensor.temperature_forecast_high_today')" in state
     assert "input_number.climate_extreme_heat_threshold" in state
-    assert "sensor.temperature_forecast_high_today" not in state
-    assert attrs["forecast_source"] == "sensor.weather_daily_forecast"
-    assert "Fahrenheit" in attrs["forecast_unit_assumption"]
+    assert "state_attr('sensor.weather_daily_forecast'" not in state
+    assert "forecast[:2]" not in state
+    assert "period.temperature" not in state
+    assert attrs["forecast_source"] == "sensor.temperature_forecast_high_today"
+    assert "weather-owned helper" in attrs["forecast_unit_assumption"]
 
 
 def test_precool_apply_is_bounded_occupied_and_one_shot():

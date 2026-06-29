@@ -206,47 +206,24 @@ template:
         unique_id: climate_extreme_heat_day
         icon: mdi:sun-thermometer
         availability: >
-          {% set daily_state = states('sensor.weather_daily_forecast') %}
+          {% set forecast_high = states('sensor.temperature_forecast_high_today') | float(none) %}
           {% set threshold = states('input_number.climate_extreme_heat_threshold') | float(none) %}
-          {{ daily_state not in ['unknown', 'unavailable', '', none] and threshold is not none }}
+          {{ forecast_high is not none and threshold is not none }}
         state: >
           {#
-            NWS twice-daily forecast periods in this deployment expose
-            temperature values in Fahrenheit. Use the normalized forecast
-            attribute directly instead of the older derived high-temp helper
-            so the hot-day decision is not dependent on ambiguous units.
+            Weather owns forecast payload normalization. Climate consumes the
+            weather-owned high-temperature helper so hot-day decisions do not
+            reparse weather.get_forecasts payloads in this package.
           #}
+          {% set forecast_high = states('sensor.temperature_forecast_high_today') | float(none) %}
           {% set threshold = states('input_number.climate_extreme_heat_threshold') | float(95) %}
-          {% set source_entity = state_attr('sensor.weather_daily_forecast', 'source_entity') | default('weather.nws_home_kmle', true) %}
-          {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
-          {% set source_payload = state_attr('sensor.weather_daily_forecast', source_entity) %}
-          {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
-          {% set ns = namespace(high=none) %}
-          {% for period in forecast[:2] %}
-            {% set temp = period.temperature | float(none) %}
-            {% if temp is not none and (ns.high is none or temp > ns.high) %}
-              {% set ns.high = temp %}
-            {% endif %}
-          {% endfor %}
-          {{ ns.high is not none and ns.high >= threshold }}
+          {{ forecast_high is not none and forecast_high >= threshold }}
         attributes:
-          forecast_high_f: >
-            {% set source_entity = state_attr('sensor.weather_daily_forecast', 'source_entity') | default('weather.nws_home_kmle', true) %}
-            {% set direct_forecast = state_attr('sensor.weather_daily_forecast', 'forecast') %}
-            {% set source_payload = state_attr('sensor.weather_daily_forecast', source_entity) %}
-            {% set forecast = direct_forecast if direct_forecast is not none else source_payload.forecast if source_payload is mapping and source_payload.forecast is defined else [] %}
-            {% set ns = namespace(high=none) %}
-            {% for period in forecast[:2] %}
-              {% set temp = period.temperature | float(none) %}
-              {% if temp is not none and (ns.high is none or temp > ns.high) %}
-                {% set ns.high = temp %}
-              {% endif %}
-            {% endfor %}
-            {{ ns.high if ns.high is not none else 'unknown' }}
+          forecast_high_f: "{{ states('sensor.temperature_forecast_high_today') }}"
           threshold_f: "{{ states('input_number.climate_extreme_heat_threshold') | float(95) }}"
-          forecast_source: "sensor.weather_daily_forecast"
-          forecast_unit_assumption: "NWS forecast temperature attribute is Fahrenheit"
-          decision_scope: "maximum temperature from the first two twice-daily periods"
+          forecast_source: "sensor.temperature_forecast_high_today"
+          forecast_unit_assumption: "weather-owned helper publishes °F"
+          decision_scope: "weather-owned maximum temperature from the first two twice-daily periods"
 
   - sensor:
       - name: "Average Indoor Temperature"
