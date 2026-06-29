@@ -8,21 +8,6 @@ default_config:
 frontend:
   themes: !include_dir_merge_named themes
 
-lovelace:
-  dashboards:
-    window-ventilation:
-      mode: yaml
-      title: "Ventilation Advisor"
-      icon: mdi:window-open-variant
-      show_in_sidebar: false
-      filename: dashboards/window_ventilation.yaml
-    climate-control:
-      mode: yaml
-      title: "Climate Control"
-      icon: mdi:thermostat-auto
-      show_in_sidebar: true
-      filename: dashboards/climate_control.yaml
-
 automation: !include_dir_merge_list automation
 input_boolean: !include_dir_merge_named input_boolean
 scene: !include scenes.yaml
@@ -43,10 +28,3 @@ google_assistant:
 recorder: !include recorder.yaml
 
 logbook: !include logbook.yaml
-
-notify:
-  - platform: group
-    name: all_mobile_devices
-    services:
-      - service: mobile_app_brian_phone
-      - service: mobile_app_hester_phone

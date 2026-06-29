@@ -48,6 +48,7 @@ This configuration uses Home Assistant's packages feature to organize functional
 - **presence.yaml**: Presence detection and related automations
 - **remotes.yaml**: Z-Wave remote control configuration
 - **routines.yaml**: Common household routines (Good Night, etc.)
+- **shared_infrastructure.yaml**: Shared contracts for infrastructure consumed by packages, including `notify.all_mobile_devices` and YAML Lovelace dashboard registration
 - **security_lights.yaml**: Security-focused lighting automations
 - **weather.yaml**: Weather data processing and event monitoring
 

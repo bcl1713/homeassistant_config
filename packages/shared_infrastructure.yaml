@@ -1,0 +1,46 @@
+# packages/shared_infrastructure.yaml
+#
+# Shared Home Assistant infrastructure contract.
+#
+# This package owns root-level wiring that first-party feature packages consume
+# but should not each define independently. Keeping these contracts together
+# makes package dependencies explicit without changing runtime behavior.
+#
+# Provided contracts:
+# - notify.all_mobile_devices: shared household mobile notification target used
+#   by alerting and routine packages.
+# - Lovelace dashboard registration for YAML dashboards stored under
+#   dashboards/.
+#
+# Known package consumers of notify.all_mobile_devices:
+# - packages/air_quality.yaml
+# - packages/cameras.yaml
+# - packages/device_batteries.yaml
+# - packages/device_connectivity.yaml
+# - packages/garage_door_monitoring.yaml
+# - packages/routines.yaml
+# - packages/security_sanity.yaml
+# - packages/towner_notifications.yaml
+# - packages/window_ventilation.yaml
+
+lovelace:
+  dashboards:
+    window-ventilation:
+      mode: yaml
+      title: "Ventilation Advisor"
+      icon: mdi:window-open-variant
+      show_in_sidebar: false
+      filename: dashboards/window_ventilation.yaml
+    climate-control:
+      mode: yaml
+      title: "Climate Control"
+      icon: mdi:thermostat-auto
+      show_in_sidebar: true
+      filename: dashboards/climate_control.yaml
+
+notify:
+  - platform: group
+    name: all_mobile_devices
+    services:
+      - service: mobile_app_brian_phone
+      - service: mobile_app_hester_phone
