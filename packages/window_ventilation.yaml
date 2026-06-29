@@ -106,6 +106,138 @@ template:
           {# Approximate dew point from indoor thermostat temperature/humidity. #}
           {{ (temp_f - ((100 - humidity) * 0.36)) | round(1) }}
 
+      - name: "Window Ventilation Decision Context"
+        unique_id: window_ventilation_decision_context
+        icon: mdi:clipboard-text-search-outline
+        state: >
+          {% set invalid = ['unknown', 'unavailable', '', none] %}
+          {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
+          {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
+          {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
+          {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+          {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
+          {% if indoor is not none and outdoor is not none and outdoor_dew is not none and indoor_dew is not none %}
+            ready
+          {% else %}
+            not_ready
+          {% endif %}
+        attributes:
+          advisory_only: true
+          indoor_temperature: >
+            {% set invalid = ['unknown', 'unavailable', '', none] %}
+            {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
+            {{ (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) }}
+          indoor_humidity: >
+            {% set invalid = ['unknown', 'unavailable', '', none] %}
+            {% set humidity_sensor = states('sensor.thermostat_humidity') %}
+            {{ (humidity_sensor | float(none)) if humidity_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_humidity') | float(none)) }}
+          outdoor_temperature: "{{ states('sensor.weather_outdoor_temperature') | float(none) }}"
+          indoor_dew_point: "{{ states('sensor.window_ventilation_indoor_dew_point') | float(none) }}"
+          outdoor_dew_point: "{{ states('sensor.weather_outdoor_dew_point') | float(none) }}"
+          rain_probability_next_hour: "{{ states('sensor.precipitation_forecast_next_hour') | float(0) }}"
+          forecast_condition_next_hour: "{{ states('sensor.condition_forecast_next_hour') }}"
+          hvac_action: "{{ state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) }}"
+          co2_current: "{{ states('sensor.thermostat_carbon_dioxide') | float(0) }}"
+          co2_baseline: "{{ states('sensor.window_ventilation_co2_baseline') | float(0) }}"
+          voc_current: "{{ states('sensor.thermostat_vocs') | float(0) }}"
+          voc_baseline: "{{ states('sensor.window_ventilation_voc_baseline') | float(0) }}"
+          cooler_delta: "{{ states('input_number.window_ventilation_cooler_delta') | float(3) }}"
+          max_outdoor_dew_point: "{{ states('input_number.window_ventilation_max_outdoor_dew_point') | float(60) }}"
+          winter_threshold: "{{ states('input_number.window_ventilation_winter_threshold') | float(55) }}"
+          high_indoor_humidity: "{{ states('input_number.window_ventilation_high_indoor_humidity') | float(58) }}"
+          data_ready: >
+            {% set invalid = ['unknown', 'unavailable', '', none] %}
+            {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
+            {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
+            {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
+            {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+            {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
+            {{ indoor is not none and outdoor is not none and outdoor_dew is not none and indoor_dew is not none }}
+          raining: >
+            {% set rain_probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
+            {% set condition = states('sensor.condition_forecast_next_hour') %}
+            {{ rain_probability >= 30 or condition in ['rainy', 'pouring', 'snowy-rainy'] }}
+          hvac_running: >
+            {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
+            {{ hvac_action in ['heating', 'cooling'] }}
+          winter_mode: >
+            {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
+            {% set winter_threshold = states('input_number.window_ventilation_winter_threshold') | float(55) %}
+            {{ outdoor is not none and outdoor < winter_threshold }}
+          outdoor_cooler: >
+            {% set invalid = ['unknown', 'unavailable', '', none] %}
+            {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
+            {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
+            {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
+            {% set cooler_delta = states('input_number.window_ventilation_cooler_delta') | float(3) %}
+            {{ indoor is not none and outdoor is not none and (indoor - outdoor) >= cooler_delta }}
+          outdoor_drier: >
+            {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+            {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
+            {% set max_dew = states('input_number.window_ventilation_max_outdoor_dew_point') | float(60) %}
+            {{ outdoor_dew is not none and indoor_dew is not none and outdoor_dew <= max_dew and outdoor_dew <= (indoor_dew + 2) }}
+          outdoor_too_humid: >
+            {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+            {% set max_dew = states('input_number.window_ventilation_max_outdoor_dew_point') | float(60) %}
+            {{ outdoor_dew is not none and outdoor_dew >= (max_dew + 5) }}
+          outdoor_more_humid: >
+            {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+            {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
+            {{ outdoor_dew is not none and indoor_dew is not none and outdoor_dew > (indoor_dew + 2) }}
+          co2_relative: >
+            {% set co2 = states('sensor.thermostat_carbon_dioxide') | float(0) %}
+            {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
+            {{ co2_base > 0 and co2 >= 900 and co2 >= (co2_base + 175) }}
+          co2_outlier: >
+            {% set co2 = states('sensor.thermostat_carbon_dioxide') | float(0) %}
+            {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
+            {{ co2_base > 0 and co2 >= 1400 and co2 >= (co2_base + 100) }}
+          voc_relative: >
+            {% set voc = states('sensor.thermostat_vocs') | float(0) %}
+            {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
+            {{ voc_base > 0 and voc >= 250 and voc >= (voc_base * 1.35) }}
+          voc_outlier: >
+            {% set voc = states('sensor.thermostat_vocs') | float(0) %}
+            {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
+            {{ voc_base > 0 and voc >= 650 and voc >= (voc_base * 1.15) }}
+          humidity_reason: >
+            {% set invalid = ['unknown', 'unavailable', '', none] %}
+            {% set humidity_sensor = states('sensor.thermostat_humidity') %}
+            {% set indoor_humidity = (humidity_sensor | float(none)) if humidity_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_humidity') | float(none)) %}
+            {% set high_humidity = states('input_number.window_ventilation_high_indoor_humidity') | float(58) %}
+            {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+            {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
+            {% set max_dew = states('input_number.window_ventilation_max_outdoor_dew_point') | float(60) %}
+            {% set outdoor_drier = outdoor_dew is not none and indoor_dew is not none and outdoor_dew <= max_dew and outdoor_dew <= (indoor_dew + 2) %}
+            {{ indoor_humidity is not none and indoor_humidity >= high_humidity and outdoor_drier }}
+          air_quality_reason: >
+            {% set co2 = states('sensor.thermostat_carbon_dioxide') | float(0) %}
+            {% set voc = states('sensor.thermostat_vocs') | float(0) %}
+            {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
+            {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
+            {% set co2_relative = co2_base > 0 and co2 >= 900 and co2 >= (co2_base + 175) %}
+            {% set co2_outlier = co2_base > 0 and co2 >= 1400 and co2 >= (co2_base + 100) %}
+            {% set voc_relative = voc_base > 0 and voc >= 250 and voc >= (voc_base * 1.35) %}
+            {% set voc_outlier = voc_base > 0 and voc >= 650 and voc >= (voc_base * 1.15) %}
+            {{ co2_relative or voc_relative or co2_outlier or voc_outlier }}
+          mild_open: >
+            {% set invalid = ['unknown', 'unavailable', '', none] %}
+            {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
+            {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
+            {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
+            {% set cooler_delta = states('input_number.window_ventilation_cooler_delta') | float(3) %}
+            {% set outdoor_cooler = indoor is not none and outdoor is not none and (indoor - outdoor) >= cooler_delta %}
+            {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+            {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
+            {% set max_dew = states('input_number.window_ventilation_max_outdoor_dew_point') | float(60) %}
+            {% set outdoor_drier = outdoor_dew is not none and indoor_dew is not none and outdoor_dew <= max_dew and outdoor_dew <= (indoor_dew + 2) %}
+            {% set rain_probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
+            {% set condition = states('sensor.condition_forecast_next_hour') %}
+            {% set raining = rain_probability >= 30 or condition in ['rainy', 'pouring', 'snowy-rainy'] %}
+            {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
+            {% set hvac_running = hvac_action in ['heating', 'cooling'] %}
+            {{ outdoor_cooler and outdoor_drier and not raining and not hvac_running }}
+
       - name: "Window Ventilation Recommendation"
         unique_id: window_ventilation_recommendation
         icon: >
@@ -117,41 +249,20 @@ template:
             mdi:window-closed
           {% endif %}
         state: >
-          {% set invalid = ['unknown', 'unavailable', '', none] %}
-          {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
-          {% set humidity_sensor = states('sensor.thermostat_humidity') %}
-          {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
-          {% set indoor_humidity = (humidity_sensor | float(none)) if humidity_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_humidity') | float(none)) %}
-          {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
-          {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
-          {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
-          {% set rain_probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
-          {% set condition = states('sensor.condition_forecast_next_hour') %}
-          {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
-          {% set cooler_delta = states('input_number.window_ventilation_cooler_delta') | float(3) %}
-          {% set max_dew = states('input_number.window_ventilation_max_outdoor_dew_point') | float(60) %}
-          {% set winter_threshold = states('input_number.window_ventilation_winter_threshold') | float(55) %}
-          {% set high_humidity = states('input_number.window_ventilation_high_indoor_humidity') | float(58) %}
-          {% set co2 = states('sensor.thermostat_carbon_dioxide') | float(0) %}
-          {% set voc = states('sensor.thermostat_vocs') | float(0) %}
-          {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
-          {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
-          {% set raining = rain_probability >= 30 or condition in ['rainy', 'pouring', 'snowy-rainy'] %}
-          {% set hvac_running = hvac_action in ['heating', 'cooling'] %}
-          {% set data_ready = indoor is not none and outdoor is not none and outdoor_dew is not none and indoor_dew is not none %}
-          {% set outdoor_cooler = data_ready and (indoor - outdoor) >= cooler_delta %}
-          {% set outdoor_drier = data_ready and outdoor_dew <= max_dew and outdoor_dew <= (indoor_dew + 2) %}
-          {% set mild_open = outdoor_cooler and outdoor_drier and not raining and not hvac_running %}
-          {% set co2_relative = co2_base > 0 and co2 >= 900 and co2 >= (co2_base + 175) %}
-          {% set co2_outlier = co2_base > 0 and co2 >= 1400 and co2 >= (co2_base + 100) %}
-          {% set voc_relative = voc_base > 0 and voc >= 250 and voc >= (voc_base * 1.35) %}
-          {% set voc_outlier = voc_base > 0 and voc >= 650 and voc >= (voc_base * 1.15) %}
-          {% set humidity_reason = indoor_humidity is not none and indoor_humidity >= high_humidity and outdoor_drier %}
-          {% set air_quality_reason = co2_relative or voc_relative or co2_outlier or voc_outlier %}
-          {% set winter_mode = outdoor is not none and outdoor < winter_threshold %}
+          {% set ctx = 'sensor.window_ventilation_decision_context' %}
+          {% set data_ready = is_state(ctx, 'ready') %}
+          {% set raining = state_attr(ctx, 'raining') | bool(false) %}
+          {% set hvac_running = state_attr(ctx, 'hvac_running') | bool(false) %}
+          {% set outdoor_too_humid = state_attr(ctx, 'outdoor_too_humid') | bool(false) %}
+          {% set winter_mode = state_attr(ctx, 'winter_mode') | bool(false) %}
+          {% set outdoor_cooler = state_attr(ctx, 'outdoor_cooler') | bool(false) %}
+          {% set outdoor_drier = state_attr(ctx, 'outdoor_drier') | bool(false) %}
+          {% set mild_open = state_attr(ctx, 'mild_open') | bool(false) %}
+          {% set humidity_reason = state_attr(ctx, 'humidity_reason') | bool(false) %}
+          {% set air_quality_reason = state_attr(ctx, 'air_quality_reason') | bool(false) %}
           {% if not data_ready %}
             neutral
-          {% elif raining or hvac_running or outdoor_dew >= (max_dew + 5) %}
+          {% elif raining or hvac_running or outdoor_too_humid %}
             close
           {% elif winter_mode %}
             {% if not hvac_running and not raining and outdoor_drier and (air_quality_reason or humidity_reason) %}
@@ -169,50 +280,43 @@ template:
         attributes:
           advisory_only: true
           mode: >
-            {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
-            {% set winter_threshold = states('input_number.window_ventilation_winter_threshold') | float(55) %}
-            {% if outdoor is not none and outdoor < winter_threshold %}
+            {% set ctx = 'sensor.window_ventilation_decision_context' %}
+            {% if state_attr(ctx, 'winter_mode') | bool(false) %}
               winter_purge
             {% else %}
               comfort
             {% endif %}
-          indoor_temperature: "{{ states('sensor.dining_room_thermostat_temperature') }}"
-          outdoor_temperature: "{{ states('sensor.weather_outdoor_temperature') }}"
-          indoor_dew_point: "{{ states('sensor.window_ventilation_indoor_dew_point') }}"
-          outdoor_dew_point: "{{ states('sensor.weather_outdoor_dew_point') }}"
-          rain_probability_next_hour: "{{ states('sensor.precipitation_forecast_next_hour') }}"
-          hvac_action: "{{ state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) }}"
-          co2_current: "{{ states('sensor.thermostat_carbon_dioxide') }}"
-          co2_baseline: "{{ states('sensor.window_ventilation_co2_baseline') }}"
-          voc_current: "{{ states('sensor.thermostat_vocs') }}"
-          voc_baseline: "{{ states('sensor.window_ventilation_voc_baseline') }}"
+          context_entity: sensor.window_ventilation_decision_context
+          indoor_temperature: "{{ state_attr('sensor.window_ventilation_decision_context', 'indoor_temperature') }}"
+          outdoor_temperature: "{{ state_attr('sensor.window_ventilation_decision_context', 'outdoor_temperature') }}"
+          indoor_dew_point: "{{ state_attr('sensor.window_ventilation_decision_context', 'indoor_dew_point') }}"
+          outdoor_dew_point: "{{ state_attr('sensor.window_ventilation_decision_context', 'outdoor_dew_point') }}"
+          rain_probability_next_hour: "{{ state_attr('sensor.window_ventilation_decision_context', 'rain_probability_next_hour') }}"
+          hvac_action: "{{ state_attr('sensor.window_ventilation_decision_context', 'hvac_action') }}"
+          co2_current: "{{ state_attr('sensor.window_ventilation_decision_context', 'co2_current') }}"
+          co2_baseline: "{{ state_attr('sensor.window_ventilation_decision_context', 'co2_baseline') }}"
+          voc_current: "{{ state_attr('sensor.window_ventilation_decision_context', 'voc_current') }}"
+          voc_baseline: "{{ state_attr('sensor.window_ventilation_decision_context', 'voc_baseline') }}"
 
       - name: "Window Ventilation Reason"
         unique_id: window_ventilation_reason
         icon: mdi:text-box-search-outline
         state: >
-          {% set invalid = ['unknown', 'unavailable', '', none] %}
+          {% set ctx = 'sensor.window_ventilation_decision_context' %}
           {% set rec = states('sensor.window_ventilation_recommendation') %}
           {% set mode = state_attr('sensor.window_ventilation_recommendation', 'mode') | trim %}
-          {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
-          {% set humidity_sensor = states('sensor.thermostat_humidity') %}
-          {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
-          {% set indoor_humidity = (humidity_sensor | float(none)) if humidity_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_humidity') | float(none)) %}
-          {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
-          {% set indoor_dew = states('sensor.window_ventilation_indoor_dew_point') | float(none) %}
-          {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
-          {% set rain_probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
-          {% set condition = states('sensor.condition_forecast_next_hour') %}
-          {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
-          {% set co2 = states('sensor.thermostat_carbon_dioxide') | float(0) %}
-          {% set voc = states('sensor.thermostat_vocs') | float(0) %}
-          {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
-          {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
-          {% set high_humidity = states('input_number.window_ventilation_high_indoor_humidity') | float(58) %}
-          {% set raining = rain_probability >= 30 or condition in ['rainy', 'pouring', 'snowy-rainy'] %}
-          {% set hvac_running = hvac_action in ['heating', 'cooling'] %}
-          {% set co2_relative = co2_base > 0 and co2 >= 900 and co2 >= (co2_base + 175) %}
-          {% set voc_relative = voc_base > 0 and voc >= 250 and voc >= (voc_base * 1.35) %}
+          {% set indoor = state_attr(ctx, 'indoor_temperature') | float(none) %}
+          {% set indoor_humidity = state_attr(ctx, 'indoor_humidity') | float(none) %}
+          {% set outdoor = state_attr(ctx, 'outdoor_temperature') | float(none) %}
+          {% set indoor_dew = state_attr(ctx, 'indoor_dew_point') | float(none) %}
+          {% set outdoor_dew = state_attr(ctx, 'outdoor_dew_point') | float(none) %}
+          {% set high_humidity = state_attr(ctx, 'high_indoor_humidity') | float(58) %}
+          {% set hvac_action = state_attr(ctx, 'hvac_action') | default('idle', true) %}
+          {% set raining = state_attr(ctx, 'raining') | bool(false) %}
+          {% set hvac_running = state_attr(ctx, 'hvac_running') | bool(false) %}
+          {% set outdoor_more_humid = state_attr(ctx, 'outdoor_more_humid') | bool(false) %}
+          {% set co2_relative = state_attr(ctx, 'co2_relative') | bool(false) %}
+          {% set voc_relative = state_attr(ctx, 'voc_relative') | bool(false) %}
           {% if rec == 'open' and mode == 'winter_purge' %}
             Air out the house for 5-10 minutes: indoor air or humidity is above the home's recent baseline, outdoor dew point is acceptable, and HVAC is idle.
           {% elif rec == 'open' %}
@@ -221,7 +325,7 @@ template:
             Close windows: rain or mixed precipitation is expected within the hour.
           {% elif rec == 'close' and hvac_running %}
             Close windows: HVAC is currently {{ hvac_action }}.
-          {% elif rec == 'close' and outdoor_dew is not none and indoor_dew is not none and outdoor_dew > indoor_dew + 2 %}
+          {% elif rec == 'close' and outdoor_more_humid %}
             Close windows: outside air is more humid (dew point {{ outdoor_dew | round(0) }}°F vs indoor {{ indoor_dew | round(0) }}°F).
           {% elif rec == 'close' %}
             Close windows: outdoor conditions are no longer meaningfully better than indoors.
