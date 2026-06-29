@@ -9,7 +9,9 @@ This directory contains modular packages that group related functionality. Each 
 | Package                     | Description                                                        |
 |-----------------------------|--------------------------------------------------------------------|
 | `cameras.yaml`              | Camera integration with motion detection and notifications         |
-| `presence.yaml`             | Presence detection and related automations                         |
+| `device_batteries.yaml`      | Battery inventory, summary sensors, and battery alerts              |
+| `device_connectivity.yaml`   | Z-Wave, stale-device, and integration-health alerting               |
+| `presence.yaml`              | Presence detection and related automations                         |
 | `security_lights.yaml`      | Security-focused lighting automations                              |
 | `weather.yaml`              | Weather data processing and event monitoring                       |
 | `window_ventilation.yaml`   | Advisory window ventilation recommendations and notification logic |
