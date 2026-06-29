@@ -180,6 +180,10 @@ input_boolean:
     icon: mdi:snowflake-alert
     initial: false
 
+  climate_pre_arrival_recovery_active:
+    name: "Climate Pre-arrival Recovery Active"
+    icon: mdi:home-import-outline
+
 template:
   - binary_sensor:
       - name: "Climate Extreme Heat Day"
@@ -477,12 +481,6 @@ automation:
         entity_id: input_boolean.mode_guest
         to: "on"
         id: guest_mode_enabled
-      - platform: state
-        entity_id: binary_sensor.climate_pre_arrival_expected
-        to: "on"
-        for:
-          minutes: 2
-        id: prearrival_expected
     condition:
       - condition: state
         entity_id: input_boolean.climate_automation_enabled
@@ -499,9 +497,9 @@ automation:
       - condition: time
         after: "12:59:00"
         before: "18:00:00"
-      # Occupied/guest path preserves the original overlay. Pre-arrival may
-      # also apply while nobody is home when a fresh aggregate person/proximity
-      # signal says an eligible resident is heading home soon.
+      # Occupied/guest path preserves the original overlay. Generic
+      # pre-arrival recovery applies this offset separately as an enhancement
+      # when nobody is home but inbound evidence is fresh.
       - condition: or
         conditions:
           - condition: numeric_state
@@ -509,9 +507,6 @@ automation:
             above: 0
           - condition: state
             entity_id: input_boolean.mode_guest
-            state: "on"
-          - condition: state
-            entity_id: binary_sensor.climate_pre_arrival_expected
             state: "on"
     action:
       - service: climate.set_hvac_mode
@@ -532,6 +527,152 @@ automation:
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.climate_extreme_heat_precool_active
+    mode: single
+
+  - alias: "climate_pre_arrival_recovery_apply"
+    id: "climate_pre_arrival_recovery_apply"
+    description: >
+      Restore normal daytime occupied climate targets before an eligible
+      resident arrives, with extreme heat as an optional cooling enhancement.
+    trigger:
+      - platform: homeassistant
+        event: start
+        id: ha_start
+      - platform: state
+        entity_id: binary_sensor.climate_pre_arrival_expected
+        to: "on"
+        for:
+          minutes: 2
+        id: prearrival_expected
+      - platform: time_pattern
+        minutes: "/5"
+        id: prearrival_safety_tick
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.climate_pre_arrival_recovery_active
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.climate_pre_arrival_expected
+        state: "on"
+      - condition: numeric_state
+        entity_id: zone.home
+        below: 1
+      - condition: state
+        entity_id: input_boolean.mode_guest
+        state: "off"
+      - condition: time
+        after: "09:00:00"
+        before: "21:00:00"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.climate_extreme_heat_overlay_enabled
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.climate_extreme_heat_day
+                state: "on"
+              - condition: time
+                after: "12:59:00"
+                before: "18:00:00"
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {% set day = states('input_number.climate_cool_day') | float %}
+                    {% set offset = states('input_number.climate_extreme_heat_precool_offset') | float(1) %}
+                    {{ [day - offset, 65] | max }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_day') | float }}
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.climate_extreme_heat_precool_active
+        default:
+          - service: climate.set_temperature
+            target:
+              entity_id: climate.dining_room_thermostat
+            data:
+              target_temp_high: >
+                {{ states('input_number.climate_cool_day') | float }}
+              target_temp_low: >
+                {{ states('input_number.climate_heat_day') | float }}
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.climate_pre_arrival_recovery_active
+    mode: single
+
+  - alias: "climate_pre_arrival_recovery_restore"
+    id: "climate_pre_arrival_recovery_restore"
+    description: >
+      Clear pre-arrival recovery on arrival or revert to away targets if the
+      inbound signal clears while nobody is home.
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.climate_pre_arrival_expected
+        to: "off"
+        for:
+          minutes: 10
+        id: prearrival_cleared
+      - platform: numeric_state
+        entity_id: zone.home
+        above: 0
+        id: arrived_home
+      - platform: state
+        entity_id: input_boolean.climate_automation_enabled
+        to: "off"
+        id: climate_disabled
+      - platform: state
+        entity_id: input_boolean.mode_guest
+        to: "on"
+        id: guest_mode_enabled
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_pre_arrival_recovery_active
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.climate_pre_arrival_recovery_active
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'prearrival_cleared' }}"
+              - condition: state
+                entity_id: input_boolean.climate_automation_enabled
+                state: "on"
+              - condition: numeric_state
+                entity_id: zone.home
+                below: 1
+              - condition: state
+                entity_id: input_boolean.mode_guest
+                state: "off"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.climate_extreme_heat_precool_active
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  hvac_mode: heat_cool
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: >
+                    {{ states('input_number.climate_cool_away') | float }}
+                  target_temp_low: >
+                    {{ states('input_number.climate_heat_away') | float }}
     mode: single
 
   - alias: "climate_extreme_heat_precool_restore"
@@ -556,31 +697,10 @@ automation:
         for:
           minutes: 5
         id: away_started
-      - platform: state
-        entity_id: binary_sensor.climate_pre_arrival_expected
-        to: "off"
-        for:
-          minutes: 10
-        id: prearrival_cleared
     condition:
       - condition: state
         entity_id: input_boolean.climate_extreme_heat_precool_active
         state: "on"
-      # Only use the pre-arrival clear trigger as an abandoned-trip cancel.
-      # If someone has arrived, let the normal occupied overlay continue until
-      # the existing end-of-window/away-mode restore paths run.
-      - condition: or
-        conditions:
-          - condition: template
-            value_template: "{{ trigger.id != 'prearrival_cleared' }}"
-          - condition: and
-            conditions:
-              - condition: numeric_state
-                entity_id: zone.home
-                below: 1
-              - condition: state
-                entity_id: input_boolean.mode_guest
-                state: "off"
     action:
       - service: input_boolean.turn_off
         target:
@@ -590,7 +710,6 @@ automation:
               - condition: template
                 value_template: >
                   {{ trigger.id in [
-                    'prearrival_cleared',
                     'overlay_window_end',
                     'overlay_disabled',
                     'climate_disabled'
