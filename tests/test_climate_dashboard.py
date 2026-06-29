@@ -41,6 +41,13 @@ def entity_ids(card):
     return [entity["entity"] for entity in card["entities"]]
 
 
+def assert_binary_state_map(card):
+    assert card["state_map"] == [
+        {"value": "off", "label": "Inactive"},
+        {"value": "on", "label": "Active"},
+    ]
+
+
 def test_climate_activity_helpers_derive_from_thermostat_hvac_action():
     heating = named_template("binary_sensor", "Climate Heating Active")
     cooling = named_template("binary_sensor", "Climate Cooling Active")
@@ -72,6 +79,7 @@ def test_temperature_trends_use_mini_graph_with_average_and_hvac_activity():
     assert card["hours_to_show"] == 24
     assert card["lower_bound_secondary"] == 0
     assert card["upper_bound_secondary"] == 1
+    assert_binary_state_map(card)
     assert entity_ids(card) == [
         "sensor.dining_room_thermostat_temperature",
         "sensor.master_bedroom_sensor_temperature",
@@ -89,6 +97,7 @@ def test_air_quality_trends_use_mini_graph_with_hvac_activity():
     card = graph_card("Air quality trends")
 
     assert card["hours_to_show"] == 24
+    assert_binary_state_map(card)
     assert entity_ids(card) == [
         "sensor.thermostat_vocs",
         "sensor.thermostat_carbon_dioxide",

@@ -99,6 +99,11 @@ views:
           extrema: true
         lower_bound_secondary: 0
         upper_bound_secondary: 1
+        state_map:
+          - value: "off"
+            label: "Inactive"
+          - value: "on"
+            label: "Active"
         entities:
           - entity: sensor.dining_room_thermostat_temperature
             name: "Dining room"
@@ -140,6 +145,11 @@ views:
           labels_secondary: true
           points: false
           extrema: true
+        state_map:
+          - value: "off"
+            label: "Inactive"
+          - value: "on"
+            label: "Active"
         entities:
           - entity: sensor.thermostat_vocs
             name: "VOC"
