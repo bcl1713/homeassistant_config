@@ -285,7 +285,7 @@ template:
           - input_number.climate_precool_arrival_distance_ft
           - input_number.climate_precool_arrival_signal_max_age
         id: prearrival_input_changed
-      # Time ticks allow fresh inbound signals to age out even if the proximity
+      # Time ticks allow fresh distance signals to age out even if the proximity
       # integration stops publishing before the abandoned-trip restore window.
       - platform: time_pattern
         minutes: "/1"
@@ -327,15 +327,12 @@ template:
             {% set direction = states(signals.direction) %}
             {% set person_state = states(person) %}
             {% set distance_obj = states[signals.distance] if signals.distance in states else none %}
-            {% set direction_obj = states[signals.direction] if signals.direction in states else none %}
             {% set distance_age = now_ts - as_timestamp(distance_obj.last_updated, 0) if distance_obj is not none else max_age + 1 %}
-            {% set direction_age = now_ts - as_timestamp(direction_obj.last_updated, 0) if direction_obj is not none else max_age + 1 %}
             {% if person_state != 'home'
                   and distance is not none
                   and distance <= max_distance
                   and direction == 'towards'
-                  and distance_age <= max_age
-                  and direction_age <= max_age %}
+                  and distance_age <= max_age %}
               {% set ns.expected = true %}
             {% endif %}
           {% endfor %}
@@ -366,22 +363,22 @@ template:
               {% set distance = states(signals.distance) | float(none) %}
               {% set direction = states(signals.direction) %}
               {% set distance_obj = states[signals.distance] if signals.distance in states else none %}
-              {% set direction_obj = states[signals.direction] if signals.direction in states else none %}
               {% set distance_age = now_ts - as_timestamp(distance_obj.last_updated, 0) if distance_obj is not none else max_age + 1 %}
-              {% set direction_age = now_ts - as_timestamp(direction_obj.last_updated, 0) if direction_obj is not none else max_age + 1 %}
               {% if states(person) != 'home'
                     and distance is not none
                     and distance <= max_distance
                     and direction == 'towards'
-                    and distance_age <= max_age
-                    and direction_age <= max_age %}
+                    and distance_age <= max_age %}
                 {% set ns.names = ns.names + [signals.name] %}
               {% endif %}
             {% endfor %}
             {{ ns.names | join(', ') if ns.names else 'none' }}
           reason: >
-            Requires an eligible person not already home, a fresh proximity
-            direction of 'towards', and distance below the configured threshold.
+            Requires an eligible person not already home, current proximity
+            direction of 'towards', and fresh distance below the configured
+            threshold. Direction state is not age-gated because the proximity
+            integration may keep reporting the same direction while only the
+            distance state changes.
 
 # Automations
 automation:
