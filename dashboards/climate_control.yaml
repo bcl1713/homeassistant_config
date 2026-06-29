@@ -109,6 +109,7 @@ views:
             name: "Indoor avg"
             color: "#26a69a"
             line_width: 4
+            show_fill: false
           - entity: binary_sensor.climate_heating_active
             name: "Heating"
             color: "rgba(239, 83, 80, 0.35)"
@@ -130,18 +131,38 @@ views:
             show_state: false
             smoothing: false
 
-      - type: entities
-        title: "Room temperatures"
-        show_header_toggle: false
+      - type: custom:mini-graph-card
+        name: "Room temperatures"
+        hours_to_show: 24
+        points_per_hour: 4
+        hour24: true
+        animate: false
+        show:
+          legend: true
+          labels: true
+          points: false
+          extrema: true
         entities:
           - entity: sensor.average_indoor_temperature
             name: "Indoor average"
+            color: "#26a69a"
+            line_width: 4
+            show_fill: false
           - entity: sensor.dining_room_thermostat_temperature
             name: "Dining room"
+            color: "#42a5f5"
+            line_width: 2
+            show_fill: false
           - entity: sensor.master_bedroom_sensor_temperature
             name: "Master bedroom"
+            color: "#ab47bc"
+            line_width: 2
+            show_fill: false
           - entity: sensor.weather_outdoor_temperature
             name: "Outdoor"
+            color: "#78909c"
+            line_width: 2
+            show_fill: false
 
       - type: custom:mini-graph-card
         name: "Air quality trends"
@@ -167,6 +188,7 @@ views:
             name: "AQI"
             color: "#ff7043"
             line_width: 4
+            show_fill: false
           - entity: binary_sensor.climate_heating_active
             name: "Heating"
             color: "rgba(239, 83, 80, 0.35)"
@@ -188,18 +210,33 @@ views:
             show_state: false
             smoothing: false
 
-      - type: entities
-        title: "Air quality details"
-        show_header_toggle: false
+      - type: custom:mini-graph-card
+        name: "Air quality details"
+        hours_to_show: 24
+        points_per_hour: 4
+        hour24: true
+        animate: false
+        show:
+          legend: true
+          labels: true
+          points: false
+          extrema: true
         entities:
-          - entity: sensor.air_quality_composite_status
-            name: "Composite status"
           - entity: sensor.thermostat_air_quality_index
             name: "AQI"
+            color: "#ff7043"
+            line_width: 4
+            show_fill: false
           - entity: sensor.thermostat_carbon_dioxide
             name: "CO2"
+            color: "#7e57c2"
+            line_width: 2
+            show_fill: false
           - entity: sensor.thermostat_vocs
             name: "VOC"
+            color: "#66bb6a"
+            line_width: 2
+            show_fill: false
 
       - type: grid
         title: "Schedule tuning"
