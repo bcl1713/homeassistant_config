@@ -1,10 +1,56 @@
 from pathlib import Path
+from datetime import datetime, timedelta
 
+from jinja2 import Environment
 import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CLIMATE = ROOT / "packages" / "climate_control.yaml"
+
+
+class MockState:
+    def __init__(self, state, last_updated):
+        self.state = state
+        self.last_updated = last_updated
+
+
+class MockStates:
+    def __init__(self, states, updated_at, default_updated_at):
+        self._states = states
+        self._updated_at = updated_at
+        self._default_updated_at = default_updated_at
+
+    def __call__(self, entity_id):
+        return self._states.get(entity_id, "unknown")
+
+    def __contains__(self, entity_id):
+        return entity_id in self._states
+
+    def __getitem__(self, entity_id):
+        return MockState(
+            self._states[entity_id],
+            self._updated_at.get(entity_id, self._default_updated_at),
+        )
+
+
+def as_timestamp(value, default=None):
+    if value is None:
+        return default
+    if isinstance(value, datetime):
+        return value.timestamp()
+    return value
+
+
+def render_ha_template(template, states, updated_at=None, now=None):
+    now = now or datetime(2026, 6, 29, 15, 52, 35)
+    env = Environment()
+    env.globals.update(
+        states=MockStates(states, updated_at or {}, now),
+        now=lambda: now,
+        as_timestamp=as_timestamp,
+    )
+    return env.from_string(template).render().strip()
 
 
 def load_climate():
@@ -193,9 +239,58 @@ def test_precool_prearrival_helpers_use_person_level_proximity_abstractions():
     assert "device_tracker" not in state
     assert "direction == 'towards'" in state
     assert "last_updated" in state
+    assert "direction_age" not in state
     assert "climate_precool_arrival_distance_ft" in state
     assert sensor["attributes"]["eligible_people"] == "Brian, Hester"
     assert "To add another climate pre-arrival person" in text
+
+
+def test_precool_prearrival_qualifies_fresh_distance_with_stable_towards_direction():
+    sensor = binary_sensor("Climate Pre-arrival Expected")
+    current_time = datetime(2026, 6, 29, 15, 52, 35)
+    states = {
+        "person.brian": "not_home",
+        "person.hester": "home",
+        "sensor.home_brian_distance": "285",
+        "sensor.home_brian_direction_of_travel": "towards",
+        "sensor.home_hester_distance": "12000",
+        "sensor.home_hester_direction_of_travel": "away_from",
+        "input_number.climate_precool_arrival_distance_ft": "30000",
+        "input_number.climate_precool_arrival_signal_max_age": "20",
+    }
+    updated_at = {
+        "sensor.home_brian_distance": current_time - timedelta(minutes=1),
+        # Proximity direction may remain the same for a whole trip, so Home
+        # Assistant may not advance last_updated for this entity while fresh
+        # distance updates continue proving the inbound signal is current.
+        "sensor.home_brian_direction_of_travel": current_time - timedelta(hours=1),
+    }
+
+    assert render_ha_template(sensor["state"], states, updated_at, current_time) == "True"
+    assert render_ha_template(
+        sensor["attributes"]["expected_people"], states, updated_at, current_time
+    ) == "Brian"
+
+
+def test_precool_prearrival_rejects_stale_distance_even_if_direction_is_towards():
+    sensor = binary_sensor("Climate Pre-arrival Expected")
+    current_time = datetime(2026, 6, 29, 15, 52, 35)
+    states = {
+        "person.brian": "not_home",
+        "person.hester": "home",
+        "sensor.home_brian_distance": "285",
+        "sensor.home_brian_direction_of_travel": "towards",
+        "sensor.home_hester_distance": "12000",
+        "sensor.home_hester_direction_of_travel": "away_from",
+        "input_number.climate_precool_arrival_distance_ft": "30000",
+        "input_number.climate_precool_arrival_signal_max_age": "20",
+    }
+    updated_at = {
+        "sensor.home_brian_distance": current_time - timedelta(minutes=21),
+        "sensor.home_brian_direction_of_travel": current_time,
+    }
+
+    assert render_ha_template(sensor["state"], states, updated_at, current_time) == "False"
 
 
 def test_precool_prearrival_template_has_explicit_update_triggers():
