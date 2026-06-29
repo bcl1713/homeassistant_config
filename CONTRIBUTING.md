@@ -22,12 +22,14 @@ Follow these branching conventions:
 - Bug fixes: `fix/descriptive-name`
 - Documentation: `docs/descriptive-name`
 
-Always start from the latest main branch:
+Always start from the latest `dev` branch:
 ```bash
-git checkout main
-git pull origin main
+git checkout dev
+git pull origin dev
 git checkout -b feature/your-feature-name
 ```
+
+For this repository, `dev` is the active trunk and normal PR target. `main` is optional and should only be treated as a separately maintained blessed baseline if it is being actively promoted after successful live deploys.
 
 ### 3. Development Standards
 
@@ -59,9 +61,11 @@ Examples:
 ### 5. Pull Request Process
 
 1. Push your branch to GitHub
-2. Create a pull request to merge into main
+2. Create a pull request to merge into `dev`
 3. Reference the issue number in the PR description
 4. Wait for review and address any feedback
+
+See [docs/branching-and-deployment.md](docs/branching-and-deployment.md) for the current branching, deployment, tagging, and rollback workflow.
 
 ## Code of Conduct
 

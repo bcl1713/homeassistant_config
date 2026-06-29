@@ -17,13 +17,15 @@ When selecting a new feature or automation to implement:
 
 ### 2. Branch Management
 
-1. **Always start from the latest `dev` branch**:
+This repository does not have a separate Home Assistant staging environment, so the branch model should reflect reality rather than ceremony.
+
+1. **Treat `dev` as the active trunk and normal deployment source**:
    ```bash
    git checkout dev
    git pull origin dev
    ```
 
-2. **Create focused branches** with consistent naming:
+2. **Create focused branches** with consistent naming for any non-trivial work:
    ```bash
    git checkout -b feature/descriptive-name
    ```
@@ -37,8 +39,12 @@ When selecting a new feature or automation to implement:
    git checkout -b chore/descriptive-name
    ```
 
-3. **Keep branches focused** on a single feature or bug fix
-4. **Target pull requests at `dev`**. Do not merge automation changes directly to `main`.
+3. **Keep branches focused** on a single feature or bug fix.
+4. **Target pull requests at `dev`**. Do not treat `main` as the normal merge target.
+5. **Use direct commits to `dev` only for truly low-risk changes** such as docs, comments, typos, or harmless cleanup.
+6. **Tag successful live deployments** so rollback does not depend on `main` staying current.
+
+See [docs/branching-and-deployment.md](docs/branching-and-deployment.md) for the full branch, deploy, and rollback policy.
 
 ### 3. Implementation Standards
 

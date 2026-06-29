@@ -63,6 +63,8 @@ To use this configuration as a template:
 
 Please see [DEVELOPMENT.md](DEVELOPMENT.md) for contribution guidelines, development workflows, and coding standards.
 
+For the practical branch/deploy model used by this repo, including `dev`-first workflow, deploy tags, and rollback guidance, see [docs/branching-and-deployment.md](docs/branching-and-deployment.md).
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
