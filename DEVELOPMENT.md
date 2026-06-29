@@ -50,6 +50,7 @@ Follow these standards for all Home Assistant configuration changes:
    - `automation: !include_dir_merge_list automation` loads standalone automation files
    - `input_boolean: !include_dir_merge_named input_boolean` loads helper toggles
    - Prefer extending the existing modular structure instead of placing unrelated logic in `configuration.yaml`
+   - Keep complex packages split by responsibility when a domain has distinct helper, automation, and dashboard-facing layers; for example climate is split into schedule, occupancy, extreme-heat overlay, and diagnostics packages
 
 1. **Package structure**:
    - Place new integrations in appropriate `packages/` directories

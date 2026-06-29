@@ -1,0 +1,200 @@
+# packages/climate_extreme_heat.yaml
+#
+# Extreme-heat climate overlay: configurable hot-day threshold, optional
+# daytime pre-cool offset, and bounded overlay restore behavior.
+
+input_number:
+  climate_extreme_heat_threshold:
+    name: Climate Extreme Heat Threshold
+    min: 85
+    max: 110
+    step: 1
+    unit_of_measurement: °F
+    icon: mdi:thermometer-alert
+    initial: 95
+  climate_extreme_heat_precool_offset:
+    name: Climate Extreme Heat Pre-cool Offset
+    min: 0
+    max: 2
+    step: 1
+    unit_of_measurement: °F
+    icon: mdi:snowflake-thermometer
+    initial: 1
+input_boolean:
+  climate_extreme_heat_overlay_enabled:
+    name: Climate Extreme Heat Overlay
+    icon: mdi:sun-thermometer
+    initial: true
+  climate_extreme_heat_precool_active:
+    name: Climate Extreme Heat Pre-cool Active
+    icon: mdi:snowflake-alert
+    initial: false
+template:
+  - binary_sensor:
+      - name: Climate Extreme Heat Day
+        unique_id: climate_extreme_heat_day
+        icon: mdi:sun-thermometer
+        availability: |
+          {% set forecast_high = states('sensor.temperature_forecast_high_today') | float(none) %} {% set threshold = states('input_number.climate_extreme_heat_threshold') | float(none) %} {{ forecast_high is not none and threshold is not none }}
+        state: |
+          {#
+            Weather owns forecast payload normalization. Climate consumes the
+            weather-owned high-temperature helper so hot-day decisions do not
+            reparse weather.get_forecasts payloads in this package.
+          #} {% set forecast_high = states('sensor.temperature_forecast_high_today') | float(none) %} {% set threshold = states('input_number.climate_extreme_heat_threshold') | float(95) %} {{ forecast_high is not none and forecast_high >= threshold }}
+        attributes:
+          forecast_high_f: "{{ states('sensor.temperature_forecast_high_today') }}"
+          threshold_f: "{{ states('input_number.climate_extreme_heat_threshold') | float(95) }}"
+          forecast_source: sensor.temperature_forecast_high_today
+          forecast_unit_assumption: weather-owned helper publishes °F
+          decision_scope: weather-owned maximum temperature from the first two twice-daily periods
+automation:
+  - alias: climate_extreme_heat_precool_apply
+    id: climate_extreme_heat_precool_apply
+    description: |
+      Apply a one-time daytime cooling offset on validated extreme-heat days.
+    trigger:
+      - platform: time
+        at: "13:00:00"
+        id: overlay_window_start
+      - platform: state
+        entity_id: binary_sensor.climate_extreme_heat_day
+        to: "on"
+        id: hot_day_detected
+      - platform: state
+        entity_id: input_boolean.mode_guest
+        to: "on"
+        id: guest_mode_enabled
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_automation_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.climate_extreme_heat_overlay_enabled
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.climate_extreme_heat_day
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.climate_extreme_heat_precool_active
+        state: "off"
+      - condition: time
+        after: "12:59:00"
+        before: "18:00:00"
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
+          - condition: state
+            entity_id: input_boolean.mode_guest
+            state: "on"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          hvac_mode: heat_cool
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          target_temp_high: |
+            {% set day = states('input_number.climate_cool_day') | float %} {% set offset = states('input_number.climate_extreme_heat_precool_offset') | float(1) %} {{ [day - offset, 65] | max }}
+          target_temp_low: |
+            {{ states('input_number.climate_heat_day') | float }}
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.climate_extreme_heat_precool_active
+    mode: single
+  - alias: climate_extreme_heat_precool_restore
+    id: climate_extreme_heat_precool_restore
+    description: |
+      End the bounded extreme-heat pre-cool overlay and restore daytime targets.
+    trigger:
+      - platform: time
+        at: "18:00:00"
+        id: overlay_window_end
+      - platform: state
+        entity_id: input_boolean.climate_extreme_heat_overlay_enabled
+        to: "off"
+        id: overlay_disabled
+      - platform: state
+        entity_id: input_boolean.climate_automation_enabled
+        to: "off"
+        id: climate_disabled
+      - platform: numeric_state
+        entity_id: zone.home
+        below: 1
+        for:
+          minutes: 5
+        id: away_started
+    condition:
+      - condition: state
+        entity_id: input_boolean.climate_extreme_heat_precool_active
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.climate_extreme_heat_precool_active
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: |
+                  {{ trigger.id in [
+                    'overlay_window_end',
+                    'overlay_disabled',
+                    'climate_disabled'
+                  ] }}
+              - condition: numeric_state
+                entity_id: zone.home
+                below: 1
+              - condition: state
+                entity_id: input_boolean.mode_guest
+                state: "off"
+            sequence:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  hvac_mode: heat_cool
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: |
+                    {{ states('input_number.climate_cool_away') | float }}
+                  target_temp_low: |
+                    {{ states('input_number.climate_heat_away') | float }}
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id != 'away_started' }}"
+              - condition: state
+                entity_id: input_boolean.climate_automation_enabled
+                state: "on"
+              - condition: or
+                conditions:
+                  - condition: numeric_state
+                    entity_id: zone.home
+                    above: 0
+                  - condition: state
+                    entity_id: input_boolean.mode_guest
+                    state: "on"
+              - condition: time
+                after: "09:00:00"
+                before: "21:00:00"
+            sequence:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  hvac_mode: heat_cool
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.dining_room_thermostat
+                data:
+                  target_temp_high: |
+                    {{ states('input_number.climate_cool_day') | float }}
+                  target_temp_low: |
+                    {{ states('input_number.climate_heat_day') | float }}
+    mode: single
