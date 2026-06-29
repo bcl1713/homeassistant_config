@@ -70,6 +70,7 @@ def test_extreme_heat_helpers_are_configurable_in_fahrenheit():
     assert offset["initial"] == 1
     assert config["input_boolean"]["climate_extreme_heat_overlay_enabled"]["initial"] is True
     assert config["input_boolean"]["climate_extreme_heat_precool_active"]["initial"] is False
+    assert "initial" not in config["input_boolean"]["climate_pre_arrival_recovery_active"]
 
 
 def test_extreme_heat_day_uses_validated_daily_forecast_attributes_not_derived_sensor():
@@ -95,7 +96,6 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
         "overlay_window_start",
         "hot_day_detected",
         "guest_mode_enabled",
-        "prearrival_expected",
     }
     assert any(trigger.get("at") == "13:00:00" for trigger in item["trigger"])
     assert "before: \"18:00:00\"" in text
@@ -106,6 +106,7 @@ def test_precool_apply_is_bounded_occupied_and_one_shot():
     assert "input_boolean.mode_guest" in text
     assert "day - offset" in text
     assert "input_boolean.turn_on" in text
+    assert "Generic\n      # pre-arrival recovery applies this offset separately" in text
 
 
 def test_precool_apply_rearms_for_guest_mode_without_return_home_race():
@@ -227,8 +228,8 @@ def test_precool_prearrival_template_has_explicit_update_triggers():
     )
 
 
-def test_precool_apply_can_start_from_debounced_prearrival_expectation():
-    item = automation("climate_extreme_heat_precool_apply")
+def test_generic_prearrival_apply_can_start_from_debounced_expectation():
+    item = automation("climate_pre_arrival_recovery_apply")
 
     prearrival_trigger = next(
         trigger for trigger in item["trigger"] if trigger.get("id") == "prearrival_expected"
@@ -245,14 +246,20 @@ def test_precool_apply_can_start_from_debounced_prearrival_expectation():
     assert "binary_sensor.climate_pre_arrival_expected" in condition_text
     assert "zone.home" in condition_text
     assert "input_boolean.mode_guest" in condition_text
+    assert "input_boolean.climate_pre_arrival_recovery_active" in condition_text
+
+    services = str(item["action"])
+    assert "input_number.climate_cool_day" in services
+    assert "input_number.climate_heat_day" in services
+    assert "binary_sensor.climate_extreme_heat_day" in services
+    assert "day - offset" in services
+    assert "input_boolean.climate_pre_arrival_recovery_active" in services
 
 
 def test_precool_restore_cancels_abandoned_prearrival_to_away_targets():
-    item = automation("climate_extreme_heat_precool_restore")
+    item = automation("climate_pre_arrival_recovery_restore")
     text = CLIMATE.read_text()
 
-    assert any(trigger.get("at") == "18:00:00" for trigger in item["trigger"])
-    assert any(trigger.get("id") == "away_started" for trigger in item["trigger"])
     abandoned = next(
         trigger for trigger in item["trigger"] if trigger.get("id") == "prearrival_cleared"
     )
@@ -266,7 +273,6 @@ def test_precool_restore_cancels_abandoned_prearrival_to_away_targets():
     assert "prearrival_cleared" in text
     assert "input_number.climate_cool_away" in text
     assert "input_number.climate_heat_away" in text
-    assert "trigger.id != 'away_started'" in text
     assert "input_boolean.turn_off" in text
     assert "states('input_number.climate_cool_day')" in text
     assert "states('input_number.climate_heat_day')" in text
@@ -284,7 +290,7 @@ def test_precool_restore_overlay_end_restores_away_prearrival_targets():
     assert "overlay_window_end" in trigger_condition["value_template"]
     assert "overlay_disabled" in trigger_condition["value_template"]
     assert "climate_disabled" in trigger_condition["value_template"]
-    assert "prearrival_cleared" in trigger_condition["value_template"]
+    assert "prearrival_cleared" not in trigger_condition["value_template"]
     assert any(
         condition.get("condition") == "numeric_state"
         and condition.get("entity_id") == "zone.home"
