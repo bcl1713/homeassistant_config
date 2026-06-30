@@ -2,8 +2,9 @@
 #
 # Mobile-first operator view for climate control.
 #
-# This dashboard is YAML-managed from configuration.yaml. Trend cards use the
-# already-installed mini-graph-card custom card for compact operator history.
+# This dashboard is YAML-managed from packages/shared_infrastructure.yaml. Trend
+# cards use the already-installed mini-graph-card custom card for compact
+# operator history.
 
 title: "Climate Control"
 views:
@@ -37,7 +38,7 @@ views:
           content: >-
             ## Extreme heat expected, overlay disabled
 
-            Forecast high: {{ state_attr('binary_sensor.climate_extreme_heat_day', 'forecast_high_f') | default('unknown', true) }}°F<br>
+            Forecast high: {{ states('sensor.temperature_forecast_high_today') }}°F<br>
             Threshold: {{ states('input_number.climate_extreme_heat_threshold') }}°F
 
       - type: conditional
@@ -64,7 +65,7 @@ views:
           content: >-
             ## Extreme heat expected
 
-            Forecast high: {{ state_attr('binary_sensor.climate_extreme_heat_day', 'forecast_high_f') | default('unknown', true) }}°F<br>
+            Forecast high: {{ states('sensor.temperature_forecast_high_today') }}°F<br>
             Overlay is armed and may pre-cool during eligible occupied,
             guest, or pre-arrival windows.
 
@@ -78,168 +79,136 @@ views:
           content: >-
             ## Climate pre-arrival is eligible
 
-            Expected arrivals: {{ state_attr('binary_sensor.climate_pre_arrival_expected', 'expected_people') | default('unknown', true) }}<br>
-            Rule: {{ state_attr('binary_sensor.climate_pre_arrival_expected', 'reason') | default('active', true) }}
-
-      - type: thermostat
-        entity: climate.dining_room_thermostat
-        name: "Dining Room Thermostat"
-
-      - type: custom:mini-graph-card
-        name: "Temperature trends"
-        hours_to_show: 24
-        points_per_hour: 4
-        hour24: true
-        animate: false
-        lower_bound_secondary: 0
-        upper_bound_secondary: 1
-        state_map:
-          - value: "off"
-            label: "Inactive"
-          - value: "on"
-            label: "Active"
-        show:
-          legend: true
-          labels: true
-          labels_secondary: false
-          points: false
-          extrema: true
-        entities:
-          - entity: sensor.average_indoor_temperature
-            name: "Indoor avg"
-            color: "#26a69a"
-            line_width: 4
-            show_fill: false
-          - entity: binary_sensor.climate_heating_active
-            name: "Heating"
-            color: "rgba(239, 83, 80, 0.35)"
-            y_axis: secondary
-            aggregate_func: max
-            show_line: false
-            show_fill: true
-            show_points: false
-            show_state: false
-            smoothing: false
-          - entity: binary_sensor.climate_cooling_active
-            name: "Cooling"
-            color: "rgba(41, 182, 246, 0.35)"
-            y_axis: secondary
-            aggregate_func: max
-            show_line: false
-            show_fill: true
-            show_points: false
-            show_state: false
-            smoothing: false
-
-      - type: custom:mini-graph-card
-        name: "Room temperatures"
-        hours_to_show: 24
-        points_per_hour: 4
-        hour24: true
-        animate: false
-        show:
-          legend: true
-          labels: true
-          points: false
-          extrema: true
-        entities:
-          - entity: sensor.average_indoor_temperature
-            name: "Indoor average"
-            color: "#26a69a"
-            line_width: 4
-            show_fill: false
-          - entity: sensor.dining_room_thermostat_temperature
-            name: "Dining room"
-            color: "#42a5f5"
-            line_width: 2
-            show_fill: false
-          - entity: sensor.master_bedroom_sensor_temperature
-            name: "Master bedroom"
-            color: "#ab47bc"
-            line_width: 2
-            show_fill: false
-          - entity: sensor.weather_outdoor_temperature
-            name: "Outdoor"
-            color: "#78909c"
-            line_width: 2
-            show_fill: false
-
-      - type: custom:mini-graph-card
-        name: "Air quality trends"
-        hours_to_show: 24
-        points_per_hour: 4
-        hour24: true
-        animate: false
-        lower_bound_secondary: 0
-        upper_bound_secondary: 1
-        state_map:
-          - value: "off"
-            label: "Inactive"
-          - value: "on"
-            label: "Active"
-        show:
-          legend: true
-          labels: true
-          labels_secondary: false
-          points: false
-          extrema: true
-        entities:
-          - entity: sensor.thermostat_air_quality_index
-            name: "AQI"
-            color: "#ff7043"
-            line_width: 4
-            show_fill: false
-          - entity: binary_sensor.climate_heating_active
-            name: "Heating"
-            color: "rgba(239, 83, 80, 0.35)"
-            y_axis: secondary
-            aggregate_func: max
-            show_line: false
-            show_fill: true
-            show_points: false
-            show_state: false
-            smoothing: false
-          - entity: binary_sensor.climate_cooling_active
-            name: "Cooling"
-            color: "rgba(41, 182, 246, 0.35)"
-            y_axis: secondary
-            aggregate_func: max
-            show_line: false
-            show_fill: true
-            show_points: false
-            show_state: false
-            smoothing: false
-
-      - type: custom:mini-graph-card
-        name: "Air quality details"
-        hours_to_show: 24
-        points_per_hour: 4
-        hour24: true
-        animate: false
-        show:
-          legend: true
-          labels: true
-          points: false
-          extrema: true
-        entities:
-          - entity: sensor.thermostat_air_quality_index
-            name: "AQI"
-            color: "#ff7043"
-            line_width: 4
-            show_fill: false
-          - entity: sensor.thermostat_carbon_dioxide
-            name: "CO2"
-            color: "#7e57c2"
-            line_width: 2
-            show_fill: false
-          - entity: sensor.thermostat_vocs
-            name: "VOC"
-            color: "#66bb6a"
-            line_width: 2
-            show_fill: false
+            An eligible resident appears to be nearing home. Climate recovery may
+            restore the normal daytime targets if the house is empty and guest
+            mode is off.
 
       - type: grid
-        title: "Schedule tuning"
+        title: "Primary operator view"
+        columns: 1
+        square: false
+        cards:
+          - type: thermostat
+            entity: climate.dining_room_thermostat
+            name: "Dining Room Thermostat"
+
+          - type: custom:mini-graph-card
+            <<: &climate_activity_graph
+              hours_to_show: 24
+              points_per_hour: 4
+              hour24: true
+              animate: false
+              lower_bound_secondary: 0
+              upper_bound_secondary: 1
+              state_map:
+                - value: "off"
+                  label: "Inactive"
+                - value: "on"
+                  label: "Active"
+              show: &climate_activity_show
+                legend: true
+                labels: true
+                labels_secondary: false
+                points: false
+                extrema: true
+            name: "Temperature trends"
+            entities:
+              - entity: sensor.average_indoor_temperature
+                name: "Indoor avg"
+                color: "#26a69a"
+                line_width: 4
+                show_fill: false
+              - &heating_overlay
+                entity: binary_sensor.climate_heating_active
+                name: "Heating"
+                color: "rgba(239, 83, 80, 0.35)"
+                y_axis: secondary
+                aggregate_func: max
+                show_line: false
+                show_fill: true
+                show_points: false
+                show_state: false
+                smoothing: false
+              - &cooling_overlay
+                entity: binary_sensor.climate_cooling_active
+                name: "Cooling"
+                color: "rgba(41, 182, 246, 0.35)"
+                y_axis: secondary
+                aggregate_func: max
+                show_line: false
+                show_fill: true
+                show_points: false
+                show_state: false
+                smoothing: false
+
+          - type: custom:mini-graph-card
+            <<: &climate_detail_graph
+              hours_to_show: 24
+              points_per_hour: 4
+              hour24: true
+              animate: false
+              show: &climate_detail_show
+                legend: true
+                labels: true
+                points: false
+                extrema: true
+            name: "Room temperatures"
+            entities:
+              - entity: sensor.average_indoor_temperature
+                name: "Indoor average"
+                color: "#26a69a"
+                line_width: 4
+                show_fill: false
+              - entity: sensor.dining_room_thermostat_temperature
+                name: "Dining room"
+                color: "#42a5f5"
+                line_width: 2
+                show_fill: false
+              - entity: sensor.master_bedroom_sensor_temperature
+                name: "Master bedroom"
+                color: "#ab47bc"
+                line_width: 2
+                show_fill: false
+              - entity: sensor.weather_outdoor_temperature
+                name: "Outdoor"
+                color: "#78909c"
+                line_width: 2
+                show_fill: false
+
+          - type: custom:mini-graph-card
+            <<: *climate_activity_graph
+            name: "Air quality trends"
+            entities:
+              - entity: sensor.thermostat_air_quality_index
+                name: "AQI"
+                color: "#ff7043"
+                line_width: 4
+                show_fill: false
+              - *heating_overlay
+              - *cooling_overlay
+
+          - type: custom:mini-graph-card
+            <<: *climate_detail_graph
+            name: "Air quality details"
+            entities:
+              - entity: sensor.thermostat_air_quality_index
+                name: "AQI"
+                color: "#ff7043"
+                line_width: 4
+                show_fill: false
+              - entity: sensor.thermostat_carbon_dioxide
+                name: "CO2"
+                color: "#7e57c2"
+                line_width: 2
+                show_fill: false
+              - entity: sensor.thermostat_vocs
+                name: "VOC"
+                color: "#66bb6a"
+                line_width: 2
+                show_fill: false
+
+      - type: grid
+        title: "Admin tuning"
         columns: 1
         square: false
         cards:
@@ -257,6 +226,7 @@ views:
                 name: "Sleep"
               - entity: input_number.climate_cool_away
                 name: "Away"
+
           - type: entities
             title: "Heating setpoints"
             show_header_toggle: false
@@ -272,28 +242,25 @@ views:
               - entity: input_number.climate_heat_away
                 name: "Away"
 
-      - type: entities
-        title: "Extreme heat tuning"
-        show_header_toggle: false
-        entities:
-          - entity: binary_sensor.climate_extreme_heat_day
-            name: "Extreme heat day"
-          - type: attribute
-            entity: binary_sensor.climate_extreme_heat_day
-            attribute: forecast_high_f
-            name: "Forecast high"
-            suffix: "°F"
-          - entity: input_number.climate_extreme_heat_threshold
-            name: "Extreme heat threshold"
-          - entity: input_number.climate_extreme_heat_precool_offset
-            name: "Pre-cool offset"
-          - entity: input_boolean.climate_extreme_heat_precool_active
-            name: "Pre-cool active"
-          - entity: binary_sensor.climate_pre_arrival_expected
-            name: "Pre-arrival expected"
+          - type: entities
+            title: "Extreme heat overlay"
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.climate_extreme_heat_day
+                name: "Extreme heat day"
+              - entity: sensor.temperature_forecast_high_today
+                name: "Forecast high"
+              - entity: input_number.climate_extreme_heat_threshold
+                name: "Extreme heat threshold"
+              - entity: input_number.climate_extreme_heat_precool_offset
+                name: "Pre-cool offset"
+              - entity: input_boolean.climate_extreme_heat_overlay_enabled
+                name: "Overlay enabled"
+              - entity: input_boolean.climate_extreme_heat_precool_active
+                name: "Pre-cool active"
 
       - type: entities
-        title: "Diagnostics / why"
+        title: "Operational diagnostics"
         show_header_toggle: false
         entities:
           - type: attribute
@@ -318,15 +285,5 @@ views:
             name: "People home"
           - entity: input_boolean.mode_guest
             name: "Guest mode"
-          - type: attribute
-            entity: binary_sensor.climate_extreme_heat_day
-            attribute: decision_scope
-            name: "Hot-day decision scope"
-          - type: attribute
-            entity: binary_sensor.climate_pre_arrival_expected
-            attribute: expected_people
-            name: "Expected arrivals"
-          - type: attribute
-            entity: binary_sensor.climate_pre_arrival_expected
-            attribute: reason
-            name: "Pre-arrival rule"
+          - entity: binary_sensor.climate_pre_arrival_expected
+            name: "Pre-arrival eligible"

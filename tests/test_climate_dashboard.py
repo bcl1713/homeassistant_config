@@ -7,6 +7,7 @@ from climate_package_helpers import load_climate_packages
 
 ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD = ROOT / "dashboards" / "climate_control.yaml"
+WEATHER = ROOT / "packages" / "weather.yaml"
 
 
 def load_climate():
@@ -15,6 +16,10 @@ def load_climate():
 
 def load_dashboard():
     return yaml.safe_load(DASHBOARD.read_text())
+
+
+def load_weather():
+    return yaml.safe_load(WEATHER.read_text())
 
 
 def template_entities(kind):
@@ -30,12 +35,41 @@ def named_template(kind, name):
     raise AssertionError(f"{kind} template {name!r} not found")
 
 
-def graph_card(name):
-    cards = load_dashboard()["views"][0]["cards"]
+def weather_template_sensor(name):
+    for block in load_weather()["template"]:
+        for sensor in block.get("sensor", []):
+            if sensor["name"] == name:
+                return sensor
+    raise AssertionError(f"weather template sensor {name!r} not found")
+
+
+def iter_cards(cards):
     for card in cards:
+        yield card
+        nested_cards = card.get("cards", [])
+        if nested_cards:
+            yield from iter_cards(nested_cards)
+        nested_card = card.get("card")
+        if nested_card:
+            yield nested_card
+
+
+def all_cards():
+    return list(iter_cards(load_dashboard()["views"][0]["cards"]))
+
+
+def graph_card(name):
+    for card in all_cards():
         if card.get("type") == "custom:mini-graph-card" and card.get("name") == name:
             return card
     raise AssertionError(f"mini graph card {name!r} not found")
+
+
+def card_by_title(title):
+    for card in all_cards():
+        if card.get("title") == title:
+            return card
+    raise AssertionError(f"card titled {title!r} not found")
 
 
 def assert_graph_detail_card(name, expected_entities):
@@ -152,3 +186,51 @@ def test_air_quality_detail_graph_keeps_sensor_readings_without_hvac_overlays():
         "sensor.thermostat_carbon_dioxide",
         "sensor.thermostat_vocs",
     ])
+
+
+def test_dashboard_separates_operator_tuning_and_diagnostic_sections():
+    dashboard = load_dashboard()
+    top_titles = [card.get("title") for card in dashboard["views"][0]["cards"]]
+
+    assert "Primary operator view" in top_titles
+    assert "Admin tuning" in top_titles
+    assert "Operational diagnostics" in top_titles
+
+    primary = card_by_title("Primary operator view")
+    admin = card_by_title("Admin tuning")
+    diagnostics = card_by_title("Operational diagnostics")
+
+    assert any(card.get("type") == "thermostat" for card in primary["cards"])
+    assert {card.get("title") for card in admin["cards"]} == {
+        "Cooling setpoints",
+        "Heating setpoints",
+        "Extreme heat overlay",
+    }
+    assert diagnostics["type"] == "entities"
+
+
+def test_dashboard_avoids_backend_internal_explanation_attributes():
+    dashboard_text = DASHBOARD.read_text()
+
+    assert "decision_scope" not in dashboard_text
+    assert "expected_people" not in dashboard_text
+    assert "attribute: reason" not in dashboard_text
+    assert "state_attr('binary_sensor.climate_pre_arrival_expected'" not in dashboard_text
+    assert "sensor.temperature_forecast_high_today" in dashboard_text
+
+
+def test_dashboard_uses_weather_owned_forecast_high_sensor():
+    sensor = weather_template_sensor("Temperature forecast high today")
+
+    assert sensor["unique_id"] == "weather_forecast_temperature_high_today"
+    assert "sensor.temperature_forecast_high_today" in DASHBOARD.read_text()
+
+
+def test_dashboard_reuses_graph_configuration_with_yaml_anchors():
+    dashboard_text = DASHBOARD.read_text()
+
+    assert "&climate_activity_graph" in dashboard_text
+    assert "*climate_activity_graph" in dashboard_text
+    assert "&climate_detail_graph" in dashboard_text
+    assert "*climate_detail_graph" in dashboard_text
+    assert dashboard_text.count("hours_to_show: 24") == 2
