@@ -180,12 +180,26 @@ def test_air_quality_trends_use_aqi_with_hvac_activity_correlation():
     assert_hvac_activity_entities(card)
 
 
-def test_air_quality_detail_graph_keeps_sensor_readings_without_hvac_overlays():
-    assert_graph_detail_card("Air quality details", [
-        "sensor.thermostat_air_quality_index",
+def test_air_quality_detail_graph_splits_co2_and_voc_without_aqi_or_hvac_overlays():
+    card = graph_card("Air quality details")
+
+    assert card["hours_to_show"] == 24
+    assert card["show"]["legend"] is True
+    assert card["show"]["labels"] is True
+    assert card["show"]["labels_secondary"] is True
+    assert card["show"]["points"] is False
+    assert entity_ids(card) == [
         "sensor.thermostat_carbon_dioxide",
         "sensor.thermostat_vocs",
-    ])
+    ]
+    assert "sensor.thermostat_air_quality_index" not in entity_ids(card)
+    assert "binary_sensor.climate_heating_active" not in entity_ids(card)
+    assert "binary_sensor.climate_cooling_active" not in entity_ids(card)
+    assert "y_axis" not in card["entities"][0]
+    assert card["entities"][1]["y_axis"] == "secondary"
+    for entity in card["entities"]:
+        assert entity["show_fill"] is False
+        assert entity["line_width"] == 3
 
 
 def test_dashboard_separates_operator_tuning_and_diagnostic_sections():
