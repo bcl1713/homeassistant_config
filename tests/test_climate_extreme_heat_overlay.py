@@ -121,6 +121,35 @@ def test_climate_schedule_setpoint_helpers_restore_last_ui_value():
         assert "initial" not in config["input_number"][helper]
 
 
+def test_climate_schedule_setpoint_helpers_use_comparable_ui_ranges_and_icons():
+    config = load_climate()
+
+    heat_helpers = [
+        "climate_heat_morning",
+        "climate_heat_day",
+        "climate_heat_bedtime",
+        "climate_heat_sleep",
+        "climate_heat_away",
+    ]
+    cool_helpers = [
+        "climate_cool_morning",
+        "climate_cool_day",
+        "climate_cool_bedtime",
+        "climate_cool_sleep",
+        "climate_cool_away",
+    ]
+
+    for helper in heat_helpers:
+        assert config["input_number"][helper]["min"] == 55
+        assert config["input_number"][helper]["max"] == 80
+        assert config["input_number"][helper]["icon"] == "mdi:thermometer"
+
+    for helper in cool_helpers:
+        assert config["input_number"][helper]["min"] == 65
+        assert config["input_number"][helper]["max"] == 85
+        assert config["input_number"][helper]["icon"] == "mdi:snowflake"
+
+
 def test_extreme_heat_helpers_are_configurable_in_fahrenheit():
     config = load_climate()
 

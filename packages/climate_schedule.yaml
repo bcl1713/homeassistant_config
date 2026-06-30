@@ -9,39 +9,39 @@
 input_number:
   climate_heat_morning:
     name: Climate Heat - Morning
-    min: 60
+    min: 55
     max: 80
     step: 1
     unit_of_measurement: °F
-    icon: mdi:thermometer-chevron-up
+    icon: mdi:thermometer
   climate_heat_day:
     name: Climate Heat - Daytime
-    min: 60
+    min: 55
     max: 80
     step: 1
     unit_of_measurement: °F
     icon: mdi:thermometer
   climate_heat_bedtime:
     name: Climate Heat - Bedtime
-    min: 60
+    min: 55
     max: 80
     step: 1
     unit_of_measurement: °F
-    icon: mdi:thermometer-chevron-up
+    icon: mdi:thermometer
   climate_heat_sleep:
     name: Climate Heat - Sleep
-    min: 60
+    min: 55
     max: 80
     step: 1
     unit_of_measurement: °F
-    icon: mdi:thermometer-chevron-down
+    icon: mdi:thermometer
   climate_heat_away:
     name: Climate Heat - Away
     min: 55
-    max: 75
+    max: 80
     step: 1
     unit_of_measurement: °F
-    icon: mdi:thermometer-low
+    icon: mdi:thermometer
   climate_cool_morning:
     name: Climate Cool - Morning
     min: 65
@@ -72,11 +72,11 @@ input_number:
     icon: mdi:snowflake
   climate_cool_away:
     name: Climate Cool - Away
-    min: 70
+    min: 65
     max: 85
     step: 1
     unit_of_measurement: °F
-    icon: mdi:snowflake-thermometer
+    icon: mdi:snowflake
 input_boolean:
   climate_automation_enabled:
     name: Climate Automation
