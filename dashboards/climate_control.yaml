@@ -190,21 +190,20 @@ views:
           - type: custom:mini-graph-card
             <<: *climate_detail_graph
             name: "Air quality details"
+            show:
+              <<: *climate_detail_show
+              labels_secondary: true
             entities:
-              - entity: sensor.thermostat_air_quality_index
-                name: "AQI"
-                color: "#ff7043"
-                line_width: 4
-                show_fill: false
               - entity: sensor.thermostat_carbon_dioxide
                 name: "CO2"
                 color: "#7e57c2"
-                line_width: 2
+                line_width: 3
                 show_fill: false
               - entity: sensor.thermostat_vocs
                 name: "VOC"
                 color: "#66bb6a"
-                line_width: 2
+                y_axis: secondary
+                line_width: 3
                 show_fill: false
 
       - type: grid
