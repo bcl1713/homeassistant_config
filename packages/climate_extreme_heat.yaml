@@ -95,10 +95,9 @@ automation:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.dining_room_thermostat
+      - service: script.climate_apply_dining_room_band
         data:
+          lead: cool
           target_temp_high: |
             {% set day = states('input_number.climate_cool_day') | float %} {% set offset = states('input_number.climate_extreme_heat_precool_offset') | float(1) %} {{ [day - offset, 65] | max }}
           target_temp_low: |
@@ -158,10 +157,9 @@ automation:
                   entity_id: climate.dining_room_thermostat
                 data:
                   hvac_mode: heat_cool
-              - service: climate.set_temperature
-                target:
-                  entity_id: climate.dining_room_thermostat
+              - service: script.climate_apply_dining_room_band
                 data:
+                  lead: cool
                   target_temp_high: |
                     {{ states('input_number.climate_cool_away') | float }}
                   target_temp_low: |
@@ -189,10 +187,9 @@ automation:
                   entity_id: climate.dining_room_thermostat
                 data:
                   hvac_mode: heat_cool
-              - service: climate.set_temperature
-                target:
-                  entity_id: climate.dining_room_thermostat
+              - service: script.climate_apply_dining_room_band
                 data:
+                  lead: cool
                   target_temp_high: |
                     {{ states('input_number.climate_cool_day') | float }}
                   target_temp_low: |

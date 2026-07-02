@@ -82,7 +82,138 @@ input_boolean:
     name: Climate Automation
     icon: mdi:thermostat-auto
     initial: true
+script:
+  climate_apply_dining_room_band:
+    alias: Climate Apply Dining Room Band
+    description: |
+      Apply a heat/cool thermostat band through one Ecobee guard that enforces
+      at least a 5°F separation. The requested lead setpoint is preserved; the
+      opposite side is adjusted only when the requested band is too narrow.
+    mode: parallel
+    fields:
+      target_temp_high:
+        description: Requested cooling setpoint in °F.
+        required: true
+      target_temp_low:
+        description: Requested heating setpoint in °F.
+        required: true
+      lead:
+        description: Which setpoint should be preserved when enforcing the gap.
+        required: true
+        example: cool
+    sequence:
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.dining_room_thermostat
+        data:
+          target_temp_high: |
+            {% set high = target_temp_high | float %}
+            {% set low = target_temp_low | float %}
+            {% set min_gap = 5 %}
+            {% set preserve = lead | default('cool') %}
+            {% if preserve == 'heat' and high - low < min_gap %}
+              {{ low + min_gap }}
+            {% else %}
+              {{ high }}
+            {% endif %}
+          target_temp_low: |
+            {% set high = target_temp_high | float %}
+            {% set low = target_temp_low | float %}
+            {% set min_gap = 5 %}
+            {% set preserve = lead | default('cool') %}
+            {% if preserve != 'heat' and high - low < min_gap %}
+              {{ high - min_gap }}
+            {% else %}
+              {{ low }}
+            {% endif %}
 automation:
+  - alias: Climate Schedule Helper Setpoint Gap Sync
+    id: climate_schedule_helper_setpoint_gap_sync
+    description: |
+      Keep paired schedule heat/cool helpers at least 5°F apart as soon as a
+      helper is edited. The changed helper wins; only its paired helper is
+      adjusted when the stored band is too narrow.
+    trigger:
+      - platform: state
+        entity_id: input_number.climate_cool_morning
+        id: climate_cool_morning_changed
+      - platform: state
+        entity_id: input_number.climate_heat_morning
+        id: climate_heat_morning_changed
+      - platform: state
+        entity_id: input_number.climate_cool_day
+        id: climate_cool_day_changed
+      - platform: state
+        entity_id: input_number.climate_heat_day
+        id: climate_heat_day_changed
+      - platform: state
+        entity_id: input_number.climate_cool_bedtime
+        id: climate_cool_bedtime_changed
+      - platform: state
+        entity_id: input_number.climate_heat_bedtime
+        id: climate_heat_bedtime_changed
+      - platform: state
+        entity_id: input_number.climate_cool_sleep
+        id: climate_cool_sleep_changed
+      - platform: state
+        entity_id: input_number.climate_heat_sleep
+        id: climate_heat_sleep_changed
+      - platform: state
+        entity_id: input_number.climate_cool_away
+        id: climate_cool_away_changed
+      - platform: state
+        entity_id: input_number.climate_heat_away
+        id: climate_heat_away_changed
+    condition:
+      - condition: template
+        value_template: |
+          {% set period = trigger.id
+            | replace('climate_cool_', '')
+            | replace('climate_heat_', '')
+            | replace('_changed', '') %}
+          {% set heat = states('input_number.climate_heat_' ~ period) | float(none) %}
+          {% set cool = states('input_number.climate_cool_' ~ period) | float(none) %}
+          {{ heat is not none and cool is not none and cool - heat < 5 }}
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ '_cool_' in trigger.id }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: >-
+                    {% set period = trigger.id
+                      | replace('climate_cool_', '')
+                      | replace('_changed', '') %}
+                    input_number.climate_heat_{{ period }}
+                data:
+                  value: >-
+                    {% set period = trigger.id
+                      | replace('climate_cool_', '')
+                      | replace('_changed', '') %}
+                    {% set cool = states('input_number.climate_cool_' ~ period) | float %}
+                    {{ cool - 5 }}
+          - conditions:
+              - condition: template
+                value_template: "{{ '_heat_' in trigger.id }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: >-
+                    {% set period = trigger.id
+                      | replace('climate_heat_', '')
+                      | replace('_changed', '') %}
+                    input_number.climate_cool_{{ period }}
+                data:
+                  value: >-
+                    {% set period = trigger.id
+                      | replace('climate_heat_', '')
+                      | replace('_changed', '') %}
+                    {% set heat = states('input_number.climate_heat_' ~ period) | float %}
+                    {{ heat + 5 }}
+    mode: queued
+    max: 10
   - alias: climate_schedule_morning_weekday
     id: climate_schedule_morning_weekday
     description: Set morning temperature for weekdays (Mon-Fri)
@@ -114,10 +245,9 @@ automation:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.dining_room_thermostat
+      - service: script.climate_apply_dining_room_band
         data:
+          lead: cool
           target_temp_high: |
             {{ states('input_number.climate_cool_morning') | float }}
           target_temp_low: |
@@ -150,10 +280,9 @@ automation:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.dining_room_thermostat
+      - service: script.climate_apply_dining_room_band
         data:
+          lead: cool
           target_temp_high: |
             {{ states('input_number.climate_cool_morning') | float }}
           target_temp_low: |
@@ -182,10 +311,9 @@ automation:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.dining_room_thermostat
+      - service: script.climate_apply_dining_room_band
         data:
+          lead: cool
           target_temp_high: |
             {{ states('input_number.climate_cool_day') | float }}
           target_temp_low: |
@@ -214,10 +342,9 @@ automation:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.dining_room_thermostat
+      - service: script.climate_apply_dining_room_band
         data:
+          lead: cool
           target_temp_high: |
             {{ states('input_number.climate_cool_bedtime') | float }}
           target_temp_low: |
@@ -246,10 +373,9 @@ automation:
           entity_id: climate.dining_room_thermostat
         data:
           hvac_mode: heat_cool
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.dining_room_thermostat
+      - service: script.climate_apply_dining_room_band
         data:
+          lead: cool
           target_temp_high: |
             {{ states('input_number.climate_cool_sleep') | float }}
           target_temp_low: |
@@ -339,10 +465,9 @@ automation:
                           - sat
                           - sun
             sequence:
-              - service: climate.set_temperature
-                target:
-                  entity_id: climate.dining_room_thermostat
+              - service: script.climate_apply_dining_room_band
                 data:
+                  lead: cool
                   target_temp_high: |
                     {{ states('input_number.climate_cool_morning') | float }}
                   target_temp_low: |
@@ -358,10 +483,9 @@ automation:
                 after: "12:59:00"
                 before: "18:00:00"
             sequence:
-              - service: climate.set_temperature
-                target:
-                  entity_id: climate.dining_room_thermostat
+              - service: script.climate_apply_dining_room_band
                 data:
+                  lead: cool
                   target_temp_high: |
                     {% set day = states('input_number.climate_cool_day') | float %} {% set offset = states('input_number.climate_extreme_heat_precool_offset') | float(1) %} {{ [day - offset, 65] | max }}
                   target_temp_low: |
@@ -374,10 +498,9 @@ automation:
                 after: "09:00:00"
                 before: "21:00:00"
             sequence:
-              - service: climate.set_temperature
-                target:
-                  entity_id: climate.dining_room_thermostat
+              - service: script.climate_apply_dining_room_band
                 data:
+                  lead: cool
                   target_temp_high: |
                     {{ states('input_number.climate_cool_day') | float }}
                   target_temp_low: |
@@ -387,19 +510,17 @@ automation:
                 after: "21:00:00"
                 before: "22:30:00"
             sequence:
-              - service: climate.set_temperature
-                target:
-                  entity_id: climate.dining_room_thermostat
+              - service: script.climate_apply_dining_room_band
                 data:
+                  lead: cool
                   target_temp_high: |
                     {{ states('input_number.climate_cool_bedtime') | float }}
                   target_temp_low: |
                     {{ states('input_number.climate_heat_bedtime') | float }}
         default:
-          - service: climate.set_temperature
-            target:
-              entity_id: climate.dining_room_thermostat
+          - service: script.climate_apply_dining_room_band
             data:
+              lead: cool
               target_temp_high: |
                 {{ states('input_number.climate_cool_sleep') | float }}
               target_temp_low: |
