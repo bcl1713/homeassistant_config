@@ -64,6 +64,10 @@ def automation(automation_id):
     raise AssertionError(f"automation {automation_id!r} not found")
 
 
+def climate_helper_gap_sync_automation():
+    return automation("climate_schedule_helper_setpoint_gap_sync")
+
+
 def binary_sensor(name):
     for block in load_climate()["template"]:
         for sensor in block.get("binary_sensor", []):
@@ -215,6 +219,92 @@ def test_climate_band_guard_preserves_heating_target_when_gap_is_too_narrow():
 
     assert high == "73.0"
     assert low == "68.0"
+
+
+def test_climate_helper_gap_sync_watches_all_schedule_helpers():
+    item = climate_helper_gap_sync_automation()
+
+    trigger_ids = {trigger["id"] for trigger in item["trigger"]}
+
+    assert trigger_ids == {
+        "climate_cool_morning_changed",
+        "climate_heat_morning_changed",
+        "climate_cool_day_changed",
+        "climate_heat_day_changed",
+        "climate_cool_bedtime_changed",
+        "climate_heat_bedtime_changed",
+        "climate_cool_sleep_changed",
+        "climate_heat_sleep_changed",
+        "climate_cool_away_changed",
+        "climate_heat_away_changed",
+    }
+    assert all(trigger["platform"] == "state" for trigger in item["trigger"])
+
+
+def test_climate_helper_gap_sync_cooling_change_preserves_cool_and_lowers_heat():
+    item = climate_helper_gap_sync_automation()
+    violation_guard = item["condition"][-1]["value_template"]
+    cool_branch = item["action"][0]["choose"][0]
+    set_value = cool_branch["sequence"][0]
+    states = {
+        "input_number.climate_heat_day": "70",
+        "input_number.climate_cool_day": "72",
+    }
+
+    assert render_ha_template(
+        violation_guard,
+        states,
+        trigger={"id": "climate_cool_day_changed"},
+    ) == "True"
+    assert render_ha_template(
+        cool_branch["conditions"][0]["value_template"],
+        states,
+        trigger={"id": "climate_cool_day_changed"},
+    ) == "True"
+    assert set_value["service"] == "input_number.set_value"
+    assert render_ha_template(
+        set_value["target"]["entity_id"],
+        states,
+        trigger={"id": "climate_cool_day_changed"},
+    ) == "input_number.climate_heat_day"
+    assert render_ha_template(
+        set_value["data"]["value"],
+        states,
+        trigger={"id": "climate_cool_day_changed"},
+    ) == "67.0"
+
+
+def test_climate_helper_gap_sync_heating_change_preserves_heat_and_raises_cool():
+    item = climate_helper_gap_sync_automation()
+    violation_guard = item["condition"][-1]["value_template"]
+    heat_branch = item["action"][0]["choose"][1]
+    set_value = heat_branch["sequence"][0]
+    states = {
+        "input_number.climate_heat_day": "70",
+        "input_number.climate_cool_day": "72",
+    }
+
+    assert render_ha_template(
+        violation_guard,
+        states,
+        trigger={"id": "climate_heat_day_changed"},
+    ) == "True"
+    assert render_ha_template(
+        heat_branch["conditions"][0]["value_template"],
+        states,
+        trigger={"id": "climate_heat_day_changed"},
+    ) == "True"
+    assert set_value["service"] == "input_number.set_value"
+    assert render_ha_template(
+        set_value["target"]["entity_id"],
+        states,
+        trigger={"id": "climate_heat_day_changed"},
+    ) == "input_number.climate_cool_day"
+    assert render_ha_template(
+        set_value["data"]["value"],
+        states,
+        trigger={"id": "climate_heat_day_changed"},
+    ) == "75.0"
 
 
 def test_all_thermostat_band_automations_use_shared_gap_guard_script():

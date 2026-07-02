@@ -127,6 +127,93 @@ script:
               {{ low }}
             {% endif %}
 automation:
+  - alias: Climate Schedule Helper Setpoint Gap Sync
+    id: climate_schedule_helper_setpoint_gap_sync
+    description: |
+      Keep paired schedule heat/cool helpers at least 5°F apart as soon as a
+      helper is edited. The changed helper wins; only its paired helper is
+      adjusted when the stored band is too narrow.
+    trigger:
+      - platform: state
+        entity_id: input_number.climate_cool_morning
+        id: climate_cool_morning_changed
+      - platform: state
+        entity_id: input_number.climate_heat_morning
+        id: climate_heat_morning_changed
+      - platform: state
+        entity_id: input_number.climate_cool_day
+        id: climate_cool_day_changed
+      - platform: state
+        entity_id: input_number.climate_heat_day
+        id: climate_heat_day_changed
+      - platform: state
+        entity_id: input_number.climate_cool_bedtime
+        id: climate_cool_bedtime_changed
+      - platform: state
+        entity_id: input_number.climate_heat_bedtime
+        id: climate_heat_bedtime_changed
+      - platform: state
+        entity_id: input_number.climate_cool_sleep
+        id: climate_cool_sleep_changed
+      - platform: state
+        entity_id: input_number.climate_heat_sleep
+        id: climate_heat_sleep_changed
+      - platform: state
+        entity_id: input_number.climate_cool_away
+        id: climate_cool_away_changed
+      - platform: state
+        entity_id: input_number.climate_heat_away
+        id: climate_heat_away_changed
+    condition:
+      - condition: template
+        value_template: |
+          {% set period = trigger.id
+            | replace('climate_cool_', '')
+            | replace('climate_heat_', '')
+            | replace('_changed', '') %}
+          {% set heat = states('input_number.climate_heat_' ~ period) | float(none) %}
+          {% set cool = states('input_number.climate_cool_' ~ period) | float(none) %}
+          {{ heat is not none and cool is not none and cool - heat < 5 }}
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ '_cool_' in trigger.id }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: >-
+                    {% set period = trigger.id
+                      | replace('climate_cool_', '')
+                      | replace('_changed', '') %}
+                    input_number.climate_heat_{{ period }}
+                data:
+                  value: >-
+                    {% set period = trigger.id
+                      | replace('climate_cool_', '')
+                      | replace('_changed', '') %}
+                    {% set cool = states('input_number.climate_cool_' ~ period) | float %}
+                    {{ cool - 5 }}
+          - conditions:
+              - condition: template
+                value_template: "{{ '_heat_' in trigger.id }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: >-
+                    {% set period = trigger.id
+                      | replace('climate_heat_', '')
+                      | replace('_changed', '') %}
+                    input_number.climate_cool_{{ period }}
+                data:
+                  value: >-
+                    {% set period = trigger.id
+                      | replace('climate_heat_', '')
+                      | replace('_changed', '') %}
+                    {% set heat = states('input_number.climate_heat_' ~ period) | float %}
+                    {{ heat + 5 }}
+    mode: queued
+    max: 10
   - alias: climate_schedule_morning_weekday
     id: climate_schedule_morning_weekday
     description: Set morning temperature for weekdays (Mon-Fri)
