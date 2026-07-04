@@ -74,7 +74,7 @@ Notification-heavy packages include:
 `shared_infrastructure.yaml` registers YAML dashboards from `dashboards/`:
 
 - `climate-control` from `dashboards/climate_control.yaml`
-- `ventilation-advisor` from `dashboards/window_ventilation.yaml`
+- `window-ventilation` from `dashboards/window_ventilation.yaml` (title: "Ventilation Advisor")
 
 Packages should add dashboard-facing sensors/templates inside the feature package that owns the data, then wire the presentation in `dashboards/` when a dedicated operator view is needed.
 
