@@ -24,6 +24,36 @@ def script_step_services(script):
     return [step.get("service") for step in script["sequence"] if isinstance(step, dict)]
 
 
+def test_secure_house_away_context_waits_for_front_door_to_settle_before_reading_state():
+    package = load_yaml(SECURITY)
+    script = package["script"]["secure_house_sanity_check"]
+    settle_step = script["sequence"][0]
+    variables_step = script["sequence"][1]
+
+    assert "choose" in settle_step
+    settle_choice = settle_step["choose"][0]
+    assert settle_choice["conditions"] == [
+        {
+            "condition": "template",
+            "value_template": (
+                "{{ (check_context | default('night')) == 'away' and\n"
+                "   not is_state('lock.front_door', 'locked') }}\n"
+            ),
+        }
+    ]
+    assert settle_choice["sequence"] == [
+        {
+            "wait_template": "{{ is_state('lock.front_door', 'locked') }}",
+            "timeout": "00:00:45",
+            "continue_on_timeout": True,
+        }
+    ]
+    assert "variables" in variables_step
+    assert variables_step["variables"]["front_door_state"] == (
+        "{{ states('lock.front_door') }}"
+    )
+
+
 def test_secure_house_sanity_script_aggregates_and_stays_notify_first():
     package = load_yaml(SECURITY)
     script = package["script"]["secure_house_sanity_check"]
@@ -37,6 +67,7 @@ def test_secure_house_sanity_script_aggregates_and_stays_notify_first():
     assert "findings.items | join" in text
     assert "mismatch_count | int > 0" in text
     assert "1 if front_door_state != 'locked' else 0" in text
+    assert "continue_on_timeout: true" in text
     assert "Guest Mode is on" in text
 
     services = script_step_services(script)
