@@ -1,72 +1,85 @@
 # Contributing Guide
 
-Thank you for your interest in contributing to this Home Assistant configuration! This document provides guidelines and processes to follow when making changes.
+Thank you for helping improve this Home Assistant configuration. This repository is a live smart-home configuration, so changes should be small, reviewable, and validated before they are proposed for integration.
 
-## Getting Started
+## Before starting
 
-1. Read the [DEVELOPMENT.md](DEVELOPMENT.md) file for detailed workflow information
-2. Check existing [GitHub issues](https://github.com/yourusername/home-assistant-config/issues) for current work
-3. Fork the repository if you're not already a collaborator
+1. Read `DEVELOPMENT.md` for the detailed workflow and implementation standards.
+2. Check existing GitHub issues at https://github.com/bcl1713/homeassistant_config/issues.
+3. Comment on the issue you plan to work on, or create one if the change is not already tracked.
+4. Work only in the repository checkout unless a task explicitly authorizes live Home Assistant changes.
 
-## Contribution Process
+## Branch and pull-request flow
 
-### 1. Pick an Issue or Create One
+The normal integration branch is `dev`. Do not branch from `main` for ordinary feature, fix, automation, or documentation work.
 
-- Browse existing issues or create a new one
-- Comment on the issue you'd like to work on to avoid duplication of effort
-
-### 2. Branch Management
-
-Follow these branching conventions:
-- Feature branches: `feature/descriptive-name`
-- Bug fixes: `fix/descriptive-name`
-- Documentation: `docs/descriptive-name`
-
-Always start from the latest main branch:
 ```bash
-git checkout main
-git pull origin main
-git checkout -b feature/your-feature-name
+git fetch origin
+git checkout dev
+git pull origin dev
+git checkout -b docs/short-description
 ```
 
-### 3. Development Standards
+Use focused branch names:
 
-Please follow these standards:
-- Use 2-space indentation in YAML files
-- Follow existing naming conventions
-- Group related configurations logically
-- Add sufficient comments to explain complex automations
-- Test all changes before submitting
+- `feature/descriptive-name` for new user-facing behavior.
+- `fix/descriptive-name` for bug fixes.
+- `docs/descriptive-name` for documentation-only changes.
+- `chore/descriptive-name` for maintenance.
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed standards.
+Open pull requests against `dev`:
 
-### 4. Commit Messages
-
-Use conventional commit format:
+```bash
+gh pr create --base dev --title "docs: update package documentation" --body "Summary..."
 ```
+
+`main` is reserved for the established release gate. Do not self-merge to `main`.
+
+## Development standards
+
+- Use the existing package structure instead of adding unrelated logic to `configuration.yaml`.
+- Use 2-space YAML indentation.
+- Follow existing entity, helper, script, and automation naming conventions.
+- Add comments for complex templates or non-obvious automation logic.
+- Keep package boundaries clear; cross-cutting notifier/dashboard contracts belong in `packages/shared_infrastructure.yaml`.
+- Do not commit secrets, `.storage/`, generated exports, runtime databases, or credential files.
+
+## Testing and validation
+
+Before opening a pull request:
+
+1. Review the diff for accidental entity renames, indentation mistakes, unrelated refactors, and secret leakage.
+2. Run the most relevant local validation available for the change.
+3. For documentation-only changes, verify package inventories and links by inspection or script.
+4. For Home Assistant configuration changes, prefer safe static validation first. Run a full Home Assistant config check only when a known-safe local command/environment is available.
+5. Do not reload or restart the live Home Assistant host unless the task explicitly authorizes it and includes the intended rollback/safety path.
+
+## Commit messages
+
+Use conventional commits:
+
+```text
 <type>(<scope>): <description>
 
 [optional body]
-
-[optional footer(s)]
 ```
 
 Examples:
-- `feat(security): add camera motion detection notifications`
-- `fix(automation): correct good night routine condition check`
-- `docs(README): update with new security camera instructions`
 
-### 5. Pull Request Process
+- `feat(security): add camera motion notifications`
+- `fix(climate): preserve thermostat band gap`
+- `docs(packages): refresh active package inventory`
 
-1. Push your branch to GitHub
-2. Create a pull request to merge into main
-3. Reference the issue number in the PR description
-4. Wait for review and address any feedback
+Common types are `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, and `ci`.
 
-## Code of Conduct
+## Pull request checklist
 
-- Be respectful and inclusive in all communications
-- Provide constructive feedback
-- Help maintain a welcoming environment for contributors of all skill levels
+A good PR should include:
 
-Thank you for helping to improve this Home Assistant configuration!
+- A concise summary of what changed.
+- The issue number, when applicable.
+- Validation performed.
+- Any live Home Assistant actions intentionally not performed.
+- Documentation impact, especially when packages, dashboards, helpers, or operator workflows change.
+
+Wait for the reviewer gate and the established integration flow before merge.
