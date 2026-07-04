@@ -1,69 +1,40 @@
 # Home Assistant Configuration CI
 
-This directory contains GitHub Actions workflows for continuous integration of the Home Assistant configuration.
+This directory contains GitHub Actions configuration for repository validation.
 
-## Validation Workflow
+## Validation workflow
 
-The `validate.yaml` workflow consists of three separate jobs:
+The active workflow is `.github/workflows/validate.yaml` and is named `Check`. It runs on pushes and pull requests.
 
-1. **YAML Linting**: Checks the syntax and style of all YAML files in the repository
-2. **Home Assistant Config Check**: Validates Home Assistant configuration using a container-based approach
-3. **Notify Results**: Adds comments to pull requests indicating success or failure
+The current job is:
 
-The workflow runs on every push to `main` branch and on pull requests that change YAML files. You can also trigger it manually through the GitHub Actions UI.
+1. **Home Assistant Core Configuration Check**
+   - Checks out the repository.
+   - Creates a dummy `SERVICE_ACCOUNT.json` with the fields required by `configuration.yaml`.
+   - Creates `.storage/` for Home Assistant runtime expectations.
+   - Runs `frenck/action-home-assistant@v1.4.1` with `version: stable`.
 
-## How it Works
+The workflow currently sets `continue-on-error: true` on the Home Assistant check step, so review the logs even when GitHub reports the job as non-blocking.
 
-### YAML Linting
-This job uses `yamllint` with custom rules defined in `.github/yamllint-config.yaml` to check for:
-- Proper indentation (2 spaces)
-- Line length (max 120 characters)
-- Home Assistant specific truthy values
-- Other YAML syntax rules
+## Local validation
 
-### Home Assistant Config Check
-This job:
-1. Creates dummy files for sensitive information (SERVICE_ACCOUNT.json, secrets.yaml)
-2. Uses a dedicated Home Assistant container to validate the configuration
-3. Reports validation errors without requiring actual credentials
-
-## Local Validation
-
-To validate your configuration locally before pushing, you can run:
+For configuration changes, prefer safe static checks first. If Docker and the required local context are available, a Home Assistant-style check can be run with:
 
 ```bash
-# Using the Home Assistant CLI
-hass --script check_config --config .
-
-# Using Docker (more similar to the CI environment)
-docker run --rm -v $(pwd):/config homeassistant/home-assistant:stable hass -c /config --script check_config
+docker run --rm -v "$(pwd):/config" homeassistant/home-assistant:stable hass -c /config --script check_config
 ```
 
-## YAMLLint Configuration
+For documentation-only changes, a package inventory check and Markdown review is usually the relevant validation.
 
-The `.github/yamllint-config.yaml` file contains custom rules optimized for Home Assistant configuration:
+## Secrets and generated files
 
-- Line length limit: 120 characters
-- Indentation: 2 spaces
-- Special handling for Home Assistant's truthy values
-- Ignores directories like `.storage/`, `themes/`, and `blueprints/`
-
-## Handling Secrets
-
-The workflow creates dummy versions of:
-- SERVICE_ACCOUNT.json
-- secrets.yaml (if used)
-
-This allows validation without exposing sensitive information in the repository.
+The workflow uses dummy credential material only. Do not commit real Home Assistant secrets, `.storage/`, database files, generated exports, or service account credentials.
 
 ## Troubleshooting
 
 If validation fails:
 
-1. Check the workflow logs for detailed error messages
-2. Common issues include:
-   - Indentation errors
-   - Missing or incorrect entity references
-   - Invalid service calls
-   - Syntax errors in templates
-   - References to missing files or secrets
+1. Read the workflow logs for the exact Home Assistant error.
+2. Check changed YAML indentation, entity IDs, service names, and template syntax.
+3. Confirm any newly referenced include files exist in the repository.
+4. Confirm no live-only credential or runtime file was accidentally required by the change.
