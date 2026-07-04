@@ -27,6 +27,20 @@ script:
               - "night"
               - "away"
     sequence:
+      # Away mode issues the front-door lock command as the alarm arms, so give
+      # the lock entity a bounded chance to report locked before calculating
+      # findings. A real failure still times out and alerts below.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ (check_context | default('night')) == 'away' and
+                     not is_state('lock.front_door', 'locked') }}
+            sequence:
+              - wait_template: "{{ is_state('lock.front_door', 'locked') }}"
+                timeout: "00:00:45"
+                continue_on_timeout: true
+
       - variables:
           security_context: "{{ check_context | default('night') }}"
           expected_alarm_state: >
