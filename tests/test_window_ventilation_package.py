@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from jinja2 import Environment
 import yaml
 
 
@@ -32,6 +33,129 @@ def automation_by_id(package, automation_id):
         if automation["id"] == automation_id:
             return automation
     raise AssertionError(f"automation {automation_id!r} not found")
+
+
+def ha_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "on", "yes", "1", "enable", "enabled"}:
+        return True
+    if normalized in {"false", "off", "no", "0", "disable", "disabled"}:
+        return False
+    return default
+
+
+def normalize_rendered(value):
+    stripped = str(value).strip()
+    lowered = stripped.lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    return stripped
+
+
+class StatesProxy:
+    def __init__(self, state_map):
+        self._state_map = state_map
+
+    def __call__(self, entity_id):
+        return self._state_map.get(entity_id, "unknown")
+
+
+def render_ha_template(template, *, state_map, attr_map=None):
+    if not isinstance(template, str):
+        return template
+    attr_map = attr_map or {}
+    env = Environment(trim_blocks=True, lstrip_blocks=True)
+    env.filters["bool"] = ha_bool
+    env.globals.update(
+        states=StatesProxy(state_map),
+        state_attr=lambda entity_id, attr: attr_map.get((entity_id, attr)),
+        is_state=lambda entity_id, state: state_map.get(entity_id) == state,
+    )
+    return env.from_string(template).render().strip()
+
+
+DEFAULT_VENTILATION_STATES = {
+    "sensor.dining_room_thermostat_temperature": "72",
+    "sensor.thermostat_humidity": "45",
+    "sensor.window_ventilation_indoor_dew_point": "52",
+    "sensor.weather_outdoor_temperature": "66",
+    "sensor.weather_outdoor_dew_point": "50",
+    "sensor.precipitation_forecast_next_hour": "0",
+    "sensor.condition_forecast_next_hour": "sunny",
+    "sensor.thermostat_carbon_dioxide": "700",
+    "sensor.window_ventilation_co2_baseline": "650",
+    "sensor.thermostat_vocs": "150",
+    "sensor.window_ventilation_voc_baseline": "140",
+    "sensor.air_quality_composite_status": "good",
+    "sensor.air_quality_trend": "stable",
+    "input_number.window_ventilation_cooler_delta": "3",
+    "input_number.window_ventilation_max_outdoor_dew_point": "60",
+    "input_number.window_ventilation_brief_purge_max_outdoor_temperature_delta": "5",
+    "input_number.window_ventilation_brief_purge_max_outdoor_dew_point": "70",
+    "input_number.window_ventilation_winter_threshold": "55",
+    "input_number.window_ventilation_high_indoor_humidity": "58",
+}
+
+
+DEFAULT_VENTILATION_ATTRS = {
+    ("climate.dining_room_thermostat", "hvac_action"): "idle",
+    ("climate.dining_room_thermostat", "current_temperature"): 72,
+    ("climate.dining_room_thermostat", "current_humidity"): 45,
+}
+
+
+def evaluate_window_ventilation(state_overrides=None, attr_overrides=None):
+    package = load_package()
+    context = template_sensor_by_name(package, "Window Ventilation Decision Context")
+    recommendation = template_sensor_by_name(
+        package, "Window Ventilation Recommendation"
+    )
+    reason = template_sensor_by_name(package, "Window Ventilation Reason")
+
+    state_map = DEFAULT_VENTILATION_STATES | (state_overrides or {})
+    attr_map = DEFAULT_VENTILATION_ATTRS | (attr_overrides or {})
+    context_state = render_ha_template(
+        context["state"], state_map=state_map, attr_map=attr_map
+    )
+    state_map["sensor.window_ventilation_decision_context"] = context_state
+
+    context_attrs = {}
+    for name, template in context["attributes"].items():
+        context_attrs[name] = normalize_rendered(
+            render_ha_template(template, state_map=state_map, attr_map=attr_map)
+        )
+    for name, value in context_attrs.items():
+        attr_map[("sensor.window_ventilation_decision_context", name)] = value
+
+    recommendation_state = render_ha_template(
+        recommendation["state"], state_map=state_map, attr_map=attr_map
+    )
+    state_map["sensor.window_ventilation_recommendation"] = recommendation_state
+    recommendation_attrs = {}
+    for name, template in recommendation["attributes"].items():
+        if isinstance(template, str) and ("{{" in template or "{%" in template):
+            recommendation_attrs[name] = normalize_rendered(
+                render_ha_template(template, state_map=state_map, attr_map=attr_map)
+            )
+        else:
+            recommendation_attrs[name] = template
+    for name, value in recommendation_attrs.items():
+        attr_map[("sensor.window_ventilation_recommendation", name)] = value
+
+    reason_state = render_ha_template(reason["state"], state_map=state_map, attr_map=attr_map)
+    return {
+        "context_state": context_state,
+        "context_attrs": context_attrs,
+        "recommendation_state": recommendation_state,
+        "recommendation_attrs": recommendation_attrs,
+        "reason_state": reason_state,
+    }
 
 
 def test_window_ventilation_required_entities_are_defined():
@@ -164,6 +288,112 @@ def test_window_ventilation_has_distinct_brief_purge_recommendation_path():
     assert "5-10 minutes" in reason_state
     assert "short purge" in reason_state
     assert "rec == 'open'" in reason_state
+
+
+def test_window_ventilation_favorable_conditions_still_recommend_open():
+    result = evaluate_window_ventilation()
+
+    assert result["context_state"] == "ready"
+    assert result["context_attrs"]["mild_open"] is True
+    assert result["context_attrs"]["brief_purge"] is False
+    assert result["recommendation_state"] == "open"
+    assert result["recommendation_attrs"]["mode"] == "comfort"
+    assert "Open windows:" in result["reason_state"]
+    assert "short purge" not in result["reason_state"]
+    assert "Briefly open" not in result["reason_state"]
+
+
+def test_window_ventilation_severe_stale_air_can_recommend_bounded_brief_purge():
+    result = evaluate_window_ventilation(
+        {
+            "sensor.weather_outdoor_temperature": "75",
+            "sensor.weather_outdoor_dew_point": "65",
+            "sensor.thermostat_carbon_dioxide": "1600",
+            "sensor.window_ventilation_co2_baseline": "1000",
+            "sensor.air_quality_composite_status": "poor",
+            "sensor.air_quality_trend": "worsening",
+        }
+    )
+
+    assert result["context_state"] == "ready"
+    assert result["context_attrs"]["outdoor_cooler"] is False
+    assert result["context_attrs"]["outdoor_drier"] is False
+    assert result["context_attrs"]["severe_stale_air_reason"] is True
+    assert result["context_attrs"]["brief_purge_outdoor_temperature_ok"] is True
+    assert result["context_attrs"]["brief_purge_outdoor_dew_point_ok"] is True
+    assert result["context_attrs"]["brief_purge"] is True
+    assert result["recommendation_state"] == "open_briefly"
+    assert result["recommendation_state"] != "open"
+    assert result["recommendation_attrs"]["mode"] == "brief_purge"
+    assert "Briefly open windows for a short purge" in result["reason_state"]
+    assert "bounded compromise limits" in result["reason_state"]
+
+
+def test_window_ventilation_brief_purge_requires_bounded_outdoor_limits():
+    too_warm = evaluate_window_ventilation(
+        {
+            "sensor.weather_outdoor_temperature": "78",
+            "sensor.weather_outdoor_dew_point": "65",
+            "sensor.thermostat_carbon_dioxide": "1600",
+            "sensor.window_ventilation_co2_baseline": "1000",
+            "sensor.air_quality_composite_status": "poor",
+            "sensor.air_quality_trend": "worsening",
+        }
+    )
+    too_humid = evaluate_window_ventilation(
+        {
+            "sensor.weather_outdoor_temperature": "75",
+            "sensor.weather_outdoor_dew_point": "71",
+            "sensor.thermostat_carbon_dioxide": "1600",
+            "sensor.window_ventilation_co2_baseline": "1000",
+            "sensor.air_quality_composite_status": "poor",
+            "sensor.air_quality_trend": "worsening",
+        }
+    )
+
+    assert too_warm["context_attrs"]["severe_stale_air_reason"] is True
+    assert too_warm["context_attrs"]["brief_purge_outdoor_temperature_ok"] is False
+    assert too_warm["context_attrs"]["brief_purge_outdoor_dew_point_ok"] is True
+    assert too_warm["context_attrs"]["brief_purge"] is False
+    assert too_warm["recommendation_state"] != "open_briefly"
+    assert too_warm["recommendation_state"] != "open"
+
+    assert too_humid["context_attrs"]["severe_stale_air_reason"] is True
+    assert too_humid["context_attrs"]["brief_purge_outdoor_temperature_ok"] is True
+    assert too_humid["context_attrs"]["brief_purge_outdoor_dew_point_ok"] is False
+    assert too_humid["context_attrs"]["brief_purge"] is False
+    assert too_humid["recommendation_state"] != "open_briefly"
+    assert too_humid["recommendation_state"] != "open"
+
+
+def test_window_ventilation_rain_and_hvac_suppress_brief_purge_recommendations():
+    severe_stale_air = {
+        "sensor.weather_outdoor_temperature": "75",
+        "sensor.weather_outdoor_dew_point": "65",
+        "sensor.thermostat_carbon_dioxide": "1600",
+        "sensor.window_ventilation_co2_baseline": "1000",
+        "sensor.air_quality_composite_status": "poor",
+        "sensor.air_quality_trend": "worsening",
+    }
+    rainy = evaluate_window_ventilation(
+        severe_stale_air | {"sensor.precipitation_forecast_next_hour": "30"}
+    )
+    hvac = evaluate_window_ventilation(
+        severe_stale_air,
+        {("climate.dining_room_thermostat", "hvac_action"): "cooling"},
+    )
+
+    assert rainy["context_attrs"]["severe_stale_air_reason"] is True
+    assert rainy["context_attrs"]["brief_purge"] is False
+    assert rainy["recommendation_state"] == "close"
+    assert "rain or mixed precipitation" in rainy["reason_state"]
+    assert "short purge" not in rainy["reason_state"]
+
+    assert hvac["context_attrs"]["severe_stale_air_reason"] is True
+    assert hvac["context_attrs"]["brief_purge"] is False
+    assert hvac["recommendation_state"] == "close"
+    assert "HVAC is currently cooling" in hvac["reason_state"]
+    assert "short purge" not in hvac["reason_state"]
 
 
 def test_window_ventilation_brief_purge_keeps_hvac_and_rain_suppression():
