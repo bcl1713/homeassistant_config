@@ -258,7 +258,8 @@ template:
             {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
             {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
             {% set max_warmer = states('input_number.window_ventilation_brief_purge_max_outdoor_temperature_delta') | float(5) %}
-            {{ indoor is not none and outdoor is not none and outdoor <= (indoor + max_warmer) }}
+            {% set winter_threshold = states('input_number.window_ventilation_winter_threshold') | float(55) %}
+            {{ indoor is not none and outdoor is not none and outdoor >= winter_threshold and outdoor <= (indoor + max_warmer) }}
           brief_purge_outdoor_dew_point_ok: >
             {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
             {% set max_dew = states('input_number.window_ventilation_brief_purge_max_outdoor_dew_point') | float(70) %}
@@ -283,11 +284,13 @@ template:
             {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
             {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
             {% set max_warmer = states('input_number.window_ventilation_brief_purge_max_outdoor_temperature_delta') | float(5) %}
-            {% set temperature_ok = indoor is not none and outdoor is not none and outdoor <= (indoor + max_warmer) %}
+            {% set winter_threshold = states('input_number.window_ventilation_winter_threshold') | float(55) %}
+            {% set winter_mode = outdoor is not none and outdoor < winter_threshold %}
+            {% set temperature_ok = indoor is not none and outdoor is not none and outdoor >= winter_threshold and outdoor <= (indoor + max_warmer) %}
             {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
             {% set max_dew = states('input_number.window_ventilation_brief_purge_max_outdoor_dew_point') | float(70) %}
             {% set dew_ok = outdoor_dew is not none and outdoor_dew <= max_dew %}
-            {{ severe_stale_air and temperature_ok and dew_ok and not raining and not hvac_running }}
+            {{ severe_stale_air and temperature_ok and dew_ok and not winter_mode and not raining and not hvac_running }}
           mild_open: >
             {% set invalid = ['unknown', 'unavailable', '', none] %}
             {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}

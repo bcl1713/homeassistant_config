@@ -179,6 +179,25 @@ def test_window_ventilation_brief_purge_keeps_hvac_and_rain_suppression():
     )
 
 
+def test_window_ventilation_brief_purge_is_not_winter_purge_classification():
+    package = load_package()
+    context = template_sensor_by_name(package, "Window Ventilation Decision Context")
+
+    temperature_template = context["attributes"][
+        "brief_purge_outdoor_temperature_ok"
+    ]
+    brief_purge_template = context["attributes"]["brief_purge"]
+
+    assert "input_number.window_ventilation_winter_threshold" in temperature_template
+    assert "outdoor >= winter_threshold" in temperature_template
+    assert "input_number.window_ventilation_winter_threshold" in brief_purge_template
+    assert (
+        "{% set winter_mode = outdoor is not none and outdoor < winter_threshold %}"
+        in brief_purge_template
+    )
+    assert "not winter_mode" in brief_purge_template
+
+
 def test_window_ventilation_notifications_are_advisory_and_gated():
     package = load_package()
 
