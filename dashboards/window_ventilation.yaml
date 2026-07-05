@@ -16,7 +16,8 @@ views:
       - type: markdown
         title: "Current advice"
         content: >-
-          ## {{ states('sensor.window_ventilation_recommendation') | title }}
+          {% set rec = states('sensor.window_ventilation_recommendation') %}
+          ## {{ 'Open Briefly' if rec == 'open_briefly' else rec | title }}
 
           **Mode:** {{ state_attr('sensor.window_ventilation_recommendation', 'mode') }}
 
@@ -43,6 +44,8 @@ views:
             name: "Favorable for opening"
           - entity: binary_sensor.window_ventilation_unfavorable
             name: "Unfavorable / close windows"
+          - entity: binary_sensor.window_ventilation_brief_purge
+            name: "Brief stale-air purge"
 
       - type: entities
         title: "Comfort and dew point context"
@@ -101,6 +104,10 @@ views:
             name: "Required cooler delta"
           - entity: input_number.window_ventilation_max_outdoor_dew_point
             name: "Max outdoor dew point"
+          - entity: input_number.window_ventilation_brief_purge_max_outdoor_temperature_delta
+            name: "Brief purge max warmer delta"
+          - entity: input_number.window_ventilation_brief_purge_max_outdoor_dew_point
+            name: "Brief purge max outdoor dew point"
           - entity: input_number.window_ventilation_winter_threshold
             name: "Winter purge threshold"
           - entity: input_number.window_ventilation_high_indoor_humidity

@@ -49,6 +49,7 @@ def test_window_ventilation_required_entities_are_defined():
     ]
     assert "Window Ventilation Favorable" in binary_names
     assert "Window Ventilation Unfavorable" in binary_names
+    assert "Window Ventilation Brief Purge" in binary_names
 
 
 def test_window_ventilation_uses_household_relative_air_quality_baselines():
@@ -108,6 +109,10 @@ def test_window_ventilation_reuses_canonical_decision_context():
         "winter_mode",
         "humidity_reason",
         "air_quality_reason",
+        "severe_stale_air_reason",
+        "brief_purge_outdoor_temperature_ok",
+        "brief_purge_outdoor_dew_point_ok",
+        "brief_purge",
         "mild_open",
     ):
         assert canonical_attribute in context["attributes"]
@@ -122,10 +127,75 @@ def test_window_ventilation_reuses_canonical_decision_context():
         "states('sensor.condition_forecast_next_hour')",
         "states('sensor.thermostat_carbon_dioxide')",
         "states('sensor.thermostat_vocs')",
+        "states('sensor.air_quality_composite_status')",
+        "states('sensor.air_quality_trend')",
     ):
         assert source_reference in context_text
         assert source_reference not in recommendation_text
         assert source_reference not in reason_text
+
+
+def test_window_ventilation_has_distinct_brief_purge_recommendation_path():
+    package = load_package()
+    context = template_sensor_by_name(package, "Window Ventilation Decision Context")
+    recommendation = template_sensor_by_name(
+        package, "Window Ventilation Recommendation"
+    )
+    reason = template_sensor_by_name(package, "Window Ventilation Reason")
+    package_text = PACKAGE.read_text()
+
+    context_text = str(context)
+    recommendation_state = recommendation["state"]
+    reason_state = reason["state"]
+
+    assert "window_ventilation_brief_purge_max_outdoor_temperature_delta" in package_text
+    assert "window_ventilation_brief_purge_max_outdoor_dew_point" in package_text
+    assert "severe_stale_air_reason" in context["attributes"]
+    assert "brief_purge" in context["attributes"]
+    assert "air_quality_composite_status') == 'poor'" in context_text
+    assert "air_quality_trend') == 'worsening'" in context_text
+    assert "co2 >= 1500" in context_text
+    assert "co2 >= (co2_base + 400)" in context_text
+    assert "voc >= 1000" in context_text
+    assert "voc >= (voc_base * 1.75)" in context_text
+    assert "open_briefly" in recommendation_state
+    assert "elif brief_purge" in recommendation_state
+    assert "rec == 'open_briefly'" in reason_state
+    assert "5-10 minutes" in reason_state
+    assert "short purge" in reason_state
+    assert "rec == 'open'" in reason_state
+
+
+def test_window_ventilation_brief_purge_keeps_hvac_and_rain_suppression():
+    package = load_package()
+    recommendation = template_sensor_by_name(
+        package, "Window Ventilation Recommendation"
+    )
+    state_template = recommendation["state"]
+
+    assert "elif raining or hvac_running" in state_template
+    assert state_template.index("elif raining or hvac_running") < state_template.index(
+        "elif brief_purge"
+    )
+
+
+def test_window_ventilation_brief_purge_is_not_winter_purge_classification():
+    package = load_package()
+    context = template_sensor_by_name(package, "Window Ventilation Decision Context")
+
+    temperature_template = context["attributes"][
+        "brief_purge_outdoor_temperature_ok"
+    ]
+    brief_purge_template = context["attributes"]["brief_purge"]
+
+    assert "input_number.window_ventilation_winter_threshold" in temperature_template
+    assert "outdoor >= winter_threshold" in temperature_template
+    assert "input_number.window_ventilation_winter_threshold" in brief_purge_template
+    assert (
+        "{% set winter_mode = outdoor is not none and outdoor < winter_threshold %}"
+        in brief_purge_template
+    )
+    assert "not winter_mode" in brief_purge_template
 
 
 def test_window_ventilation_notifications_are_advisory_and_gated():
@@ -137,8 +207,17 @@ def test_window_ventilation_notifications_are_advisory_and_gated():
         package, "window_ventilation_neutral_clear_notification"
     )
 
-    assert open_advisory["trigger"][0]["for"] == {"minutes": 15}
-    assert close_advisory["trigger"][0]["for"] == {"minutes": 7}
+    assert {trigger["to"] for trigger in open_advisory["trigger"]} == {
+        "open",
+        "open_briefly",
+    }
+    assert all(trigger["for"] == {"minutes": 15} for trigger in open_advisory["trigger"])
+    assert {trigger["from"] for trigger in close_advisory["trigger"]} == {
+        "open",
+        "open_briefly",
+    }
+    assert all(trigger["to"] == "close" for trigger in close_advisory["trigger"])
+    assert all(trigger["for"] == {"minutes": 7} for trigger in close_advisory["trigger"])
 
     for automation in (open_advisory, close_advisory):
         conditions = automation["condition"]
@@ -153,22 +232,28 @@ def test_window_ventilation_notifications_are_advisory_and_gated():
 
     assert neutral_clear["action"][0]["data"]["message"] == "clear_notification"
 
+    open_text = str(open_advisory)
+    assert "open_briefly" in open_text
+    assert "Brief Purge" in open_text
+    assert "5-10 minute" in open_text
+
 
 def test_window_ventilation_close_advisory_only_fires_after_open_advisory():
     package = load_package()
     close_advisory = automation_by_id(package, "window_ventilation_close_advisory")
-    trigger = close_advisory["trigger"][0]
 
-    assert trigger["from"] == "open"
-    assert trigger["to"] == "close"
+    assert {trigger["from"] for trigger in close_advisory["trigger"]} == {
+        "open",
+        "open_briefly",
+    }
+    assert all(trigger["to"] == "close" for trigger in close_advisory["trigger"])
 
 
 def test_window_ventilation_neutral_to_close_does_not_match_close_advisory():
     package = load_package()
     close_advisory = automation_by_id(package, "window_ventilation_close_advisory")
-    trigger = close_advisory["trigger"][0]
 
-    assert not (
-        trigger.get("from") in (None, "neutral")
-        and trigger["to"] == "close"
+    assert not any(
+        trigger.get("from") in (None, "neutral") and trigger["to"] == "close"
+        for trigger in close_advisory["trigger"]
     )
