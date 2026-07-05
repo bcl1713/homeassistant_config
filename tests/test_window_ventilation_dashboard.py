@@ -56,6 +56,7 @@ def test_window_ventilation_dashboard_surfaces_required_context():
         "sensor.window_ventilation_reason",
         "binary_sensor.window_ventilation_favorable",
         "binary_sensor.window_ventilation_unfavorable",
+        "binary_sensor.window_ventilation_brief_purge",
         "sensor.dining_room_thermostat_temperature",
         "sensor.thermostat_humidity",
         "sensor.window_ventilation_indoor_dew_point",
@@ -71,6 +72,8 @@ def test_window_ventilation_dashboard_surfaces_required_context():
         "sensor.window_ventilation_voc_baseline",
         "input_number.window_ventilation_cooler_delta",
         "input_number.window_ventilation_max_outdoor_dew_point",
+        "input_number.window_ventilation_brief_purge_max_outdoor_temperature_delta",
+        "input_number.window_ventilation_brief_purge_max_outdoor_dew_point",
         "input_number.window_ventilation_winter_threshold",
         "input_number.window_ventilation_high_indoor_humidity",
     }

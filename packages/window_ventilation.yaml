@@ -38,6 +38,24 @@ input_number:
     icon: mdi:water-thermometer
     initial: 60
 
+  window_ventilation_brief_purge_max_outdoor_temperature_delta:
+    name: "Window Ventilation Brief Purge Max Outdoor Temperature Delta"
+    min: 0
+    max: 10
+    step: 0.5
+    unit_of_measurement: "°F"
+    icon: mdi:thermometer-plus
+    initial: 5
+
+  window_ventilation_brief_purge_max_outdoor_dew_point:
+    name: "Window Ventilation Brief Purge Max Outdoor Dew Point"
+    min: 60
+    max: 75
+    step: 1
+    unit_of_measurement: "°F"
+    icon: mdi:water-thermometer-outline
+    initial: 70
+
   window_ventilation_winter_threshold:
     name: "Window Ventilation Winter Threshold"
     min: 35
@@ -143,8 +161,12 @@ template:
           voc_baseline: "{{ states('sensor.window_ventilation_voc_baseline') | float(0) }}"
           cooler_delta: "{{ states('input_number.window_ventilation_cooler_delta') | float(3) }}"
           max_outdoor_dew_point: "{{ states('input_number.window_ventilation_max_outdoor_dew_point') | float(60) }}"
+          brief_purge_max_outdoor_temperature_delta: "{{ states('input_number.window_ventilation_brief_purge_max_outdoor_temperature_delta') | float(5) }}"
+          brief_purge_max_outdoor_dew_point: "{{ states('input_number.window_ventilation_brief_purge_max_outdoor_dew_point') | float(70) }}"
           winter_threshold: "{{ states('input_number.window_ventilation_winter_threshold') | float(55) }}"
           high_indoor_humidity: "{{ states('input_number.window_ventilation_high_indoor_humidity') | float(58) }}"
+          air_quality_composite_status: "{{ states('sensor.air_quality_composite_status') }}"
+          air_quality_trend: "{{ states('sensor.air_quality_trend') }}"
           data_ready: >
             {% set invalid = ['unknown', 'unavailable', '', none] %}
             {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
@@ -220,6 +242,52 @@ template:
             {% set voc_relative = voc_base > 0 and voc >= 250 and voc >= (voc_base * 1.35) %}
             {% set voc_outlier = voc_base > 0 and voc >= 650 and voc >= (voc_base * 1.15) %}
             {{ co2_relative or voc_relative or co2_outlier or voc_outlier }}
+          severe_stale_air_reason: >
+            {% set co2 = states('sensor.thermostat_carbon_dioxide') | float(0) %}
+            {% set voc = states('sensor.thermostat_vocs') | float(0) %}
+            {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
+            {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
+            {% set poor_air_quality = states('sensor.air_quality_composite_status') == 'poor' %}
+            {% set worsening_air_quality = states('sensor.air_quality_trend') == 'worsening' %}
+            {% set co2_severe = co2_base > 0 and co2 >= 1500 and co2 >= (co2_base + 400) %}
+            {% set voc_severe = voc_base > 0 and voc >= 1000 and voc >= (voc_base * 1.75) %}
+            {{ poor_air_quality and worsening_air_quality and (co2_severe or voc_severe) }}
+          brief_purge_outdoor_temperature_ok: >
+            {% set invalid = ['unknown', 'unavailable', '', none] %}
+            {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
+            {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
+            {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
+            {% set max_warmer = states('input_number.window_ventilation_brief_purge_max_outdoor_temperature_delta') | float(5) %}
+            {{ indoor is not none and outdoor is not none and outdoor <= (indoor + max_warmer) }}
+          brief_purge_outdoor_dew_point_ok: >
+            {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+            {% set max_dew = states('input_number.window_ventilation_brief_purge_max_outdoor_dew_point') | float(70) %}
+            {{ outdoor_dew is not none and outdoor_dew <= max_dew }}
+          brief_purge: >
+            {% set rain_probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
+            {% set condition = states('sensor.condition_forecast_next_hour') %}
+            {% set raining = rain_probability >= 30 or condition in ['rainy', 'pouring', 'snowy-rainy'] %}
+            {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
+            {% set hvac_running = hvac_action in ['heating', 'cooling'] %}
+            {% set co2 = states('sensor.thermostat_carbon_dioxide') | float(0) %}
+            {% set voc = states('sensor.thermostat_vocs') | float(0) %}
+            {% set co2_base = states('sensor.window_ventilation_co2_baseline') | float(0) %}
+            {% set voc_base = states('sensor.window_ventilation_voc_baseline') | float(0) %}
+            {% set poor_air_quality = states('sensor.air_quality_composite_status') == 'poor' %}
+            {% set worsening_air_quality = states('sensor.air_quality_trend') == 'worsening' %}
+            {% set co2_severe = co2_base > 0 and co2 >= 1500 and co2 >= (co2_base + 400) %}
+            {% set voc_severe = voc_base > 0 and voc >= 1000 and voc >= (voc_base * 1.75) %}
+            {% set severe_stale_air = poor_air_quality and worsening_air_quality and (co2_severe or voc_severe) %}
+            {% set invalid = ['unknown', 'unavailable', '', none] %}
+            {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
+            {% set indoor = (temp_sensor | float(none)) if temp_sensor not in invalid else (state_attr('climate.dining_room_thermostat', 'current_temperature') | float(none)) %}
+            {% set outdoor = states('sensor.weather_outdoor_temperature') | float(none) %}
+            {% set max_warmer = states('input_number.window_ventilation_brief_purge_max_outdoor_temperature_delta') | float(5) %}
+            {% set temperature_ok = indoor is not none and outdoor is not none and outdoor <= (indoor + max_warmer) %}
+            {% set outdoor_dew = states('sensor.weather_outdoor_dew_point') | float(none) %}
+            {% set max_dew = states('input_number.window_ventilation_brief_purge_max_outdoor_dew_point') | float(70) %}
+            {% set dew_ok = outdoor_dew is not none and outdoor_dew <= max_dew %}
+            {{ severe_stale_air and temperature_ok and dew_ok and not raining and not hvac_running }}
           mild_open: >
             {% set invalid = ['unknown', 'unavailable', '', none] %}
             {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
@@ -243,6 +311,8 @@ template:
         icon: >
           {% if this.state == 'open' %}
             mdi:window-open-variant
+          {% elif this.state == 'open_briefly' %}
+            mdi:window-open
           {% elif this.state == 'close' %}
             mdi:window-closed-variant
           {% else %}
@@ -260,9 +330,13 @@ template:
           {% set mild_open = state_attr(ctx, 'mild_open') | bool(false) %}
           {% set humidity_reason = state_attr(ctx, 'humidity_reason') | bool(false) %}
           {% set air_quality_reason = state_attr(ctx, 'air_quality_reason') | bool(false) %}
+          {% set severe_stale_air_reason = state_attr(ctx, 'severe_stale_air_reason') | bool(false) %}
+          {% set brief_purge_outdoor_temperature_ok = state_attr(ctx, 'brief_purge_outdoor_temperature_ok') | bool(false) %}
+          {% set brief_purge_outdoor_dew_point_ok = state_attr(ctx, 'brief_purge_outdoor_dew_point_ok') | bool(false) %}
+          {% set brief_purge = state_attr(ctx, 'brief_purge') | bool(false) %}
           {% if not data_ready %}
             neutral
-          {% elif raining or hvac_running or outdoor_too_humid %}
+          {% elif raining or hvac_running %}
             close
           {% elif winter_mode %}
             {% if not hvac_running and not raining and outdoor_drier and (air_quality_reason or humidity_reason) %}
@@ -272,7 +346,9 @@ template:
             {% endif %}
           {% elif mild_open %}
             open
-          {% elif not outdoor_cooler or not outdoor_drier %}
+          {% elif brief_purge %}
+            open_briefly
+          {% elif outdoor_too_humid or not outdoor_cooler or not outdoor_drier %}
             close
           {% else %}
             neutral
@@ -281,7 +357,9 @@ template:
           advisory_only: true
           mode: >
             {% set ctx = 'sensor.window_ventilation_decision_context' %}
-            {% if state_attr(ctx, 'winter_mode') | bool(false) %}
+            {% if state_attr(ctx, 'brief_purge') | bool(false) %}
+              brief_purge
+            {% elif state_attr(ctx, 'winter_mode') | bool(false) %}
               winter_purge
             {% else %}
               comfort
@@ -319,6 +397,8 @@ template:
           {% set voc_relative = state_attr(ctx, 'voc_relative') | bool(false) %}
           {% if rec == 'open' and mode == 'winter_purge' %}
             Air out the house for 5-10 minutes: indoor air or humidity is above the home's recent baseline, outdoor dew point is acceptable, and HVAC is idle.
+          {% elif rec == 'open_briefly' %}
+            Briefly open windows for a short purge (5-10 minutes): indoor air is poor and worsening versus recent baselines, while outdoor temperature and dew point are within bounded compromise limits. Close windows after the short purge.
           {% elif rec == 'open' %}
             Open windows: outside is {{ (indoor - outdoor) | round(0) }}°F cooler, outdoor dew point is {{ outdoor_dew | round(0) }}°F vs indoor {{ indoor_dew | round(0) }}°F, and no rain or HVAC conflict is active.
           {% elif rec == 'close' and raining %}
@@ -350,6 +430,11 @@ template:
         icon: mdi:window-closed-variant
         state: "{{ is_state('sensor.window_ventilation_recommendation', 'close') }}"
 
+      - name: "Window Ventilation Brief Purge"
+        unique_id: window_ventilation_brief_purge
+        icon: mdi:window-open
+        state: "{{ is_state('sensor.window_ventilation_recommendation', 'open_briefly') }}"
+
 automation:
   - alias: "window_ventilation_open_advisory"
     id: "window_ventilation_open_advisory"
@@ -358,6 +443,11 @@ automation:
       - platform: state
         entity_id: sensor.window_ventilation_recommendation
         to: "open"
+        for:
+          minutes: 15
+      - platform: state
+        entity_id: sensor.window_ventilation_recommendation
+        to: "open_briefly"
         for:
           minutes: 15
     condition:
@@ -374,16 +464,24 @@ automation:
       - variables:
           mode: "{{ state_attr('sensor.window_ventilation_recommendation', 'mode') | trim }}"
           reason: "{{ states('sensor.window_ventilation_reason') }}"
+          notification_message: >
+            {% if mode == 'brief_purge' %}
+              5-10 minute short purge: {{ reason }}
+            {% else %}
+              {{ reason }}
+            {% endif %}
           tag: "{{ states('input_text.window_ventilation_active_notification_tag') }}"
       - service: notify.all_mobile_devices
         data:
           title: >
             {% if mode == 'winter_purge' %}
               Window Ventilation: Brief Airing
+            {% elif mode == 'brief_purge' %}
+              Window Ventilation: Brief Purge
             {% else %}
               Window Ventilation: Open Windows
             {% endif %}
-          message: "{{ reason }}"
+          message: "{{ notification_message }}"
           data:
             tag: "{{ tag }}"
             when: "{{ now().timestamp() | int }}"
@@ -397,6 +495,12 @@ automation:
       - platform: state
         entity_id: sensor.window_ventilation_recommendation
         from: "open"
+        to: "close"
+        for:
+          minutes: 7
+      - platform: state
+        entity_id: sensor.window_ventilation_recommendation
+        from: "open_briefly"
         to: "close"
         for:
           minutes: 7
