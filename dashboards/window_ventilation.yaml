@@ -17,14 +17,53 @@ views:
         title: "Current advice"
         content: >-
           {% set rec = states('sensor.window_ventilation_recommendation') %}
-          ## {{ 'Open Briefly' if rec == 'open_briefly' else rec | title }}
+          {% set mode = state_attr('sensor.window_ventilation_recommendation', 'mode') | trim %}
+          {% set label = {
+            'open': 'Open for comfort ventilation',
+            'open_briefly': 'Brief stale-air purge',
+            'close': 'Close windows',
+            'neutral': 'Neutral / no window change'
+          }.get(rec, rec | title) %}
+          {% set mode_label = {
+            'comfort': 'Comfort ventilation',
+            'winter_purge': 'Brief cold-weather airing',
+            'brief_purge': 'Bounded stale-air purge'
+          }.get(mode, mode | replace('_', ' ') | title) %}
+          ## {{ label }}
 
-          **Mode:** {{ state_attr('sensor.window_ventilation_recommendation', 'mode') }}
+          **Recommendation class:** {{ mode_label }}
+
+          {% if rec == 'open_briefly' %}
+          **This is not ordinary comfort ventilation.** Open briefly only for
+          the bounded stale-air purge, then close windows after 5-10 minutes.
+          {% elif rec == 'open' %}
+          **Comfort ventilation:** outdoor comfort and moisture conditions are
+          favorable enough for normal window opening.
+          {% elif rec == 'close' %}
+          **Close path:** rain, HVAC, humidity, or comfort checks are against
+          open windows.
+          {% else %}
+          **Neutral path:** no active open, close, or brief-purge recommendation.
+          {% endif %}
 
           {{ states('sensor.window_ventilation_reason') }}
 
           _This is advisory-only. It does not confirm individual window-contact
           state or change HVAC behavior._
+
+      - type: conditional
+        conditions:
+          - entity: sensor.window_ventilation_recommendation
+            state: "open_briefly"
+        card:
+          type: markdown
+          title: "Brief purge guardrails"
+          content: >-
+            This compromise state is a short stale-air purge, not a comfort
+            ventilation recommendation. It only appears when indoor air is poor
+            and worsening, rain/HVAC suppression is clear, and outdoor
+            temperature/dew point are within the brief-purge bounds. Close
+            windows after 5-10 minutes.
 
       - type: entities
         title: "Advisor status"
@@ -33,19 +72,19 @@ views:
           - entity: input_boolean.window_ventilation_advisor_enabled
             name: "Advisor notifications enabled"
           - entity: sensor.window_ventilation_recommendation
-            name: "Recommendation"
+            name: "Recommendation state"
           - entity: sensor.window_ventilation_reason
             name: "Reason"
           - type: attribute
             entity: sensor.window_ventilation_recommendation
             attribute: mode
-            name: "Mode"
+            name: "Recommendation class"
           - entity: binary_sensor.window_ventilation_favorable
-            name: "Favorable for opening"
+            name: "Comfort ventilation favorable"
           - entity: binary_sensor.window_ventilation_unfavorable
             name: "Unfavorable / close windows"
           - entity: binary_sensor.window_ventilation_brief_purge
-            name: "Brief stale-air purge"
+            name: "Bounded stale-air purge active"
 
       - type: entities
         title: "Comfort and dew point context"

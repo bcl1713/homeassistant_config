@@ -21,6 +21,8 @@ def entity_refs(cards):
     for card in cards:
         if "entity" in card:
             refs.append(card["entity"])
+        if "card" in card:
+            refs.extend(entity_refs([card["card"]]))
         for row in card.get("entities", []):
             if isinstance(row, str):
                 refs.append(row)
@@ -80,6 +82,9 @@ def test_window_ventilation_dashboard_surfaces_required_context():
     assert required_entities <= refs
     assert "state_attr('sensor.window_ventilation_recommendation', 'mode')" in markdown
     assert "advisory-only" in markdown
+    assert "Brief stale-air purge" in markdown
+    assert "This is not ordinary comfort ventilation" in markdown
+    assert "Open Briefly" not in markdown
 
     attribute_rows = [
         row
@@ -106,3 +111,45 @@ def test_window_ventilation_dashboard_surfaces_required_context():
         for row in card.get("entities", [])
         if isinstance(row, dict)
     )
+
+
+def test_window_ventilation_dashboard_separates_brief_purge_from_comfort_open():
+    dashboard = load_dashboard()
+    cards = dashboard["views"][0]["cards"]
+    markdown = "\n".join(
+        card.get("content", "") for card in cards if card.get("type") == "markdown"
+    )
+
+    status_card = next(card for card in cards if card.get("title") == "Advisor status")
+    status_names = {
+        row["entity"]: row["name"]
+        for row in status_card["entities"]
+        if isinstance(row, dict) and "entity" in row and "name" in row
+    }
+    brief_purge_card = next(
+        card
+        for card in cards
+        if card.get("type") == "conditional"
+        and card.get("card", {}).get("title") == "Brief purge guardrails"
+    )
+
+    assert "'open': 'Open for comfort ventilation'" in markdown
+    assert "'open_briefly': 'Brief stale-air purge'" in markdown
+    assert "'brief_purge': 'Bounded stale-air purge'" in markdown
+    assert "not ordinary comfort ventilation" in markdown
+    assert status_names["binary_sensor.window_ventilation_favorable"] == (
+        "Comfort ventilation favorable"
+    )
+    assert status_names["binary_sensor.window_ventilation_brief_purge"] == (
+        "Bounded stale-air purge active"
+    )
+    assert brief_purge_card["conditions"] == [
+        {
+            "entity": "sensor.window_ventilation_recommendation",
+            "state": "open_briefly",
+        }
+    ]
+    assert "not a comfort ventilation recommendation" in brief_purge_card["card"][
+        "content"
+    ]
+    assert "5-10 minutes" in brief_purge_card["card"]["content"]
