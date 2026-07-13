@@ -31,3 +31,36 @@ automation:
           entity_id: tts.google_en_com
         action: tts.speak
     mode: single
+
+  - id: "back_door_open_notification"
+    alias: "Back Door Open Notification"
+    description: "Notify Brian when the kitchen back door opens"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.kitchen_back_door
+        from: "off"
+        to: "on"
+    action:
+      - service: notify.mobile_app_brian_phone
+        data:
+          title: "Back Door"
+          message: "Back door opened."
+          data:
+            tag: "back-door-open"
+    mode: single
+
+  - id: "back_door_close_clear_notification"
+    alias: "Back Door Close Clear Notification"
+    description: "Clear Brian's back-door notification when the door closes"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.kitchen_back_door
+        from: "on"
+        to: "off"
+    action:
+      - service: notify.mobile_app_brian_phone
+        data:
+          message: "clear_notification"
+          data:
+            tag: "back-door-open"
+    mode: single
