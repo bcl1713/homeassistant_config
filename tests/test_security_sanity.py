@@ -1,12 +1,18 @@
 from pathlib import Path
 
 import yaml
+from jinja2 import Environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SECURITY = ROOT / "packages" / "security_sanity.yaml"
 ROUTINES = ROOT / "packages" / "routines.yaml"
 PRESENCE = ROOT / "packages" / "presence.yaml"
+SECURITY_DOOR_CONTACTS = {
+    "binary_sensor.entry_front_door": "Front Door",
+    "binary_sensor.kitchen_back_door": "Back Door",
+    "binary_sensor.garage_garage_interior_door": "Garage Interior Door",
+}
 
 
 def load_yaml(path):
@@ -22,6 +28,14 @@ def automation_by_id(package, automation_id):
 
 def script_step_services(script):
     return [step.get("service") for step in script["sequence"] if isinstance(step, dict)]
+
+
+def render_template(template, state_map, **variables):
+    environment = Environment()
+    environment.globals["is_state"] = lambda entity_id, state: (
+        state_map.get(entity_id) == state
+    )
+    return environment.from_string(template).render(**variables).strip()
 
 
 def test_secure_house_away_context_waits_for_front_door_to_settle_before_reading_state():
@@ -64,6 +78,8 @@ def test_secure_house_sanity_script_aggregates_and_stays_notify_first():
     assert "lock.front_door" in text
     assert "cover.garage_door" in text
     assert "alarm_control_panel.home_alarm" in text
+    assert "security_door_contacts" in text
+    assert "open_security_contact_count" in text
     assert "findings.items | join" in text
     assert "mismatch_count | int > 0" in text
     assert "1 if front_door_state != 'locked' else 0" in text
@@ -76,6 +92,56 @@ def test_secure_house_sanity_script_aggregates_and_stays_notify_first():
     assert "cover.close_cover" not in services
     assert "alarm_control_panel.alarm_arm_night" not in services
     assert "alarm_control_panel.alarm_arm_away" not in services
+
+
+def test_secure_house_sanity_lists_open_security_contacts_in_one_findings_summary():
+    package = load_yaml(SECURITY)
+    variables = package["script"]["secure_house_sanity_check"]["sequence"][1][
+        "variables"
+    ]
+    secure_states = {
+        "binary_sensor.entry_front_door": "off",
+        "binary_sensor.kitchen_back_door": "off",
+        "binary_sensor.garage_garage_interior_door": "off",
+    }
+    open_contact_states = {
+        **secure_states,
+        "binary_sensor.kitchen_back_door": "on",
+        "binary_sensor.garage_garage_interior_door": "on",
+    }
+    finding_variables = {
+        "front_door_state": "locked",
+        "garage_door_state": "closed",
+        "alarm_state": "armed_night",
+        "expected_alarm_state": "armed_night",
+        "expected_alarm_label": "night",
+        "security_door_contacts": SECURITY_DOOR_CONTACTS,
+    }
+
+    assert variables["security_door_contacts"] == SECURITY_DOOR_CONTACTS
+    assert render_template(
+        variables["open_security_contact_count"], secure_states, **finding_variables
+    ) == "0"
+    assert render_template(
+        variables["security_findings"], secure_states, **finding_variables
+    ) == ""
+    assert render_template(
+        variables["open_security_contact_count"],
+        open_contact_states,
+        **finding_variables,
+    ) == "2"
+    findings = render_template(
+        variables["security_findings"], open_contact_states, **finding_variables
+    )
+    assert "Back Door contact is open." in findings
+    assert "Garage Interior Door contact is open." in findings
+    assert "Front Door contact is open." not in findings
+    assert render_template(
+        variables["mismatch_count"],
+        open_contact_states,
+        open_security_contact_count=2,
+        **finding_variables,
+    ) == "2"
 
 
 def test_secure_house_actions_require_explicit_notification_events():

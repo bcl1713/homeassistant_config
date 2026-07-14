@@ -4,7 +4,8 @@
 #
 # Features:
 # - Reusable secure-house sanity check script for routines and presence
-# - Aggregates front door, garage door, and alarm mismatches into one alert
+# - Aggregates lock, garage, alarm, and security-boundary contact mismatches
+#   into one alert
 # - Notification actions remediate only when explicitly selected
 # - Guest mode is documented as an intentional advisory exception
 
@@ -12,8 +13,9 @@ script:
   secure_house_sanity_check:
     alias: "Secure House Sanity Check"
     description: >
-      Check front door, garage door, and alarm state for a securing context and
-      send one actionable notification only when the house is not fully secure.
+      Check lock, garage door, alarm, and security-boundary contact state for a
+      securing context and send one actionable notification only when the house
+      is not fully secure.
     mode: parallel
     fields:
       check_context:
@@ -51,11 +53,23 @@ script:
           front_door_state: "{{ states('lock.front_door') }}"
           garage_door_state: "{{ states('cover.garage_door') }}"
           alarm_state: "{{ states('alarm_control_panel.home_alarm') }}"
+          security_door_contacts:
+            binary_sensor.entry_front_door: "Front Door"
+            binary_sensor.kitchen_back_door: "Back Door"
+            binary_sensor.garage_garage_interior_door: "Garage Interior Door"
           garage_obstructed: >
             {{ is_state('binary_sensor.garage_door_obstruction', 'on') }}
           front_door_needs_lock: "{{ front_door_state != 'locked' }}"
           garage_needs_close: "{{ garage_door_state != 'closed' }}"
           alarm_needs_arm: "{{ alarm_state != expected_alarm_state }}"
+          open_security_contact_count: >
+            {% set count = namespace(value=0) %}
+            {% for entity_id in security_door_contacts %}
+              {% if is_state(entity_id, 'on') %}
+                {% set count.value = count.value + 1 %}
+              {% endif %}
+            {% endfor %}
+            {{ count.value }}
           security_findings: >
             {% set findings = namespace(items=[]) %}
             {% if front_door_state != 'locked' %}
@@ -76,11 +90,18 @@ script:
                 ['Alarm is ' ~ alarm_state ~ ' instead of armed ' ~
                  expected_alarm_label ~ '.'] %}
             {% endif %}
+            {% for entity_id, name in security_door_contacts.items() %}
+              {% if is_state(entity_id, 'on') %}
+                {% set findings.items = findings.items +
+                  [name ~ ' contact is open.'] %}
+              {% endif %}
+            {% endfor %}
             {{ findings.items | join('\n') }}
           mismatch_count: >
             {{ (1 if front_door_state != 'locked' else 0) +
                (1 if garage_door_state != 'closed' else 0) +
-               (1 if alarm_state != expected_alarm_state else 0) }}
+               (1 if alarm_state != expected_alarm_state else 0) +
+               (open_security_contact_count | int) }}
           notification_tag: >
             secure-house-{{ security_context }}-{{ (now().timestamp() * 1000) |
             int }}-{{ range(0, 999) | random }}
