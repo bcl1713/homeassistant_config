@@ -57,6 +57,7 @@ All active package files under `packages/*.yaml` are documented in `packages/REA
 - `climate_schedule.yaml` - baseline thermostat setpoint helpers and schedule application.
 - `device_batteries.yaml` - battery health summaries and alerting.
 - `device_connectivity.yaml` - stale-device, Z-Wave, and integration-health monitoring.
+- `exterior_door_monitoring.yaml` - two-minute open alerts and matching tagged clears for monitored exterior door contacts.
 - `garage_door_monitoring.yaml` - garage-door duration monitoring, reminders, and controls.
 - `known_batteries.yaml` - normalized template sensors for known battery-powered devices.
 - `light_groups.yaml` - logical light groups.
