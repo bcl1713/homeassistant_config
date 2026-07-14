@@ -6,6 +6,11 @@
 # - Z-Wave node health monitoring
 # - Stale last-seen entity detection
 # - Integration update entity availability checks
+# - Critical exterior/security door contact availability checks
+
+# The current door-contact integration does not expose separate battery entities
+# in this repository. If it later does, add normalized battery sensors in
+# known_batteries.yaml; device_batteries.yaml will include them automatically.
 
 input_boolean:
   device_connectivity_monitoring_enabled:
@@ -35,6 +40,39 @@ input_number:
 
 template:
   - sensor:
+      - name: "Device Connectivity Critical Door Contact Problems"
+        unique_id: device_connectivity_critical_door_contact_problems
+        state: >
+          {% set contacts = {
+            'binary_sensor.entry_front_door': 'Front Door Contact',
+            'binary_sensor.kitchen_back_door': 'Back Door Contact',
+            'binary_sensor.garage_garage_interior_door': 'Garage Interior Door Contact'
+          } %}
+          {% set ns = namespace(problems=[]) %}
+          {% for entity_id, name in contacts.items() %}
+            {% set state = states(entity_id) %}
+            {% if state in ['unavailable', 'unknown'] %}
+              {% set ns.problems = ns.problems + [name] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.problems | length }}
+        unit_of_measurement: "contacts"
+        attributes:
+          problem_contacts: >
+            {% set contacts = {
+              'binary_sensor.entry_front_door': 'Front Door Contact',
+              'binary_sensor.kitchen_back_door': 'Back Door Contact',
+              'binary_sensor.garage_garage_interior_door': 'Garage Interior Door Contact'
+            } %}
+            {% set ns = namespace(problems=[]) %}
+            {% for entity_id, name in contacts.items() %}
+              {% set state = states(entity_id) %}
+              {% if state in ['unavailable', 'unknown'] %}
+                {% set ns.problems = ns.problems + [name ~ ' (' ~ state ~ ')'] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.problems | join(', ') if ns.problems else 'None' }}
+
       - name: "Device Connectivity Z-Wave Problems"
         unique_id: device_connectivity_zwave_problems
         state: >
@@ -129,6 +167,7 @@ template:
             states('sensor.device_connectivity_z_wave_problems') | int(0)
             + states('sensor.device_connectivity_stale_last_seen') | int(0)
             + states('sensor.device_connectivity_integration_problems') | int(0)
+            + states('sensor.device_connectivity_critical_door_contact_problems') | int(0)
           }}
         unit_of_measurement: "issues"
         attributes:
@@ -138,6 +177,8 @@ template:
             {{ state_attr('sensor.device_connectivity_stale_last_seen', 'stale_devices') }}
           integration_problems: >
             {{ state_attr('sensor.device_connectivity_integration_problems', 'problem_updates') }}
+          critical_door_contact_problems: >
+            {{ state_attr('sensor.device_connectivity_critical_door_contact_problems', 'problem_contacts') }}
 
   - binary_sensor:
       - name: "Device Connectivity Has Issues"
@@ -149,7 +190,9 @@ template:
 automation:
   - alias: "device_connectivity_issue_alert"
     id: "device_connectivity_issue_alert"
-    description: "Alert when Z-Wave nodes, last_seen sensors, or integration update entities look unhealthy"
+    description: >
+      Alert when Z-Wave nodes, last_seen sensors, integration update entities,
+      or critical door contacts look unhealthy for 15 continuous minutes.
     trigger:
       - platform: state
         entity_id: binary_sensor.device_connectivity_has_issues
@@ -175,9 +218,11 @@ automation:
           zwave_count: "{{ states('sensor.device_connectivity_z_wave_problems') | int(0) }}"
           stale_count: "{{ states('sensor.device_connectivity_stale_last_seen') | int(0) }}"
           integration_count: "{{ states('sensor.device_connectivity_integration_problems') | int(0) }}"
+          door_contact_count: "{{ states('sensor.device_connectivity_critical_door_contact_problems') | int(0) }}"
           zwave_summary: "{{ state_attr('sensor.device_connectivity_z_wave_problems', 'problem_nodes') }}"
           stale_summary: "{{ state_attr('sensor.device_connectivity_stale_last_seen', 'stale_devices') }}"
           integration_summary: "{{ state_attr('sensor.device_connectivity_integration_problems', 'problem_updates') }}"
+          door_contact_summary: "{{ state_attr('sensor.device_connectivity_critical_door_contact_problems', 'problem_contacts') }}"
       - service: notify.all_mobile_devices
         data:
           title: "Device Connectivity Alert"
@@ -186,6 +231,7 @@ automation:
             Z-Wave: {{ zwave_count }} ({{ zwave_summary }}).
             Last seen: {{ stale_count }} ({{ stale_summary }}).
             Integrations: {{ integration_count }} ({{ integration_summary }}).
+            Critical door contacts: {{ door_contact_count }} ({{ door_contact_summary }}).
           data:
             tag: "device-connectivity-alert"
             priority: "high"
@@ -200,6 +246,8 @@ automation:
             Stale last_seen devices: {{ stale_summary }}
 
             Unavailable update entities: {{ integration_summary }}
+
+            Critical door contacts: {{ door_contact_summary }}
 
             Threshold: {{ states('input_number.device_connectivity_last_seen_threshold_hours') | int(24) }} hours
 
@@ -219,3 +267,8 @@ automation:
       - service: persistent_notification.dismiss
         data:
           notification_id: device_connectivity_alert
+      - service: notify.all_mobile_devices
+        data:
+          message: "clear_notification"
+          data:
+            tag: "device-connectivity-alert"
