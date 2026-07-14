@@ -36,6 +36,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `remotes.yaml` | Z-Wave remote support: helper toggles, scripts, and blueprint-backed automations for Brian and Hester remotes. |
 | `routines.yaml` | Household scripts such as the Good Night routine, intended for direct calls from automations, dashboards, or voice assistants. |
 | `seasonal.yaml` | Active seasonal lighting automation, currently for seasonal/holiday decoration behavior. |
+| `security_door_alerts.yaml` | Immediate high-priority alerts when front, back, or garage-interior security-boundary contacts open while the alarm is armed away/night. Uses a separate security tag namespace, clears only those tags on close, and announces once through the master bedroom display. |
 | `security_lights.yaml` | Security-focused lighting helpers and automations, including after-dark/security-event lighting behavior. |
 | `security_sanity.yaml` | Reusable secure-house sanity check workflow used by routines and presence flows to verify/notify about doors, locks, garage state, and other security context. |
 | `shared_infrastructure.yaml` | Shared package contracts: `notify.all_mobile_devices` and YAML-managed Lovelace dashboards for climate control and ventilation advice. |

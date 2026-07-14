@@ -66,6 +66,7 @@ All active package files under `packages/*.yaml` are documented in `packages/REA
 - `remotes.yaml` - Z-Wave remote helper scripts and blueprint-backed automations.
 - `routines.yaml` - household routines, including Good Night.
 - `seasonal.yaml` - active seasonal lighting automation.
+- `security_door_alerts.yaml` - immediate armed away/night security-boundary door alerts, dedicated tagged clears, and concise bedroom-display announcements.
 - `security_lights.yaml` - security-focused lighting automations.
 - `security_sanity.yaml` - reusable secure-house sanity check workflow.
 - `shared_infrastructure.yaml` - shared notifier/dashboard contracts for packages.
