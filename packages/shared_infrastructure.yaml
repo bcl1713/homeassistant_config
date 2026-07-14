@@ -20,6 +20,7 @@
 # - packages/exterior_door_monitoring.yaml
 # - packages/garage_door_monitoring.yaml
 # - packages/routines.yaml
+# - packages/security_door_alerts.yaml
 # - packages/security_sanity.yaml
 # - packages/towner_notifications.yaml
 # - packages/window_ventilation.yaml

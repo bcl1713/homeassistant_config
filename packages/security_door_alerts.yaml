@@ -1,0 +1,110 @@
+# packages/security_door_alerts.yaml
+#
+# Armed Security Door Alerts
+#
+# Sends an immediate high-priority mobile alert (and one concise bedroom-display
+# announcement) only when a security-boundary contact opens while the alarm is
+# armed away or armed night. This is independent of the two-minute exterior-door
+# reminder package, including its notification tags and close behavior.
+#
+# The trigger is intentionally contact-state-only: arming the alarm while a door
+# is already open must not generate a duplicate alert.
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      security_door_contacts: &security_door_contacts
+        binary_sensor.entry_front_door:
+          name: "Front Door"
+          tag_suffix: "front"
+        binary_sensor.kitchen_back_door:
+          name: "Back Door"
+          tag_suffix: "back"
+        binary_sensor.garage_garage_interior_door:
+          name: "Garage Interior Door"
+          tag_suffix: "garage-interior"
+
+automation:
+  - id: "armed_security_door_open_alert"
+    alias: "Armed Security Door Open Alert"
+    description: >
+      Immediately alert only when a configured security-boundary door opens
+      while the alarm is armed away or armed night and guest mode is off.
+    variables:
+      door_contacts: *security_door_contacts
+      security_mode: "{{ states('alarm_control_panel.home_alarm') }}"
+      security_mode_label: "{{ 'away' if security_mode == 'armed_away' else 'night' }}"
+      notification_tag: "{{ 'security-door-open-' ~ door_contacts[trigger.entity_id]['tag_suffix'] ~ '-' ~ security_mode_label }}"
+      announcement: >
+        Security alert. {{ door_contacts[trigger.entity_id]['name'] }} opened
+        while the house is armed {{ security_mode_label }}.
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.entry_front_door
+          - binary_sensor.kitchen_back_door
+          - binary_sensor.garage_garage_interior_door
+        from: "off"
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.mode_guest
+        state: "off"
+      - condition: template
+        value_template: >
+          {{ states('alarm_control_panel.home_alarm') in
+             ['armed_away', 'armed_night'] }}
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          title: "Security Door Alert"
+          message: >
+            {{ door_contacts[trigger.entity_id]['name'] }} opened while the
+            house is armed {{ security_mode_label }}.
+          data:
+            tag: "{{ notification_tag }}"
+            priority: "high"
+            ttl: 0
+            critical: true
+      # This uses the existing tts.google_en_com service contract. The state
+      # transition trigger means each open transition produces at most one
+      # announcement; repeated state updates while open do not re-announce.
+      - action: tts.speak
+        target:
+          entity_id: tts.google_en_com
+        data:
+          cache: true
+          media_player_entity_id: media_player.master_bedroom_display
+          message: "{{ announcement }}"
+    mode: parallel
+    max: 3
+
+  - id: "armed_security_door_close_clear_alert"
+    alias: "Armed Security Door Close Clear Alert"
+    description: >
+      Clear only armed-security notifications for the door after it closes.
+      Both armed-mode tags are cleared because the alarm state may change before
+      the close event; exterior two-minute reminder tags are never targeted.
+    variables:
+      door_contacts: *security_door_contacts
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.entry_front_door
+          - binary_sensor.kitchen_back_door
+          - binary_sensor.garage_garage_interior_door
+        from: "on"
+        to: "off"
+    action:
+      - repeat:
+          for_each:
+            - "away"
+            - "night"
+          sequence:
+            - service: notify.all_mobile_devices
+              data:
+                message: "clear_notification"
+                data:
+                  tag: "{{ 'security-door-open-' ~ door_contacts[trigger.entity_id]['tag_suffix'] ~ '-' ~ repeat.item }}"
+    mode: parallel
+    max: 3
