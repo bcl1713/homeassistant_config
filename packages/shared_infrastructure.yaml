@@ -17,6 +17,7 @@
 # - packages/cameras.yaml
 # - packages/device_batteries.yaml
 # - packages/device_connectivity.yaml
+# - packages/exterior_door_monitoring.yaml
 # - packages/garage_door_monitoring.yaml
 # - packages/routines.yaml
 # - packages/security_sanity.yaml

@@ -1,0 +1,70 @@
+# packages/exterior_door_monitoring.yaml
+#
+# Exterior Door Monitoring Package
+#
+# Sends one tagged household notification when a monitored exterior door remains
+# open for two minutes, then clears only that door's tag when it closes.
+#
+# The garage interior contact is intentionally excluded: this package monitors
+# exterior entry points. Its garage-to-house security-boundary treatment needs a
+# separately scoped decision rather than silently treating it as exterior.
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      exterior_door_contacts: &exterior_door_contacts
+        binary_sensor.entry_front_door:
+          name: "Front Door"
+          tag: "exterior-door-open-front"
+        binary_sensor.kitchen_back_door:
+          name: "Back Door"
+          tag: "exterior-door-open-back"
+
+automation:
+  - id: "exterior_door_open_two_minute_alert"
+    alias: "Exterior Door Open Two-Minute Alert"
+    description: >
+      Alert the household once when a monitored exterior door remains open for
+      two continuous minutes.
+    variables:
+      door_contacts: *exterior_door_contacts
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.entry_front_door
+          - binary_sensor.kitchen_back_door
+        from: "off"
+        to: "on"
+        for: "00:02:00"
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          title: "Exterior Door Alert"
+          message: >
+            {{ door_contacts[trigger.entity_id]['name'] }} has been open for
+            2 minutes.
+          data:
+            tag: "{{ door_contacts[trigger.entity_id]['tag'] }}"
+    mode: parallel
+    max: 2
+
+  - id: "exterior_door_close_clear_alert"
+    alias: "Exterior Door Close Clear Alert"
+    description: "Clear only the matching exterior-door notification on close."
+    variables:
+      door_contacts: *exterior_door_contacts
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.entry_front_door
+          - binary_sensor.kitchen_back_door
+        from: "on"
+        to: "off"
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          message: "clear_notification"
+          data:
+            tag: "{{ door_contacts[trigger.entity_id]['tag'] }}"
+    mode: parallel
+    max: 2

@@ -27,6 +27,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `climate_schedule.yaml` | Baseline climate control for the dining-room thermostat: setpoint helpers, schedule windows, occupied setpoint application, and startup resync. |
 | `device_batteries.yaml` | Battery monitoring rollups, proactive alert thresholds, critical/low battery notifications, and notification action handling. |
 | `device_connectivity.yaml` | Device health monitoring for stale devices, Z-Wave node health, integration availability, and conservative alerting. |
+| `exterior_door_monitoring.yaml` | Two-minute continuous-open household alerts and matching per-door tagged clears for the front and back exterior contacts. The garage interior contact remains separately scoped as a garage-to-house boundary. |
 | `garage_door_monitoring.yaml` | Garage-door open-duration monitoring, reminder/escalation helpers, actionable notifications, and related scripts/templates. |
 | `known_batteries.yaml` | Template sensors that normalize known battery-powered devices into consistent names and attributes for the battery-health package. |
 | `light_groups.yaml` | Logical Home Assistant light groups for easier control by rooms or household areas. |
