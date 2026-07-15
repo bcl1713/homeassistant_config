@@ -48,6 +48,8 @@ views:
 
           {{ states('sensor.window_ventilation_reason') }}
 
+          **Open window contacts:** {{ state_attr('sensor.window_ventilation_open_window_summary', 'summary') }}
+
           _Comfort advice is advisory-only. The separate HVAC warning reports
           actual open window contacts but never changes HVAC behavior._
 
@@ -75,6 +77,8 @@ views:
             name: "Recommendation state"
           - entity: sensor.window_ventilation_reason
             name: "Reason"
+          - entity: sensor.window_ventilation_open_window_summary
+            name: "Open window contacts"
           - type: attribute
             entity: sensor.window_ventilation_recommendation
             attribute: mode

@@ -56,6 +56,7 @@ def test_window_ventilation_dashboard_surfaces_required_context():
         "input_boolean.window_ventilation_advisor_enabled",
         "sensor.window_ventilation_recommendation",
         "sensor.window_ventilation_reason",
+        "sensor.window_ventilation_open_window_summary",
         "binary_sensor.window_ventilation_favorable",
         "binary_sensor.window_ventilation_unfavorable",
         "binary_sensor.window_ventilation_brief_purge",
@@ -83,6 +84,7 @@ def test_window_ventilation_dashboard_surfaces_required_context():
     }
     assert required_entities <= refs
     assert "state_attr('sensor.window_ventilation_recommendation', 'mode')" in markdown
+    assert "state_attr('sensor.window_ventilation_open_window_summary', 'summary')" in markdown
     assert "advisory-only" in markdown
     assert "actual open window contacts" in markdown
     assert "Brief stale-air purge" in markdown

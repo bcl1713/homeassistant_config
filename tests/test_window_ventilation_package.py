@@ -179,6 +179,7 @@ def test_window_ventilation_required_entities_are_defined():
 
     assert "Window Ventilation Indoor Dew Point" in sensor_names(package)
     assert "Window Ventilation Decision Context" in sensor_names(package)
+    assert "Window Ventilation Open Window Summary" in sensor_names(package)
     assert "Window Ventilation Recommendation" in sensor_names(package)
     assert "Window Ventilation Reason" in sensor_names(package)
 
@@ -291,6 +292,10 @@ def test_window_ventilation_reuses_canonical_decision_context():
         "sensor.window_ventilation_decision_context"
     )
 
+    summary = template_sensor_by_name(package, "Window Ventilation Open Window Summary")
+    assert summary["unique_id"] == "window_ventilation_open_window_summary"
+    assert "sensor.window_ventilation_decision_context" in str(summary)
+
     for canonical_attribute in (
         "outdoor_cooler",
         "outdoor_drier",
@@ -307,6 +312,16 @@ def test_window_ventilation_reuses_canonical_decision_context():
     ):
         assert canonical_attribute in context["attributes"]
         assert f"state_attr(ctx, '{canonical_attribute}')" in recommendation_text
+
+    for contact_attribute in ("open_window_count", "open_window_names"):
+        assert contact_attribute in context["attributes"]
+        assert contact_attribute in recommendation["attributes"]
+
+    assert "binary_sensor.kitchen_kitchen_porch_window" in context_text
+    assert "binary_sensor.office_window" in context_text
+    assert "friendly_name" in context_text
+    assert "open_window_count > 0" in reason_text
+    assert "Close {{ open_window_names }}" in reason_text
 
     for source_reference in (
         "states('sensor.dining_room_thermostat_temperature')",
@@ -364,7 +379,7 @@ def test_window_ventilation_favorable_conditions_still_recommend_open():
     assert result["context_attrs"]["brief_purge"] is False
     assert result["recommendation_state"] == "open"
     assert result["recommendation_attrs"]["mode"] == "comfort"
-    assert "Open windows:" in result["reason_state"]
+    assert "Recommendation: consider opening windows." in result["reason_state"]
     assert "short purge" not in result["reason_state"]
     assert "Briefly open" not in result["reason_state"]
 
@@ -391,7 +406,7 @@ def test_window_ventilation_severe_stale_air_can_recommend_bounded_brief_purge()
     assert result["recommendation_state"] == "open_briefly"
     assert result["recommendation_state"] != "open"
     assert result["recommendation_attrs"]["mode"] == "brief_purge"
-    assert "Briefly open windows for a short purge" in result["reason_state"]
+    assert "Recommendation: consider briefly opening windows for a short purge" in result["reason_state"]
     assert "bounded compromise limits" in result["reason_state"]
 
 
@@ -492,6 +507,33 @@ def test_window_ventilation_brief_purge_is_not_winter_purge_classification():
         in brief_purge_template
     )
     assert "not winter_mode" in brief_purge_template
+
+
+def test_window_ventilation_contact_context_names_open_windows_without_false_opens():
+    open_window = "binary_sensor.kitchen_kitchen_porch_window"
+    friendly_name = "Kitchen Porch Window"
+
+    all_closed = evaluate_window_ventilation(
+        {"sensor.precipitation_forecast_next_hour": "30"}
+    )
+    one_open = evaluate_window_ventilation(
+        {
+            "sensor.precipitation_forecast_next_hour": "30",
+            open_window: "on",
+        },
+        {(open_window, "friendly_name"): friendly_name},
+    )
+
+    assert all_closed["context_attrs"]["open_window_count"] == "0"
+    assert all_closed["context_attrs"]["open_window_names"] == ""
+    assert "Keep windows closed:" in all_closed["reason_state"]
+    assert friendly_name not in all_closed["reason_state"]
+
+    assert one_open["context_attrs"]["open_window_count"] == "1"
+    assert one_open["context_attrs"]["open_window_names"] == friendly_name
+    assert one_open["recommendation_attrs"]["open_window_count"] == "1"
+    assert one_open["recommendation_attrs"]["open_window_names"] == friendly_name
+    assert f"Close {friendly_name}:" in one_open["reason_state"]
 
 
 def test_window_ventilation_notifications_are_advisory_and_gated():
