@@ -26,10 +26,45 @@ input_number:
     icon: mdi:clock-outline
     initial: 30
 
+homeassistant:
+  customize:
+    package.node_anchors:
+      rain_window_contacts: &rain_window_contacts
+        binary_sensor.kitchen_kitchen_porch_window: "Kitchen Porch Window"
+        binary_sensor.kitchen_kitchen_sink_window: "Kitchen Sink Window"
+        binary_sensor.living_room_living_room_window: "Living Room Window"
+        binary_sensor.master_bedroom_brian_s_window: "Brian's Window"
+        binary_sensor.master_bedroom_hester_s_window: "Hester's Window"
+        binary_sensor.porter_s_room_porter_s_window: "Porter's Window"
+        binary_sensor.towner_s_room_towner_s_window: "Towner's Window"
+        binary_sensor.office_window: "Office Window"
+
 automation:
   - alias: "Rain Forecast Alert"
     id: "notification_rain_forecast"
-    description: "NWS-backed rain probability and condition notification"
+    description: >
+      NWS-backed rain probability and condition notification for monitored open
+      windows, with a tagged clear once every monitored window is closed.
+    variables:
+      rain_window_contacts: *rain_window_contacts
+      open_window_names: >
+        {% set windows = namespace(names=[]) %}
+        {% for entity_id, name in rain_window_contacts.items() %}
+          {% if is_state(entity_id, 'on') %}
+            {% set windows.names = windows.names + [name] %}
+          {% endif %}
+        {% endfor %}
+        {{ windows.names | join(', ') }}
+      forecast_basis: >
+        {% set probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
+        {% set condition = states('sensor.condition_forecast_next_hour') %}
+        {% if probability > 30 %}
+          {{ probability | round(0) }}% chance of precipitation in the next hour
+        {% elif condition in ['rainy', 'pouring', 'snowy', 'snowy-rainy'] %}
+          {{ condition | title }} conditions expected in the next hour
+        {% else %}
+          {{ states('weather.nws_home_kmle') | title }} conditions expected
+        {% endif %}
     trigger:
       # Primary: NWS precipitation probability sensor (percent chance)
       - platform: numeric_state
@@ -54,6 +89,20 @@ automation:
           - "snowy"
           - "snowy-rainy"
         id: "weather_fallback"
+      # Re-check an already-rainy forecast if a monitored window is opened.
+      - platform: state
+        entity_id:
+          - binary_sensor.kitchen_kitchen_porch_window
+          - binary_sensor.kitchen_kitchen_sink_window
+          - binary_sensor.living_room_living_room_window
+          - binary_sensor.master_bedroom_brian_s_window
+          - binary_sensor.master_bedroom_hester_s_window
+          - binary_sensor.porter_s_room_porter_s_window
+          - binary_sensor.towner_s_room_towner_s_window
+          - binary_sensor.office_window
+        from: "off"
+        to: "on"
+        id: "window_open_trigger"
     condition:
       # Wait for weather data to be available after startup
       - condition: template
@@ -65,6 +114,19 @@ automation:
       - condition: time
         after: "05:00:00"
         before: "22:00:00"
+      # A contact opening re-checks the same near-term criteria as the weather
+      # triggers, so a dry forecast can never produce an open-window alert.
+      - condition: template
+        value_template: >
+          {% set probability = states('sensor.precipitation_forecast_next_hour') | float(0) %}
+          {% set condition = states('sensor.condition_forecast_next_hour') %}
+          {% set weather_condition = states('weather.nws_home_kmle') %}
+          {{ probability > 30 or
+             condition in ['rainy', 'pouring', 'snowy', 'snowy-rainy'] or
+             weather_condition in ['rainy', 'pouring', 'snowy', 'snowy-rainy'] }}
+      # Alert only while at least one configured window contact is open.
+      - condition: template
+        value_template: "{{ open_window_names | trim != '' }}"
       # Avoid spam - only if no recent notification
       - condition: template
         value_template: >
@@ -78,14 +140,47 @@ automation:
       - action: notify.mobile_app_brian_phone
         data:
           message: >
-            {% if trigger.id == 'precipitation_probability_trigger' %}
-              ☔ Rain chance in the next hour: {{ states('sensor.precipitation_forecast_next_hour') }}%
-            {% elif trigger.id == 'condition_trigger' %}
-              ☔ {{ states('sensor.condition_forecast_next_hour') | title }} weather expected in the next hour
-            {% else %}
-              ☔ {{ states('weather.nws_home_kmle') | title }} weather conditions expected
-            {% endif %}
-          title: "Rain Alert"
+            ☔ Close {{ open_window_names }}: {{ forecast_basis }}.
+          title: "Rain Alert: Open Windows"
+          data:
+            tag: "rain-open-windows"
+    mode: single
+
+  - alias: "Rain Forecast Open Windows Clear"
+    id: "notification_rain_forecast_open_windows_clear"
+    description: >
+      Clear the rain open-window alert only after every monitored window is
+      closed; closing one of several open windows leaves the alert visible.
+    variables:
+      rain_window_contacts: *rain_window_contacts
+      has_open_windows: >
+        {% for entity_id in rain_window_contacts %}
+          {% if is_state(entity_id, 'on') %}
+            true
+          {% endif %}
+        {% endfor %}
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.kitchen_kitchen_porch_window
+          - binary_sensor.kitchen_kitchen_sink_window
+          - binary_sensor.living_room_living_room_window
+          - binary_sensor.master_bedroom_brian_s_window
+          - binary_sensor.master_bedroom_hester_s_window
+          - binary_sensor.porter_s_room_porter_s_window
+          - binary_sensor.towner_s_room_towner_s_window
+          - binary_sensor.office_window
+        from: "on"
+        to: "off"
+    condition:
+      - condition: template
+        value_template: "{{ not has_open_windows }}"
+    action:
+      - action: notify.mobile_app_brian_phone
+        data:
+          message: "clear_notification"
+          data:
+            tag: "rain-open-windows"
     mode: single
 
   - alias: "weather_data_refresh"
