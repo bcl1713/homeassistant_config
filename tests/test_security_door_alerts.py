@@ -14,6 +14,38 @@ CONTACTS = {
         "name": "Garage Interior Door",
         "tag_suffix": "garage-interior",
     },
+    "binary_sensor.kitchen_kitchen_porch_window": {
+        "name": "Kitchen Porch Window",
+        "tag_suffix": "kitchen-porch-window",
+    },
+    "binary_sensor.kitchen_kitchen_sink_window": {
+        "name": "Kitchen Sink Window",
+        "tag_suffix": "kitchen-sink-window",
+    },
+    "binary_sensor.living_room_living_room_window": {
+        "name": "Living Room Window",
+        "tag_suffix": "living-room-window",
+    },
+    "binary_sensor.master_bedroom_brian_s_window": {
+        "name": "Brian's Window",
+        "tag_suffix": "brian-window",
+    },
+    "binary_sensor.master_bedroom_hester_s_window": {
+        "name": "Hester's Window",
+        "tag_suffix": "hester-window",
+    },
+    "binary_sensor.porter_s_room_porter_s_window": {
+        "name": "Porter's Window",
+        "tag_suffix": "porter-window",
+    },
+    "binary_sensor.towner_s_room_towner_s_window": {
+        "name": "Towner's Window",
+        "tag_suffix": "towner-window",
+    },
+    "binary_sensor.office_window": {
+        "name": "Office Window",
+        "tag_suffix": "office-window",
+    },
 }
 
 
@@ -28,13 +60,14 @@ def automation_by_id(package, automation_id):
     raise AssertionError(f"automation {automation_id!r} not found")
 
 
-def test_armed_security_contacts_include_exterior_and_garage_boundary_doors():
+def test_armed_security_contacts_include_doors_and_every_required_window():
     package = load_package()
     contacts = package["homeassistant"]["customize"]["package.node_anchors"][
         "security_door_contacts"
     ]
 
     assert contacts == CONTACTS
+    assert len({contact["tag_suffix"] for contact in contacts.values()}) == len(CONTACTS)
 
 
 def test_open_alert_is_immediate_armed_only_and_guest_mode_exempt():

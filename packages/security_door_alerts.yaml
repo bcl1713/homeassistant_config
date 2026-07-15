@@ -1,11 +1,12 @@
 # packages/security_door_alerts.yaml
 #
-# Armed Security Door Alerts
+# Armed Security Contact Alerts
 #
 # Sends an immediate high-priority mobile alert (and one concise bedroom-display
-# announcement) only when a security-boundary contact opens while the alarm is
-# armed away or armed night. This is independent of the two-minute exterior-door
-# reminder package, including its notification tags and close behavior.
+# announcement) only when a security-boundary door or window contact opens while
+# the alarm is armed away or armed night. This is independent of the two-minute
+# exterior-door reminder package, including its notification tags and close
+# behavior.
 #
 # The trigger is intentionally contact-state-only: arming the alarm while a door
 # is already open must not generate a duplicate alert.
@@ -23,6 +24,30 @@ homeassistant:
         binary_sensor.garage_garage_interior_door:
           name: "Garage Interior Door"
           tag_suffix: "garage-interior"
+        binary_sensor.kitchen_kitchen_porch_window:
+          name: "Kitchen Porch Window"
+          tag_suffix: "kitchen-porch-window"
+        binary_sensor.kitchen_kitchen_sink_window:
+          name: "Kitchen Sink Window"
+          tag_suffix: "kitchen-sink-window"
+        binary_sensor.living_room_living_room_window:
+          name: "Living Room Window"
+          tag_suffix: "living-room-window"
+        binary_sensor.master_bedroom_brian_s_window:
+          name: "Brian's Window"
+          tag_suffix: "brian-window"
+        binary_sensor.master_bedroom_hester_s_window:
+          name: "Hester's Window"
+          tag_suffix: "hester-window"
+        binary_sensor.porter_s_room_porter_s_window:
+          name: "Porter's Window"
+          tag_suffix: "porter-window"
+        binary_sensor.towner_s_room_towner_s_window:
+          name: "Towner's Window"
+          tag_suffix: "towner-window"
+        binary_sensor.office_window:
+          name: "Office Window"
+          tag_suffix: "office-window"
 
 automation:
   - id: "armed_security_door_open_alert"
@@ -44,6 +69,14 @@ automation:
           - binary_sensor.entry_front_door
           - binary_sensor.kitchen_back_door
           - binary_sensor.garage_garage_interior_door
+          - binary_sensor.kitchen_kitchen_porch_window
+          - binary_sensor.kitchen_kitchen_sink_window
+          - binary_sensor.living_room_living_room_window
+          - binary_sensor.master_bedroom_brian_s_window
+          - binary_sensor.master_bedroom_hester_s_window
+          - binary_sensor.porter_s_room_porter_s_window
+          - binary_sensor.towner_s_room_towner_s_window
+          - binary_sensor.office_window
         from: "off"
         to: "on"
     condition:
@@ -93,6 +126,14 @@ automation:
           - binary_sensor.entry_front_door
           - binary_sensor.kitchen_back_door
           - binary_sensor.garage_garage_interior_door
+          - binary_sensor.kitchen_kitchen_porch_window
+          - binary_sensor.kitchen_kitchen_sink_window
+          - binary_sensor.living_room_living_room_window
+          - binary_sensor.master_bedroom_brian_s_window
+          - binary_sensor.master_bedroom_hester_s_window
+          - binary_sensor.porter_s_room_porter_s_window
+          - binary_sensor.towner_s_room_towner_s_window
+          - binary_sensor.office_window
         from: "on"
         to: "off"
     action:
