@@ -41,52 +41,29 @@ input_number:
 template:
   - sensor:
       # Keep the existing unique_id so Home Assistant retains the established
-      # entity while the protected-contact set expands beyond the three doors.
+      # entity while the canonical protected-contact inventory includes doors
+      # and windows.
       - name: "Device Connectivity Critical Contact Problems"
         unique_id: device_connectivity_critical_door_contact_problems
         state: >
-          {% set contacts = {
-            'binary_sensor.entry_front_door': 'Front Door Contact',
-            'binary_sensor.kitchen_back_door': 'Back Door Contact',
-            'binary_sensor.garage_garage_interior_door': 'Garage Interior Door Contact',
-            'binary_sensor.kitchen_kitchen_porch_window': 'Kitchen Porch Window',
-            'binary_sensor.kitchen_kitchen_sink_window': 'Kitchen Sink Window',
-            'binary_sensor.living_room_living_room_window': 'Living Room Window',
-            'binary_sensor.master_bedroom_brian_s_window': "Brian's Window",
-            'binary_sensor.master_bedroom_hester_s_window': "Hester's Window",
-            'binary_sensor.porter_s_room_porter_s_window': "Porter's Room Window",
-            'binary_sensor.towner_s_room_towner_s_window': "Towner's Room Window",
-            'binary_sensor.office_window': 'Office Window'
-          } %}
+          {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
           {% set ns = namespace(problems=[]) %}
-          {% for entity_id, name in contacts.items() %}
-            {% set state = states(entity_id) %}
+          {% for contact in contacts %}
+            {% set state = states(contact.entity_id) %}
             {% if state in ['unavailable', 'unknown'] %}
-              {% set ns.problems = ns.problems + [name] %}
+              {% set ns.problems = ns.problems + [contact.name] %}
             {% endif %}
           {% endfor %}
           {{ ns.problems | length }}
         unit_of_measurement: "contacts"
         attributes:
           problem_contacts: >
-            {% set contacts = {
-              'binary_sensor.entry_front_door': 'Front Door Contact',
-              'binary_sensor.kitchen_back_door': 'Back Door Contact',
-              'binary_sensor.garage_garage_interior_door': 'Garage Interior Door Contact',
-              'binary_sensor.kitchen_kitchen_porch_window': 'Kitchen Porch Window',
-              'binary_sensor.kitchen_kitchen_sink_window': 'Kitchen Sink Window',
-              'binary_sensor.living_room_living_room_window': 'Living Room Window',
-              'binary_sensor.master_bedroom_brian_s_window': "Brian's Window",
-              'binary_sensor.master_bedroom_hester_s_window': "Hester's Window",
-              'binary_sensor.porter_s_room_porter_s_window': "Porter's Room Window",
-              'binary_sensor.towner_s_room_towner_s_window': "Towner's Room Window",
-              'binary_sensor.office_window': 'Office Window'
-            } %}
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
             {% set ns = namespace(problems=[]) %}
-            {% for entity_id, name in contacts.items() %}
-              {% set state = states(entity_id) %}
+            {% for contact in contacts %}
+              {% set state = states(contact.entity_id) %}
               {% if state in ['unavailable', 'unknown'] %}
-                {% set ns.problems = ns.problems + [name ~ ' (' ~ state ~ ')'] %}
+                {% set ns.problems = ns.problems + [contact.name ~ ' (' ~ state ~ ')'] %}
               {% endif %}
             {% endfor %}
             {{ ns.problems | join(', ') if ns.problems else 'None' }}

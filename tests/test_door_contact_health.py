@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 import yaml
@@ -6,19 +7,7 @@ from jinja2 import Environment
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "packages" / "device_connectivity.yaml"
-CRITICAL_CONTACTS = {
-    "binary_sensor.entry_front_door": "Front Door Contact",
-    "binary_sensor.kitchen_back_door": "Back Door Contact",
-    "binary_sensor.garage_garage_interior_door": "Garage Interior Door Contact",
-    "binary_sensor.kitchen_kitchen_porch_window": "Kitchen Porch Window",
-    "binary_sensor.kitchen_kitchen_sink_window": "Kitchen Sink Window",
-    "binary_sensor.living_room_living_room_window": "Living Room Window",
-    "binary_sensor.master_bedroom_brian_s_window": "Brian's Window",
-    "binary_sensor.master_bedroom_hester_s_window": "Hester's Window",
-    "binary_sensor.porter_s_room_porter_s_window": "Porter's Room Window",
-    "binary_sensor.towner_s_room_towner_s_window": "Towner's Room Window",
-    "binary_sensor.office_window": "Office Window",
-}
+PROTECTED_CONTACTS = ROOT / "packages" / "protected_contacts.yaml"
 
 
 def load_package():
@@ -33,29 +22,57 @@ def sensor_by_name(package, sensor_name):
     raise AssertionError(f"sensor {sensor_name!r} not found")
 
 
-def render(template, state_map):
+def inventory_contacts():
+    package = yaml.safe_load(PROTECTED_CONTACTS.read_text())
+    inventory = sensor_by_name(package, "Protected Contact Inventory")
+    rendered = Environment().from_string(inventory["attributes"]["contacts"]).render()
+    return ast.literal_eval(rendered)
+
+
+def render(template, state_map, contacts=None):
     environment = Environment(trim_blocks=True, lstrip_blocks=True)
-    environment.globals["states"] = lambda entity_id: state_map.get(entity_id, "unknown")
+    environment.globals.update(
+        states=lambda entity_id: state_map.get(entity_id, "unknown"),
+        state_attr=lambda entity_id, attribute: (
+            contacts
+            if (entity_id, attribute)
+            == ("sensor.protected_contact_inventory", "contacts")
+            else None
+        ),
+    )
     return environment.from_string(template).render()
 
 
-def test_critical_contact_sensor_flags_only_unavailable_or_unknown_contacts():
+def test_critical_contact_sensor_consumes_canonical_inventory_for_all_contact_health_states():
     package = load_package()
     sensor = sensor_by_name(package, "Device Connectivity Critical Contact Problems")
-    state_map = {entity_id: "off" for entity_id in CRITICAL_CONTACTS}
+    contacts = inventory_contacts()
+    state_map = {contact["entity_id"]: "off" for contact in contacts}
     state_map.update(
         {
             "binary_sensor.kitchen_back_door": "unavailable",
-            "binary_sensor.master_bedroom_brian_s_window": "unknown",
+            "binary_sensor.porter_s_room_porter_s_window": "unknown",
+            "binary_sensor.towner_s_room_towner_s_window": "unavailable",
         }
     )
 
-    assert len(CRITICAL_CONTACTS) == 11
-    assert all(entity_id in sensor["state"] for entity_id in CRITICAL_CONTACTS)
-    assert render(sensor["state"], state_map).strip() == "2"
-    assert render(sensor["attributes"]["problem_contacts"], state_map).strip() == (
-        "Back Door Contact (unavailable), Brian's Window (unknown)"
+    assert len(contacts) == 11
+    assert "state_attr('sensor.protected_contact_inventory', 'contacts')" in sensor["state"]
+    assert "state_attr('sensor.protected_contact_inventory', 'contacts')" in sensor["attributes"]["problem_contacts"]
+    assert "binary_sensor." not in sensor["state"]
+    assert "binary_sensor." not in sensor["attributes"]["problem_contacts"]
+    assert render(sensor["state"], state_map, contacts).strip() == "3"
+    assert render(sensor["attributes"]["problem_contacts"], state_map, contacts).strip() == (
+        "Porter's Window (unknown), Towner's Window (unavailable), Back Door (unavailable)"
     )
+
+
+def test_critical_contact_sensor_has_an_empty_inventory_fallback():
+    package = load_package()
+    sensor = sensor_by_name(package, "Device Connectivity Critical Contact Problems")
+
+    assert render(sensor["state"], {}, None).strip() == "0"
+    assert render(sensor["attributes"]["problem_contacts"], {}, None).strip() == "None"
 
 
 def test_healthy_critical_contacts_clear_the_problem_sensor_and_notification():
@@ -65,10 +82,11 @@ def test_healthy_critical_contacts_clear_the_problem_sensor_and_notification():
     reset = next(
         item for item in package["automation"] if item["id"] == "device_connectivity_issue_alert_reset"
     )
-    recovered_states = {entity_id: "off" for entity_id in CRITICAL_CONTACTS}
+    contacts = inventory_contacts()
+    recovered_states = {contact["entity_id"]: "off" for contact in contacts}
 
-    assert render(sensor["state"], recovered_states).strip() == "0"
-    assert render(sensor["attributes"]["problem_contacts"], recovered_states).strip() == "None"
+    assert render(sensor["state"], recovered_states, contacts).strip() == "0"
+    assert render(sensor["attributes"]["problem_contacts"], recovered_states, contacts).strip() == "None"
     assert alert["trigger"][0]["for"] == {"minutes": 15}
     assert "critical_contact_count" in alert["action"][1]["variables"]
     assert "critical_contact_summary" in alert["action"][1]["variables"]
