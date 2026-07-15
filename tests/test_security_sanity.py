@@ -174,6 +174,100 @@ def test_good_night_invokes_secure_house_check_after_routine_sequence():
     }
 
 
+def good_night_window_decision(script):
+    for step in script["sequence"]:
+        if "if" not in step:
+            continue
+        condition = step["if"][0]
+        if "has_open_windows" in condition.get("value_template", ""):
+            return step
+    raise AssertionError("Good Night open-window decision not found")
+
+
+def test_good_night_open_window_trace_names_only_open_windows_before_arming():
+    script = load_yaml(ROUTINES)["script"]["good_night"]
+    variables = next(step["variables"] for step in script["sequence"] if "variables" in step)
+    window_contacts = {
+        "binary_sensor.kitchen_kitchen_porch_window": "Kitchen Porch Window",
+        "binary_sensor.kitchen_kitchen_sink_window": "Kitchen Sink Window",
+        "binary_sensor.living_room_living_room_window": "Living Room Window",
+        "binary_sensor.master_bedroom_brian_s_window": "Brian's Window",
+        "binary_sensor.master_bedroom_hester_s_window": "Hester's Window",
+        "binary_sensor.porter_s_room_porter_s_window": "Porter's Window",
+        "binary_sensor.towner_s_room_towner_s_window": "Towner's Window",
+        "binary_sensor.office_window": "Office Window",
+    }
+    closed_states = {entity_id: "off" for entity_id in window_contacts}
+    open_states = {
+        **closed_states,
+        "binary_sensor.kitchen_kitchen_sink_window": "on",
+        "binary_sensor.office_window": "on",
+    }
+
+    assert variables["security_window_contacts"] == window_contacts
+    assert (
+        render_template(
+            variables["open_window_names"],
+            closed_states,
+            security_window_contacts=window_contacts,
+        )
+        == ""
+    )
+    assert render_template(
+        variables["open_window_names"],
+        open_states,
+        security_window_contacts=window_contacts,
+    ) == "Kitchen Sink Window, Office Window"
+
+    sequence = script["sequence"]
+    decision_index = sequence.index(good_night_window_decision(script))
+    first_arm_index = next(
+        index
+        for index, step in enumerate(sequence)
+        if "alarm_control_panel.alarm_arm_night" in str(step)
+    )
+    assert decision_index < first_arm_index
+
+
+def test_good_night_all_closed_window_trace_skips_the_notification():
+    script = load_yaml(ROUTINES)["script"]["good_night"]
+    decision = good_night_window_decision(script)
+
+    assert decision["if"] == [
+        {"condition": "template", "value_template": "{{ has_open_windows }}"}
+    ]
+    assert "else" not in decision
+
+
+def test_good_night_open_window_timeout_trace_is_bounded_and_continues():
+    decision = good_night_window_decision(load_yaml(ROUTINES)["script"]["good_night"])
+    wait_step = next(step for step in decision["then"] if "wait_for_trigger" in step)
+
+    assert wait_step["continue_on_timeout"] is True
+    assert wait_step["timeout"] == "00:02:00"
+
+
+def test_good_night_open_window_continue_trace_has_an_explicit_action():
+    decision = good_night_window_decision(load_yaml(ROUTINES)["script"]["good_night"])
+    notification = decision["then"][0]
+    wait_step = decision["then"][1]
+
+    assert notification["service"] == "notify.all_mobile_devices"
+    assert notification["data"]["data"]["actions"] == [
+        {
+            "action": "good_night_continue_with_open_windows",
+            "title": "Acknowledge & Continue",
+        }
+    ]
+    assert wait_step["wait_for_trigger"] == [
+        {
+            "platform": "event",
+            "event_type": "mobile_app_notification_action",
+            "event_data": {"action": "good_night_continue_with_open_windows"},
+        }
+    ]
+
+
 def test_everyone_left_invokes_same_secure_house_check():
     package = load_yaml(PRESENCE)
     automation = automation_by_id(package, "presence_everyone_left")

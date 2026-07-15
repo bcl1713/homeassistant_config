@@ -27,12 +27,13 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `climate_schedule.yaml` | Baseline climate control for the dining-room thermostat: setpoint helpers, schedule windows, occupied setpoint application, and startup resync. |
 | `device_batteries.yaml` | Battery monitoring rollups, proactive alert thresholds, critical/low battery notifications, and notification action handling. |
 | `device_connectivity.yaml` | Device health monitoring for stale devices, Z-Wave node health, integration availability, and conservative alerting. |
-| `exterior_door_monitoring.yaml` | Two-minute continuous-open household alerts and matching per-door tagged clears for the front and back exterior contacts. The garage interior contact remains separately scoped as a garage-to-house boundary. |
+| `exterior_door_monitoring.yaml` | Two-minute continuous-open household alerts and matching per-door tagged clears for the front, back, and garage interior contacts. Immediate armed-security and secure-house checks remain in their separate packages. |
 | `garage_door_monitoring.yaml` | Garage-door open-duration monitoring, reminder/escalation helpers, actionable notifications, and related scripts/templates. |
 | `known_batteries.yaml` | Template sensors that normalize known battery-powered devices into consistent names and attributes for the battery-health package. |
 | `light_groups.yaml` | Logical Home Assistant light groups for easier control by rooms or household areas. |
 | `notifications.yaml` | Shared notification automations that do not belong to a larger feature package, currently including bus/school-day notification handling. |
 | `presence.yaml` | Presence-related behavior, including alarm-panel helpers and lighting automations tied to occupancy/time conditions. |
+| `protected_contacts.yaml` | Canonical, read-only inventory and open-state summary for eight window contacts plus Front Door, Back Door, and Garage Interior Door. Future packages should consume this seam rather than duplicate the protected-contact roster. |
 | `remotes.yaml` | Z-Wave remote support: helper toggles, scripts, and blueprint-backed automations for Brian and Hester remotes. |
 | `routines.yaml` | Household scripts such as the Good Night routine, intended for direct calls from automations, dashboards, or voice assistants. |
 | `seasonal.yaml` | Active seasonal lighting automation, currently for seasonal/holiday decoration behavior. |
@@ -70,6 +71,16 @@ Notification-heavy packages include:
 - `security_sanity.yaml`
 - `towner_notifications.yaml`
 - `window_ventilation.yaml`
+
+## Protected-contact state seam
+
+`protected_contacts.yaml` owns the complete protected-contact inventory. Its
+`sensor.protected_contact_summary` state is the number of currently open
+contacts; its attributes expose friendly-name lists for open windows and
+security-boundary doors, plus separate unavailable and unknown contact counts
+and lists. The summary is read-only and creates no notifications. Other
+packages should read `sensor.protected_contact_inventory` and
+`sensor.protected_contact_summary` instead of embedding another contact list.
 
 ## Dashboards and operator views
 

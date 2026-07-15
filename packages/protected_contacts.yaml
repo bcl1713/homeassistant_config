@@ -1,0 +1,137 @@
+# packages/protected_contacts.yaml
+#
+# Canonical, read-only inventory and state summary for protected window and
+# security-boundary door contacts. Other packages should consume the inventory
+# and summary attributes rather than copy the contact roster.
+#
+# This package deliberately contains no automations, scripts, or notifications.
+
+template:
+  - sensor:
+      - name: "Protected Contact Inventory"
+        unique_id: protected_contact_inventory
+        icon: mdi:shield-home-outline
+        state: "11"
+        attributes:
+          contacts: >
+            {{ [
+              {'entity_id': 'binary_sensor.kitchen_kitchen_porch_window', 'name': 'Kitchen Porch Window', 'category': 'window'},
+              {'entity_id': 'binary_sensor.kitchen_kitchen_sink_window', 'name': 'Kitchen Sink Window', 'category': 'window'},
+              {'entity_id': 'binary_sensor.living_room_living_room_window', 'name': 'Living Room Window', 'category': 'window'},
+              {'entity_id': 'binary_sensor.master_bedroom_brian_s_window', 'name': "Brian's Window", 'category': 'window'},
+              {'entity_id': 'binary_sensor.master_bedroom_hester_s_window', 'name': "Hester's Window", 'category': 'window'},
+              {'entity_id': 'binary_sensor.porter_s_room_porter_s_window', 'name': "Porter's Window", 'category': 'window'},
+              {'entity_id': 'binary_sensor.towner_s_room_towner_s_window', 'name': "Towner's Window", 'category': 'window'},
+              {'entity_id': 'binary_sensor.office_window', 'name': 'Office Window', 'category': 'window'},
+              {'entity_id': 'binary_sensor.entry_front_door', 'name': 'Front Door', 'category': 'security_boundary_door'},
+              {'entity_id': 'binary_sensor.kitchen_back_door', 'name': 'Back Door', 'category': 'security_boundary_door'},
+              {'entity_id': 'binary_sensor.garage_garage_interior_door', 'name': 'Garage Interior Door', 'category': 'security_boundary_door'}
+            ] }}
+          categories: "{{ ['window', 'security_boundary_door'] }}"
+          window_count: 8
+          security_boundary_door_count: 3
+
+      - name: "Protected Contact Summary"
+        unique_id: protected_contact_summary
+        icon: mdi:shield-alert-outline
+        state: >
+          {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+          {% set ns = namespace(open_count=0) %}
+          {% for contact in contacts %}
+            {% if states(contact.entity_id) == 'on' %}
+              {% set ns.open_count = ns.open_count + 1 %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.open_count }}
+        unit_of_measurement: "open contacts"
+        attributes:
+          inventory_entity: sensor.protected_contact_inventory
+          total_count: "{{ state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) | length }}"
+          status: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set ns = namespace(open_count=0, unavailable_count=0, unknown_count=0) %}
+            {% for contact in contacts %}
+              {% set contact_state = states(contact.entity_id) %}
+              {% if contact_state == 'on' %}
+                {% set ns.open_count = ns.open_count + 1 %}
+              {% elif contact_state == 'unavailable' %}
+                {% set ns.unavailable_count = ns.unavailable_count + 1 %}
+              {% elif contact_state == 'unknown' %}
+                {% set ns.unknown_count = ns.unknown_count + 1 %}
+              {% endif %}
+            {% endfor %}
+            {% if ns.open_count > 0 %}
+              open
+            {% elif ns.unavailable_count > 0 and ns.unknown_count > 0 %}
+              degraded
+            {% elif ns.unavailable_count > 0 %}
+              unavailable
+            {% elif ns.unknown_count > 0 %}
+              unknown
+            {% else %}
+              closed
+            {% endif %}
+          open_count: "{{ this.state | int(0) }}"
+          open_contacts: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set ns = namespace(names=[]) %}
+            {% for contact in contacts %}
+              {% if states(contact.entity_id) == 'on' %}
+                {% set ns.names = ns.names + [contact.name] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.names | join(', ') if ns.names else 'None' }}
+          open_windows: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set ns = namespace(names=[]) %}
+            {% for contact in contacts %}
+              {% if contact.category == 'window' and states(contact.entity_id) == 'on' %}
+                {% set ns.names = ns.names + [contact.name] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.names | join(', ') if ns.names else 'None' }}
+          open_security_boundary_doors: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set ns = namespace(names=[]) %}
+            {% for contact in contacts %}
+              {% if contact.category == 'security_boundary_door' and states(contact.entity_id) == 'on' %}
+                {% set ns.names = ns.names + [contact.name] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.names | join(', ') if ns.names else 'None' }}
+          unavailable_count: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set ns = namespace(count=0) %}
+            {% for contact in contacts %}
+              {% if states(contact.entity_id) == 'unavailable' %}
+                {% set ns.count = ns.count + 1 %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.count }}
+          unavailable_contacts: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set ns = namespace(names=[]) %}
+            {% for contact in contacts %}
+              {% if states(contact.entity_id) == 'unavailable' %}
+                {% set ns.names = ns.names + [contact.name] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.names | join(', ') if ns.names else 'None' }}
+          unknown_count: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set ns = namespace(count=0) %}
+            {% for contact in contacts %}
+              {% if states(contact.entity_id) == 'unknown' %}
+                {% set ns.count = ns.count + 1 %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.count }}
+          unknown_contacts: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set ns = namespace(names=[]) %}
+            {% for contact in contacts %}
+              {% if states(contact.entity_id) == 'unknown' %}
+                {% set ns.names = ns.names + [contact.name] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.names | join(', ') if ns.names else 'None' }}
