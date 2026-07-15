@@ -85,6 +85,7 @@ def test_device_connectivity_zwave_problem_sensor_counts_non_healthy_nodes():
         sensor["state"],
         entities=[
             Entity("sensor.kitchen_node_status", "alive", "Kitchen Node Status"),
+            Entity("sensor.window_node_status", "asleep", "Window Node Status"),
             Entity("sensor.office_node_status", "dead", "Office Node Status"),
             Entity("sensor.bedroom_node_status", "unknown", "Bedroom Node Status"),
             Entity("sensor.hallway_last_seen", FIXED_NOW.isoformat(), "Hallway Last Seen"),
@@ -100,9 +101,9 @@ def test_device_connectivity_stale_last_seen_sensor_ignores_invalid_values_and_f
         sensor["state"],
         entities=[
             Entity(
-                "sensor.front_door_last_seen",
+                "sensor.kitchen_porch_window_last_seen",
                 (FIXED_NOW - timedelta(hours=30)).isoformat(),
-                "Front Door Last Seen",
+                "Kitchen Porch Window Last Seen",
             ),
             Entity(
                 "sensor.office_last_seen",
@@ -116,6 +117,20 @@ def test_device_connectivity_stale_last_seen_sensor_ignores_invalid_values_and_f
     )
 
     assert rendered.strip() == "1"
+    assert (
+        render_template(
+            sensor["attributes"]["stale_devices"],
+            entities=[
+                Entity(
+                    "sensor.kitchen_porch_window_last_seen",
+                    (FIXED_NOW - timedelta(hours=30)).isoformat(),
+                    "Kitchen Porch Window Last Seen",
+                )
+            ],
+            state_map={"input_number.device_connectivity_last_seen_threshold_hours": "24"},
+        ).strip()
+        == "Kitchen Porch Window Last Seen (30.0h)"
+    )
 
 
 def test_device_connectivity_integration_problem_sensor_counts_unavailable_update_entities_only():
