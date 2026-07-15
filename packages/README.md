@@ -42,8 +42,8 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `security_sanity.yaml` | Reusable secure-house sanity check workflow used by routines and presence flows to verify/notify about doors, locks, garage state, and other security context. |
 | `shared_infrastructure.yaml` | Shared package contracts: `notify.all_mobile_devices` and YAML-managed Lovelace dashboards for climate control and ventilation advice. |
 | `towner_notifications.yaml` | School arrival/departure notification workflow that handles infrequent location updates, race conditions, verification windows, and timeout/reset states. |
-| `weather.yaml` | Weather processing and cache helpers, including MQTT weather data, forecast sensors, and event-based automation triggers. |
-| `window_ventilation.yaml` | Advisory ventilation recommendations plus notification-only open-window HVAC warnings. |
+| `weather.yaml` | Weather processing and cache helpers, including MQTT weather data, forecast sensors, and an open-window rain alert that names affected monitored windows and clears after they all close. |
+| `window_ventilation.yaml` | Advisory window-ventilation recommendations using indoor/outdoor comfort, dew point, rain forecast, HVAC state, and relative air-quality context. |
 
 ## Climate subsystem
 
