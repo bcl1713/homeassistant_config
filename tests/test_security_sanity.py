@@ -30,10 +30,31 @@ def script_step_services(script):
     return [step.get("service") for step in script["sequence"] if isinstance(step, dict)]
 
 
-def render_template(template, state_map, **variables):
-    environment = Environment()
-    environment.globals["is_state"] = lambda entity_id, state: (
-        state_map.get(entity_id) == state
+class State:
+    def __init__(self, entity_id, state, name, device_class=None):
+        self.entity_id = entity_id
+        self.state = state
+        self.name = name
+        self.attributes = {}
+        if device_class is not None:
+            self.attributes["device_class"] = device_class
+
+
+class States:
+    def __init__(self, state_map, binary_sensors):
+        self.state_map = state_map
+        self.binary_sensor = binary_sensors
+
+    def __call__(self, entity_id):
+        return self.state_map.get(entity_id, "unknown")
+
+
+def render_template(template, state_map, *, binary_sensors=None, **variables):
+    states = States(state_map, binary_sensors or [])
+    environment = Environment(trim_blocks=True, lstrip_blocks=True)
+    environment.globals.update(
+        states=states,
+        is_state=lambda entity_id, expected: states(entity_id) == expected,
     )
     return environment.from_string(template).render(**variables).strip()
 
@@ -80,6 +101,8 @@ def test_secure_house_sanity_script_aggregates_and_stays_notify_first():
     assert "alarm_control_panel.home_alarm" in text
     assert "security_door_contacts" in text
     assert "open_security_contact_count" in text
+    assert "open_window_contact_count" in text
+    assert "attributes.device_class', 'eq', 'window'" in text
     assert "findings.items | join" in text
     assert "mismatch_count | int > 0" in text
     assert "1 if front_door_state != 'locked' else 0" in text
@@ -140,8 +163,97 @@ def test_secure_house_sanity_lists_open_security_contacts_in_one_findings_summar
         variables["mismatch_count"],
         open_contact_states,
         open_security_contact_count=2,
+        open_window_contact_count=0,
         **finding_variables,
     ) == "2"
+
+
+def test_secure_house_sanity_reports_open_windows_by_friendly_name():
+    package = load_yaml(SECURITY)
+    variables = package["script"]["secure_house_sanity_check"]["sequence"][1][
+        "variables"
+    ]
+    state_map = {
+        **{entity_id: "off" for entity_id in SECURITY_DOOR_CONTACTS},
+    }
+    binary_sensors = [
+        State("binary_sensor.kitchen_window", "on", "Kitchen Window", "window"),
+        State("binary_sensor.back_door", "on", "Back Door", "door"),
+        State("binary_sensor.bedroom_window", "off", "Bedroom Window", "window"),
+    ]
+    finding_variables = {
+        "front_door_state": "locked",
+        "garage_door_state": "closed",
+        "alarm_state": "armed_night",
+        "expected_alarm_state": "armed_night",
+        "expected_alarm_label": "night",
+        "security_door_contacts": SECURITY_DOOR_CONTACTS,
+    }
+
+    open_window_contact_count = render_template(
+        variables["open_window_contact_count"],
+        state_map,
+        binary_sensors=binary_sensors,
+    )
+    findings = render_template(
+        variables["security_findings"],
+        state_map,
+        binary_sensors=binary_sensors,
+        **finding_variables,
+    )
+
+    assert open_window_contact_count == "1"
+    assert findings == "Kitchen Window is open."
+    assert render_template(
+        variables["mismatch_count"],
+        state_map,
+        open_security_contact_count=0,
+        open_window_contact_count=open_window_contact_count,
+        **finding_variables,
+    ) == "1"
+
+
+def test_secure_house_sanity_has_no_findings_when_all_items_are_secure():
+    package = load_yaml(SECURITY)
+    variables = package["script"]["secure_house_sanity_check"]["sequence"][1][
+        "variables"
+    ]
+    state_map = {
+        **{entity_id: "off" for entity_id in SECURITY_DOOR_CONTACTS},
+    }
+    closed_window = [
+        State("binary_sensor.kitchen_window", "off", "Kitchen Window", "window")
+    ]
+    finding_variables = {
+        "front_door_state": "locked",
+        "garage_door_state": "closed",
+        "alarm_state": "armed_away",
+        "expected_alarm_state": "armed_away",
+        "expected_alarm_label": "away",
+        "security_door_contacts": SECURITY_DOOR_CONTACTS,
+    }
+
+    open_window_contact_count = render_template(
+        variables["open_window_contact_count"],
+        state_map,
+        binary_sensors=closed_window,
+    )
+    findings = render_template(
+        variables["security_findings"],
+        state_map,
+        binary_sensors=closed_window,
+        **finding_variables,
+    )
+
+    assert open_window_contact_count == "0"
+    assert findings == ""
+    assert render_template(
+        variables["mismatch_count"],
+        state_map,
+        open_security_contact_count=0,
+        open_window_contact_count=open_window_contact_count,
+        **finding_variables,
+    ) == "0"
 
 
 def test_secure_house_actions_require_explicit_notification_events():
