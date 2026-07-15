@@ -64,6 +64,32 @@ script:
           garage_notification_tag: >
             good-night-garage-door-{{ (now().timestamp() * 1000) | int }}-{{ range(0,
             999) | random }}
+          security_window_contacts:
+            binary_sensor.kitchen_kitchen_porch_window: "Kitchen Porch Window"
+            binary_sensor.kitchen_kitchen_sink_window: "Kitchen Sink Window"
+            binary_sensor.living_room_living_room_window: "Living Room Window"
+            binary_sensor.master_bedroom_brian_s_window: "Brian's Window"
+            binary_sensor.master_bedroom_hester_s_window: "Hester's Window"
+            binary_sensor.porter_s_room_porter_s_window: "Porter's Window"
+            binary_sensor.towner_s_room_towner_s_window: "Towner's Window"
+            binary_sensor.office_window: "Office Window"
+          has_open_windows: >
+            {% for entity_id in security_window_contacts %}
+              {% if is_state(entity_id, 'on') %}
+                true
+              {% endif %}
+            {% endfor %}
+          open_window_names: >
+            {% set windows = namespace(names=[]) %}
+            {% for entity_id, name in security_window_contacts.items() %}
+              {% if is_state(entity_id, 'on') %}
+                {% set windows.names = windows.names + [name] %}
+              {% endif %}
+            {% endfor %}
+            {{ windows.names | join(', ') }}
+          window_notification_tag: >
+            good-night-open-windows-{{ (now().timestamp() * 1000) | int }}-{{ range(0,
+            999) | random }}
 
       # Always: Turn off outside lights
       - service: light.turn_off
@@ -194,9 +220,6 @@ script:
                     target:
                       entity_id: light.downstairs_lights
               # Always: Arm the alarm system for night mode
-              - service: alarm_control_panel.alarm_arm_night
-                target:
-                  entity_id: alarm_control_panel.home_alarm
 
           # If dishwasher state is unavailable
           - conditions:
@@ -246,9 +269,6 @@ script:
                     target:
                       entity_id: light.downstairs_lights
               # Always: Arm the alarm system
-              - service: alarm_control_panel.alarm_arm_night
-                target:
-                  entity_id: alarm_control_panel.home_alarm
 
         # Default: Dishwasher is available but not running
         default:
@@ -305,10 +325,44 @@ script:
                 target:
                   entity_id: light.downstairs_lights
 
-          # Always: Arm the alarm system for night mode
-          - service: alarm_control_panel.alarm_arm_night
-            target:
-              entity_id: alarm_control_panel.home_alarm
+      # Before final arming, name any open windows and require an explicit
+      # Continue action or a bounded timeout. Window contacts are read-only;
+      # Good Night never attempts to close a window.
+      - if:
+          - condition: template
+            value_template: "{{ has_open_windows }}"
+        then:
+          - service: notify.all_mobile_devices
+            data:
+              title: "Good Night Routine"
+              message: >
+                Windows still open: {{ open_window_names }}. Close them if appropriate, then
+                choose Continue to arm Night anyway.
+              data:
+                tag: "{{ window_notification_tag }}"
+                when: "{{ now().timestamp() | int }}"
+                priority: "high"
+                ttl: 0
+                actions:
+                  - action: "good_night_continue_with_open_windows"
+                    title: "Acknowledge & Continue"
+          - wait_for_trigger:
+              - platform: event
+                event_type: mobile_app_notification_action
+                event_data:
+                  action: good_night_continue_with_open_windows
+            continue_on_timeout: true
+            timeout: "00:02:00"
+          - service: notify.all_mobile_devices
+            data:
+              message: "clear_notification"
+              data:
+                tag: "{{ window_notification_tag }}"
+
+      # Always arm Night after the dishwasher and open-window decisions.
+      - service: alarm_control_panel.alarm_arm_night
+        target:
+          entity_id: alarm_control_panel.home_alarm
 
       # Final security sanity check: alert only if the house is still not
       # secure after Good Night has had a moment to run its arm/lock handlers.
