@@ -59,6 +59,7 @@ def test_window_ventilation_dashboard_surfaces_required_context():
         "binary_sensor.window_ventilation_favorable",
         "binary_sensor.window_ventilation_unfavorable",
         "binary_sensor.window_ventilation_brief_purge",
+        "binary_sensor.window_hvac_open_warning",
         "sensor.dining_room_thermostat_temperature",
         "sensor.thermostat_humidity",
         "sensor.window_ventilation_indoor_dew_point",
@@ -78,10 +79,12 @@ def test_window_ventilation_dashboard_surfaces_required_context():
         "input_number.window_ventilation_brief_purge_max_outdoor_dew_point",
         "input_number.window_ventilation_winter_threshold",
         "input_number.window_ventilation_high_indoor_humidity",
+        "input_number.window_hvac_open_warning_hold_minutes",
     }
     assert required_entities <= refs
     assert "state_attr('sensor.window_ventilation_recommendation', 'mode')" in markdown
     assert "advisory-only" in markdown
+    assert "actual open window contacts" in markdown
     assert "Brief stale-air purge" in markdown
     assert "This is not ordinary comfort ventilation" in markdown
     assert "Open Briefly" not in markdown
@@ -153,3 +156,20 @@ def test_window_ventilation_dashboard_separates_brief_purge_from_comfort_open():
         "content"
     ]
     assert "5-10 minutes" in brief_purge_card["card"]["content"]
+
+
+def test_window_ventilation_dashboard_surfaces_hvac_window_warning_details():
+    dashboard = load_dashboard()
+    cards = dashboard["views"][0]["cards"]
+    status_card = next(card for card in cards if card.get("title") == "Advisor status")
+
+    assert {
+        "entity": "binary_sensor.window_hvac_open_warning",
+        "name": "Open windows while HVAC is running",
+    } in status_card["entities"]
+    assert {
+        "type": "attribute",
+        "entity": "binary_sensor.window_hvac_open_warning",
+        "attribute": "open_windows",
+        "name": "Affected windows",
+    } in status_card["entities"]

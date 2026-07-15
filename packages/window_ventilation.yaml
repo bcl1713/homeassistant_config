@@ -3,7 +3,8 @@
 # Advisory window ventilation recommendations using indoor/outdoor comfort,
 # moisture, rain forecast, HVAC state, and household-relative air-quality context.
 #
-# v1 is advisory only: dedicated window-contact coverage is not confirmed.
+# Comfort recommendations are advisory only. A separate notification-only guard
+# reports actual open window contacts while HVAC is actively heating or cooling.
 #
 # Entity mapping is based on GitHub issue #103 triage/recon:
 # - normalized weather seam sensors from packages/weather.yaml:
@@ -12,6 +13,7 @@
 # - sensor.dining_room_thermostat_temperature and sensor.thermostat_humidity,
 #   with climate.dining_room_thermostat current attributes as fallback context
 # - sensor.thermostat_carbon_dioxide / sensor.thermostat_vocs
+# - installed window contacts verified in GitHub issue #184
 
 input_boolean:
   window_ventilation_advisor_enabled:
@@ -73,6 +75,15 @@ input_number:
     unit_of_measurement: "%"
     icon: mdi:water-percent
     initial: 58
+
+  window_hvac_open_warning_hold_minutes:
+    name: "Window HVAC Open Warning Hold Time"
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: "min"
+    icon: mdi:timer-outline
+    initial: 10
 
 input_text:
   window_ventilation_active_notification_tag:
@@ -438,6 +449,67 @@ template:
         icon: mdi:window-open
         state: "{{ is_state('sensor.window_ventilation_recommendation', 'open_briefly') }}"
 
+      - name: "Window HVAC Open Warning"
+        unique_id: window_hvac_open_warning
+        icon: mdi:window-open-variant
+        state: >
+          {% set window_contacts = {
+            'binary_sensor.kitchen_kitchen_porch_window': 'Kitchen Porch Window',
+            'binary_sensor.kitchen_kitchen_sink_window': 'Kitchen Sink Window',
+            'binary_sensor.living_room_living_room_window': 'Living Room Window',
+            'binary_sensor.master_bedroom_brian_s_window': "Brian's Window",
+            'binary_sensor.master_bedroom_hester_s_window': "Hester's Window",
+            'binary_sensor.porter_s_room_porter_s_window': "Porter's Room Window",
+            'binary_sensor.towner_s_room_towner_s_window': "Towner's Room Window",
+            'binary_sensor.office_window': 'Office Window'
+          } %}
+          {% set open_windows = namespace(names=[]) %}
+          {% for entity_id, name in window_contacts.items() %}
+            {% if is_state(entity_id, 'on') %}
+              {% set open_windows.names = open_windows.names + [name] %}
+            {% endif %}
+          {% endfor %}
+          {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
+          {{ hvac_action in ['heating', 'cooling'] and (open_windows.names | count > 0) }}
+        attributes:
+          hvac_action: "{{ state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) }}"
+          open_windows: >
+            {% set window_contacts = {
+              'binary_sensor.kitchen_kitchen_porch_window': 'Kitchen Porch Window',
+              'binary_sensor.kitchen_kitchen_sink_window': 'Kitchen Sink Window',
+              'binary_sensor.living_room_living_room_window': 'Living Room Window',
+              'binary_sensor.master_bedroom_brian_s_window': "Brian's Window",
+              'binary_sensor.master_bedroom_hester_s_window': "Hester's Window",
+              'binary_sensor.porter_s_room_porter_s_window': "Porter's Room Window",
+              'binary_sensor.towner_s_room_towner_s_window': "Towner's Room Window",
+              'binary_sensor.office_window': 'Office Window'
+            } %}
+            {% set open_windows = namespace(names=[]) %}
+            {% for entity_id, name in window_contacts.items() %}
+              {% if is_state(entity_id, 'on') %}
+                {% set open_windows.names = open_windows.names + [name] %}
+              {% endif %}
+            {% endfor %}
+            {{ open_windows.names | join(', ') }}
+          open_window_count: >
+            {% set window_contacts = [
+              'binary_sensor.kitchen_kitchen_porch_window',
+              'binary_sensor.kitchen_kitchen_sink_window',
+              'binary_sensor.living_room_living_room_window',
+              'binary_sensor.master_bedroom_brian_s_window',
+              'binary_sensor.master_bedroom_hester_s_window',
+              'binary_sensor.porter_s_room_porter_s_window',
+              'binary_sensor.towner_s_room_towner_s_window',
+              'binary_sensor.office_window'
+            ] %}
+            {% set open_windows = namespace(count=0) %}
+            {% for entity_id in window_contacts %}
+              {% if is_state(entity_id, 'on') %}
+                {% set open_windows.count = open_windows.count + 1 %}
+              {% endif %}
+            {% endfor %}
+            {{ open_windows.count }}
+
 automation:
   - alias: "window_ventilation_open_advisory"
     id: "window_ventilation_open_advisory"
@@ -550,3 +622,52 @@ automation:
           message: "clear_notification"
           data:
             tag: "{{ states('input_text.window_ventilation_active_notification_tag') }}"
+
+  - alias: "window_hvac_open_warning"
+    id: "window_hvac_open_warning"
+    description: "Notify only when open windows persist while HVAC is actively running"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.window_hvac_open_warning
+        to: "on"
+        for:
+          minutes: "{{ states('input_number.window_hvac_open_warning_hold_minutes') | int(10) }}"
+    condition:
+      - condition: state
+        entity_id: input_boolean.window_ventilation_advisor_enabled
+        state: "on"
+    action:
+      - variables:
+          hvac_action: "{{ state_attr('binary_sensor.window_hvac_open_warning', 'hvac_action') }}"
+          open_windows: "{{ state_attr('binary_sensor.window_hvac_open_warning', 'open_windows') }}"
+      - service: notify.all_mobile_devices
+        data:
+          title: >
+            {% if hvac_action == 'heating' %}
+              Windows Open While Heating
+            {% else %}
+              Windows Open While Cooling
+            {% endif %}
+          message: >
+            HVAC is actively {{ hvac_action }} while these windows remain open:
+            {{ open_windows }}. Close them to avoid wasting conditioned air.
+          data:
+            tag: "window-hvac-open-warning"
+            when: "{{ now().timestamp() | int }}"
+            priority: "normal"
+            ttl: 0
+
+  - alias: "window_hvac_open_warning_clear"
+    id: "window_hvac_open_warning_clear"
+    description: "Clear the HVAC window warning when HVAC stops or all windows close"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.window_hvac_open_warning
+        from: "on"
+        to: "off"
+    action:
+      - service: notify.all_mobile_devices
+        data:
+          message: "clear_notification"
+          data:
+            tag: "window-hvac-open-warning"
