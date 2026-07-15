@@ -3,8 +3,10 @@
 # Advisory window ventilation recommendations using indoor/outdoor comfort,
 # moisture, rain forecast, HVAC state, and household-relative air-quality context.
 #
-# Comfort recommendations are advisory only. A separate notification-only guard
-# reports actual open window contacts while HVAC is actively heating or cooling.
+# Advisory only: window-contact state informs recommendations but is never
+# operated by this package.
+# The separate HVAC warning reports open windows while HVAC is active, but never
+# changes HVAC behavior.
 #
 # Entity mapping is based on GitHub issue #103 triage/recon:
 # - normalized weather seam sensors from packages/weather.yaml:
@@ -152,6 +154,20 @@ template:
           {% endif %}
         attributes:
           advisory_only: true
+          open_window_count: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set open_windows = namespace(count=0) %}
+            {% for contact in contacts if contact.category == 'window' and is_state(contact.entity_id, 'on') %}
+              {% set open_windows.count = open_windows.count + 1 %}
+            {% endfor %}
+            {{ open_windows.count }}
+          open_window_names: >
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+            {% set open_windows = namespace(names=[]) %}
+            {% for contact in contacts if contact.category == 'window' and is_state(contact.entity_id, 'on') %}
+              {% set open_windows.names = open_windows.names + [contact.name] %}
+            {% endfor %}
+            {{ open_windows.names | join(', ') }}
           indoor_temperature: >
             {% set invalid = ['unknown', 'unavailable', '', none] %}
             {% set temp_sensor = states('sensor.dining_room_thermostat_temperature') %}
@@ -320,6 +336,26 @@ template:
             {% set hvac_running = hvac_action in ['heating', 'cooling'] %}
             {{ outdoor_cooler and outdoor_drier and not raining and not hvac_running }}
 
+      - name: "Window Ventilation Open Window Summary"
+        unique_id: window_ventilation_open_window_summary
+        icon: mdi:window-open-variant
+        state: >
+          {{ state_attr('sensor.window_ventilation_decision_context', 'open_window_count') | int(0) }}
+        attributes:
+          advisory_only: true
+          open_window_count: >
+            {{ state_attr('sensor.window_ventilation_decision_context', 'open_window_count') | int(0) }}
+          open_window_names: >
+            {{ state_attr('sensor.window_ventilation_decision_context', 'open_window_names') | default('', true) }}
+          summary: >
+            {% set open_window_count = state_attr('sensor.window_ventilation_decision_context', 'open_window_count') | int(0) %}
+            {% set open_window_names = state_attr('sensor.window_ventilation_decision_context', 'open_window_names') | default('', true) %}
+            {% if open_window_count > 0 %}
+              {{ open_window_count }} open: {{ open_window_names }}
+            {% else %}
+              No monitored windows are open.
+            {% endif %}
+
       - name: "Window Ventilation Recommendation"
         unique_id: window_ventilation_recommendation
         icon: >
@@ -389,6 +425,8 @@ template:
           co2_baseline: "{{ state_attr('sensor.window_ventilation_decision_context', 'co2_baseline') }}"
           voc_current: "{{ state_attr('sensor.window_ventilation_decision_context', 'voc_current') }}"
           voc_baseline: "{{ state_attr('sensor.window_ventilation_decision_context', 'voc_baseline') }}"
+          open_window_count: "{{ state_attr('sensor.window_ventilation_decision_context', 'open_window_count') | int(0) }}"
+          open_window_names: "{{ state_attr('sensor.window_ventilation_decision_context', 'open_window_names') | default('', true) }}"
 
       - name: "Window Ventilation Reason"
         unique_id: window_ventilation_reason
@@ -409,20 +447,22 @@ template:
           {% set outdoor_more_humid = state_attr(ctx, 'outdoor_more_humid') | bool(false) %}
           {% set co2_relative = state_attr(ctx, 'co2_relative') | bool(false) %}
           {% set voc_relative = state_attr(ctx, 'voc_relative') | bool(false) %}
+          {% set open_window_count = state_attr(ctx, 'open_window_count') | int(0) %}
+          {% set open_window_names = state_attr(ctx, 'open_window_names') | default('', true) %}
           {% if rec == 'open' and mode == 'winter_purge' %}
-            Air out the house for 5-10 minutes: indoor air or humidity is above the home's recent baseline, outdoor dew point is acceptable, and HVAC is idle.
+            Recommendation: consider airing out the house for 5-10 minutes; indoor air or humidity is above the home's recent baseline, outdoor dew point is acceptable, and HVAC is idle.
           {% elif rec == 'open_briefly' %}
-            Briefly open windows for a short purge (5-10 minutes): indoor air is poor and worsening versus recent baselines, while outdoor temperature and dew point are within bounded compromise limits. Close windows after the short purge.
+            Recommendation: consider briefly opening windows for a short purge (5-10 minutes). Indoor air is poor and worsening versus recent baselines, while outdoor temperature and dew point are within bounded compromise limits; close windows after the short purge.
           {% elif rec == 'open' %}
-            Open windows: outside is {{ (indoor - outdoor) | round(0) }}°F cooler, outdoor dew point is {{ outdoor_dew | round(0) }}°F vs indoor {{ indoor_dew | round(0) }}°F, and no rain or HVAC conflict is active.
+            Recommendation: consider opening windows. Outside is {{ (indoor - outdoor) | round(0) }}°F cooler, outdoor dew point is {{ outdoor_dew | round(0) }}°F vs indoor {{ indoor_dew | round(0) }}°F, and no rain or HVAC conflict is active.
           {% elif rec == 'close' and raining %}
-            Close windows: rain or mixed precipitation is expected within the hour.
+            {% if open_window_count > 0 %}Close {{ open_window_names }}: {% else %}Keep windows closed: {% endif %}rain or mixed precipitation is expected within the hour.
           {% elif rec == 'close' and hvac_running %}
-            Close windows: HVAC is currently {{ hvac_action }}.
+            {% if open_window_count > 0 %}Close {{ open_window_names }}: {% else %}Keep windows closed: {% endif %}HVAC is currently {{ hvac_action }}.
           {% elif rec == 'close' and outdoor_more_humid %}
-            Close windows: outside air is more humid (dew point {{ outdoor_dew | round(0) }}°F vs indoor {{ indoor_dew | round(0) }}°F).
+            {% if open_window_count > 0 %}Close {{ open_window_names }}: {% else %}Keep windows closed: {% endif %}outside air is more humid (dew point {{ outdoor_dew | round(0) }}°F vs indoor {{ indoor_dew | round(0) }}°F).
           {% elif rec == 'close' %}
-            Close windows: outdoor conditions are no longer meaningfully better than indoors.
+            {% if open_window_count > 0 %}Close {{ open_window_names }}: {% else %}Keep windows closed: {% endif %}outdoor conditions are no longer meaningfully better than indoors.
           {% elif mode == 'winter_purge' %}
             Keep windows closed: outside is cold, HVAC/rain and indoor moisture checks do not justify a brief purge right now.
           {% elif co2_relative or voc_relative %}
@@ -453,60 +493,27 @@ template:
         unique_id: window_hvac_open_warning
         icon: mdi:window-open-variant
         state: >
-          {% set window_contacts = {
-            'binary_sensor.kitchen_kitchen_porch_window': 'Kitchen Porch Window',
-            'binary_sensor.kitchen_kitchen_sink_window': 'Kitchen Sink Window',
-            'binary_sensor.living_room_living_room_window': 'Living Room Window',
-            'binary_sensor.master_bedroom_brian_s_window': "Brian's Window",
-            'binary_sensor.master_bedroom_hester_s_window': "Hester's Window",
-            'binary_sensor.porter_s_room_porter_s_window': "Porter's Room Window",
-            'binary_sensor.towner_s_room_towner_s_window': "Towner's Room Window",
-            'binary_sensor.office_window': 'Office Window'
-          } %}
+          {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
           {% set open_windows = namespace(names=[]) %}
-          {% for entity_id, name in window_contacts.items() %}
-            {% if is_state(entity_id, 'on') %}
-              {% set open_windows.names = open_windows.names + [name] %}
-            {% endif %}
+          {% for contact in contacts if contact.category == 'window' and is_state(contact.entity_id, 'on') %}
+            {% set open_windows.names = open_windows.names + [contact.name] %}
           {% endfor %}
           {% set hvac_action = state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) %}
           {{ hvac_action in ['heating', 'cooling'] and (open_windows.names | count > 0) }}
         attributes:
           hvac_action: "{{ state_attr('climate.dining_room_thermostat', 'hvac_action') | default('idle', true) }}"
           open_windows: >
-            {% set window_contacts = {
-              'binary_sensor.kitchen_kitchen_porch_window': 'Kitchen Porch Window',
-              'binary_sensor.kitchen_kitchen_sink_window': 'Kitchen Sink Window',
-              'binary_sensor.living_room_living_room_window': 'Living Room Window',
-              'binary_sensor.master_bedroom_brian_s_window': "Brian's Window",
-              'binary_sensor.master_bedroom_hester_s_window': "Hester's Window",
-              'binary_sensor.porter_s_room_porter_s_window': "Porter's Room Window",
-              'binary_sensor.towner_s_room_towner_s_window': "Towner's Room Window",
-              'binary_sensor.office_window': 'Office Window'
-            } %}
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
             {% set open_windows = namespace(names=[]) %}
-            {% for entity_id, name in window_contacts.items() %}
-              {% if is_state(entity_id, 'on') %}
-                {% set open_windows.names = open_windows.names + [name] %}
-              {% endif %}
+            {% for contact in contacts if contact.category == 'window' and is_state(contact.entity_id, 'on') %}
+              {% set open_windows.names = open_windows.names + [contact.name] %}
             {% endfor %}
             {{ open_windows.names | join(', ') }}
           open_window_count: >
-            {% set window_contacts = [
-              'binary_sensor.kitchen_kitchen_porch_window',
-              'binary_sensor.kitchen_kitchen_sink_window',
-              'binary_sensor.living_room_living_room_window',
-              'binary_sensor.master_bedroom_brian_s_window',
-              'binary_sensor.master_bedroom_hester_s_window',
-              'binary_sensor.porter_s_room_porter_s_window',
-              'binary_sensor.towner_s_room_towner_s_window',
-              'binary_sensor.office_window'
-            ] %}
+            {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
             {% set open_windows = namespace(count=0) %}
-            {% for entity_id in window_contacts %}
-              {% if is_state(entity_id, 'on') %}
-                {% set open_windows.count = open_windows.count + 1 %}
-              {% endif %}
+            {% for contact in contacts if contact.category == 'window' and is_state(contact.entity_id, 'on') %}
+              {% set open_windows.count = open_windows.count + 1 %}
             {% endfor %}
             {{ open_windows.count }}
 
@@ -550,11 +557,11 @@ automation:
         data:
           title: >
             {% if mode == 'winter_purge' %}
-              Window Ventilation: Brief Airing
+              Window Ventilation: Consider Brief Airing
             {% elif mode == 'brief_purge' %}
               Window Ventilation: Brief Purge
             {% else %}
-              Window Ventilation: Open Windows
+              Window Ventilation: Consider Opening Windows
             {% endif %}
           message: "{{ notification_message }}"
           data:
