@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 from jinja2 import Environment
@@ -6,10 +7,26 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "packages" / "window_ventilation.yaml"
+PROTECTED_CONTACTS_PACKAGE = ROOT / "packages" / "protected_contacts.yaml"
 
 
 def load_package():
     return yaml.safe_load(PACKAGE.read_text())
+
+
+def canonical_protected_contacts():
+    package = yaml.safe_load(PROTECTED_CONTACTS_PACKAGE.read_text())
+    inventory = next(
+        sensor
+        for block in package["template"]
+        for sensor in block.get("sensor", [])
+        if sensor["name"] == "Protected Contact Inventory"
+    )
+    rendered = Environment().from_string(inventory["attributes"]["contacts"]).render()
+    return ast.literal_eval(rendered)
+
+
+CANONICAL_PROTECTED_CONTACTS = canonical_protected_contacts()
 
 
 def sensor_names(package):
@@ -123,6 +140,7 @@ DEFAULT_VENTILATION_ATTRS = {
     ("climate.dining_room_thermostat", "hvac_action"): "idle",
     ("climate.dining_room_thermostat", "current_temperature"): 72,
     ("climate.dining_room_thermostat", "current_humidity"): 45,
+    ("sensor.protected_contact_inventory", "contacts"): CANONICAL_PROTECTED_CONTACTS,
 }
 
 
@@ -317,9 +335,12 @@ def test_window_ventilation_reuses_canonical_decision_context():
         assert contact_attribute in context["attributes"]
         assert contact_attribute in recommendation["attributes"]
 
-    assert "binary_sensor.kitchen_kitchen_porch_window" in context_text
-    assert "binary_sensor.office_window" in context_text
-    assert "friendly_name" in context_text
+    assert "sensor.protected_contact_inventory" in context_text
+    assert "contact.category == 'window'" in context_text
+    assert "contact.name" in context_text
+    assert "friendly_name" not in context_text
+    assert "binary_sensor.kitchen_kitchen_porch_window" not in PACKAGE.read_text()
+    assert "binary_sensor.office_window" not in PACKAGE.read_text()
     assert "open_window_count > 0" in reason_text
     assert "Close {{ open_window_names }}" in reason_text
 
@@ -512,16 +533,18 @@ def test_window_ventilation_brief_purge_is_not_winter_purge_classification():
 def test_window_ventilation_contact_context_names_open_windows_without_false_opens():
     open_window = "binary_sensor.kitchen_kitchen_porch_window"
     friendly_name = "Kitchen Porch Window"
+    all_contacts_closed = {
+        contact["entity_id"]: "off" for contact in CANONICAL_PROTECTED_CONTACTS
+    }
 
     all_closed = evaluate_window_ventilation(
-        {"sensor.precipitation_forecast_next_hour": "30"}
+        all_contacts_closed | {"sensor.precipitation_forecast_next_hour": "30"}
     )
     one_open = evaluate_window_ventilation(
-        {
+        all_contacts_closed | {
             "sensor.precipitation_forecast_next_hour": "30",
             open_window: "on",
-        },
-        {(open_window, "friendly_name"): friendly_name},
+        }
     )
 
     assert all_closed["context_attrs"]["open_window_count"] == "0"
