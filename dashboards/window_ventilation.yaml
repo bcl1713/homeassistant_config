@@ -48,8 +48,8 @@ views:
 
           {{ states('sensor.window_ventilation_reason') }}
 
-          _This is advisory-only. It does not confirm individual window-contact
-          state or change HVAC behavior._
+          _Comfort advice is advisory-only. The separate HVAC warning reports
+          actual open window contacts but never changes HVAC behavior._
 
       - type: conditional
         conditions:
@@ -85,6 +85,12 @@ views:
             name: "Unfavorable / close windows"
           - entity: binary_sensor.window_ventilation_brief_purge
             name: "Bounded stale-air purge active"
+          - entity: binary_sensor.window_hvac_open_warning
+            name: "Open windows while HVAC is running"
+          - type: attribute
+            entity: binary_sensor.window_hvac_open_warning
+            attribute: open_windows
+            name: "Affected windows"
 
       - type: entities
         title: "Comfort and dew point context"
@@ -151,3 +157,5 @@ views:
             name: "Winter purge threshold"
           - entity: input_number.window_ventilation_high_indoor_humidity
             name: "High indoor humidity threshold"
+          - entity: input_number.window_hvac_open_warning_hold_minutes
+            name: "HVAC open-window warning hold time"
