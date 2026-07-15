@@ -4,8 +4,8 @@
 #
 # Features:
 # - Reusable secure-house sanity check script for routines and presence
-# - Aggregates lock, garage, alarm, and security-boundary contact mismatches
-#   into one alert
+# - Aggregates lock, garage, alarm, door, and window contact mismatches into
+#   one alert
 # - Notification actions remediate only when explicitly selected
 # - Guest mode is documented as an intentional advisory exception
 
@@ -13,9 +13,9 @@ script:
   secure_house_sanity_check:
     alias: "Secure House Sanity Check"
     description: >
-      Check lock, garage door, alarm, and security-boundary contact state for a
-      securing context and send one actionable notification only when the house
-      is not fully secure.
+      Check lock, garage door, alarm, and open door or window contact state for
+      a securing context and send one actionable notification only when the
+      house is not fully secure.
     mode: parallel
     fields:
       check_context:
@@ -70,6 +70,12 @@ script:
               {% endif %}
             {% endfor %}
             {{ count.value }}
+          open_window_contact_count: >
+            {{ states.binary_sensor
+               | selectattr('attributes.device_class', 'eq', 'window')
+               | selectattr('state', 'eq', 'on')
+               | list
+               | count }}
           security_findings: >
             {% set findings = namespace(items=[]) %}
             {% if front_door_state != 'locked' %}
@@ -96,12 +102,19 @@ script:
                   [name ~ ' contact is open.'] %}
               {% endif %}
             {% endfor %}
+            {% for window in states.binary_sensor
+              | selectattr('attributes.device_class', 'eq', 'window')
+              | selectattr('state', 'eq', 'on') %}
+              {% set findings.items = findings.items +
+                [window.name ~ ' is open.'] %}
+            {% endfor %}
             {{ findings.items | join('\n') }}
           mismatch_count: >
             {{ (1 if front_door_state != 'locked' else 0) +
                (1 if garage_door_state != 'closed' else 0) +
                (1 if alarm_state != expected_alarm_state else 0) +
-               (open_security_contact_count | int) }}
+               (open_security_contact_count | int) +
+               (open_window_contact_count | int) }}
           notification_tag: >
             secure-house-{{ security_context }}-{{ (now().timestamp() * 1000) |
             int }}-{{ range(0, 999) | random }}
