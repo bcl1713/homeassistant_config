@@ -29,15 +29,18 @@ input_number:
 homeassistant:
   customize:
     package.node_anchors:
-      rain_window_contacts: &rain_window_contacts
-        binary_sensor.kitchen_kitchen_porch_window: "Kitchen Porch Window"
-        binary_sensor.kitchen_kitchen_sink_window: "Kitchen Sink Window"
-        binary_sensor.living_room_living_room_window: "Living Room Window"
-        binary_sensor.master_bedroom_brian_s_window: "Brian's Window"
-        binary_sensor.master_bedroom_hester_s_window: "Hester's Window"
-        binary_sensor.porter_s_room_porter_s_window: "Porter's Window"
-        binary_sensor.towner_s_room_towner_s_window: "Towner's Window"
-        binary_sensor.office_window: "Office Window"
+      # Home Assistant state triggers require entity IDs to be known while the
+      # automation is configured. Names and open-state evaluation below consume
+      # the canonical protected-contact inventory instead of this trigger list.
+      rain_window_trigger_entity_ids: &rain_window_trigger_entity_ids
+        - binary_sensor.kitchen_kitchen_porch_window
+        - binary_sensor.kitchen_kitchen_sink_window
+        - binary_sensor.living_room_living_room_window
+        - binary_sensor.master_bedroom_brian_s_window
+        - binary_sensor.master_bedroom_hester_s_window
+        - binary_sensor.porter_s_room_porter_s_window
+        - binary_sensor.towner_s_room_towner_s_window
+        - binary_sensor.office_window
 
 automation:
   - alias: "Rain Forecast Alert"
@@ -46,12 +49,14 @@ automation:
       NWS-backed rain probability and condition notification for monitored open
       windows, with a tagged clear once every monitored window is closed.
     variables:
-      rain_window_contacts: *rain_window_contacts
+      # The protected-contact inventory is the source of truth for window
+      # categories and names. Keep static IDs only in state triggers above.
       open_window_names: >
+        {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
         {% set windows = namespace(names=[]) %}
-        {% for entity_id, name in rain_window_contacts.items() %}
-          {% if is_state(entity_id, 'on') %}
-            {% set windows.names = windows.names + [name] %}
+        {% for contact in contacts %}
+          {% if contact.category | default('') == 'window' and is_state(contact.entity_id, 'on') %}
+            {% set windows.names = windows.names + [contact.name] %}
           {% endif %}
         {% endfor %}
         {{ windows.names | join(', ') }}
@@ -91,15 +96,7 @@ automation:
         id: "weather_fallback"
       # Re-check an already-rainy forecast if a monitored window is opened.
       - platform: state
-        entity_id:
-          - binary_sensor.kitchen_kitchen_porch_window
-          - binary_sensor.kitchen_kitchen_sink_window
-          - binary_sensor.living_room_living_room_window
-          - binary_sensor.master_bedroom_brian_s_window
-          - binary_sensor.master_bedroom_hester_s_window
-          - binary_sensor.porter_s_room_porter_s_window
-          - binary_sensor.towner_s_room_towner_s_window
-          - binary_sensor.office_window
+        entity_id: *rain_window_trigger_entity_ids
         from: "off"
         to: "on"
         id: "window_open_trigger"
@@ -152,24 +149,16 @@ automation:
       Clear the rain open-window alert only after every monitored window is
       closed; closing one of several open windows leaves the alert visible.
     variables:
-      rain_window_contacts: *rain_window_contacts
       has_open_windows: >
-        {% for entity_id in rain_window_contacts %}
-          {% if is_state(entity_id, 'on') %}
+        {% set contacts = state_attr('sensor.protected_contact_inventory', 'contacts') | default([], true) %}
+        {% for contact in contacts %}
+          {% if contact.category | default('') == 'window' and is_state(contact.entity_id, 'on') %}
             true
           {% endif %}
         {% endfor %}
     trigger:
       - platform: state
-        entity_id:
-          - binary_sensor.kitchen_kitchen_porch_window
-          - binary_sensor.kitchen_kitchen_sink_window
-          - binary_sensor.living_room_living_room_window
-          - binary_sensor.master_bedroom_brian_s_window
-          - binary_sensor.master_bedroom_hester_s_window
-          - binary_sensor.porter_s_room_porter_s_window
-          - binary_sensor.towner_s_room_towner_s_window
-          - binary_sensor.office_window
+        entity_id: *rain_window_trigger_entity_ids
         from: "on"
         to: "off"
     condition:

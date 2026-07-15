@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 import yaml
@@ -6,10 +7,25 @@ from jinja2 import Environment
 
 ROOT = Path(__file__).resolve().parents[1]
 WEATHER = ROOT / "packages" / "weather.yaml"
+PROTECTED_CONTACTS = ROOT / "packages" / "protected_contacts.yaml"
 
 
 def load_weather():
     return yaml.safe_load(WEATHER.read_text())
+
+
+def canonical_window_contacts():
+    package = yaml.safe_load(PROTECTED_CONTACTS.read_text())
+    inventory = next(
+        sensor
+        for block in package["template"]
+        for sensor in block.get("sensor", [])
+        if sensor["name"] == "Protected Contact Inventory"
+    )
+    contacts = ast.literal_eval(
+        Environment().from_string(inventory["attributes"]["contacts"]).render()
+    )
+    return [contact for contact in contacts if contact["category"] == "window"]
 
 
 def weather_refresh_action():
@@ -26,11 +42,13 @@ def automation_by_id(automation_id):
     raise AssertionError(f"automation {automation_id!r} not found")
 
 
-def render_template(template, state_map, **variables):
+def render_template(template, state_map, attributes=None, **variables):
+    attributes = attributes or {}
     environment = Environment(trim_blocks=True, lstrip_blocks=True)
     environment.globals.update(
         is_state=lambda entity_id, state: state_map.get(entity_id) == state,
         states=lambda entity_id: state_map.get(entity_id, "unknown"),
+        state_attr=lambda entity_id, attribute: attributes.get((entity_id, attribute)),
     )
     return environment.from_string(template).render(**variables).strip()
 
@@ -147,39 +165,54 @@ def test_precipitation_next_hour_uses_nws_probability_semantics():
     assert "precipitation_probability" in sensor["state"]
 
 
-def test_rain_alert_requires_open_monitored_windows_and_names_them():
+def test_rain_alert_uses_canonical_window_inventory_for_dynamic_names_and_static_trigger_parity():
     rain_alert = automation_by_id("notification_rain_forecast")
-    contacts = rain_alert["variables"]["rain_window_contacts"]
+    contacts = canonical_window_contacts()
+    window_contact_ids = [contact["entity_id"] for contact in contacts]
     open_window_names = rain_alert["variables"]["open_window_names"]
 
-    assert contacts == {
-        "binary_sensor.kitchen_kitchen_porch_window": "Kitchen Porch Window",
-        "binary_sensor.kitchen_kitchen_sink_window": "Kitchen Sink Window",
-        "binary_sensor.living_room_living_room_window": "Living Room Window",
-        "binary_sensor.master_bedroom_brian_s_window": "Brian's Window",
-        "binary_sensor.master_bedroom_hester_s_window": "Hester's Window",
-        "binary_sensor.porter_s_room_porter_s_window": "Porter's Window",
-        "binary_sensor.towner_s_room_towner_s_window": "Towner's Window",
-        "binary_sensor.office_window": "Office Window",
-    }
-    closed_states = {entity_id: "off" for entity_id in contacts}
+    assert "rain_window_contacts" not in rain_alert["variables"]
+    assert "sensor.protected_contact_inventory" in open_window_names
+    assert "contact.category" in open_window_names
+    assert all(name not in WEATHER.read_text() for name in (contact["name"] for contact in contacts))
+
+    closed_states = {entity_id: "off" for entity_id in window_contact_ids}
     open_states = {
         **closed_states,
         "binary_sensor.kitchen_kitchen_porch_window": "on",
         "binary_sensor.office_window": "on",
     }
+    attributes = {("sensor.protected_contact_inventory", "contacts"): contacts}
 
+    assert render_template(open_window_names, closed_states, attributes) == ""
     assert render_template(
-        open_window_names, closed_states, rain_window_contacts=contacts
-    ) == ""
-    assert render_template(
-        open_window_names, open_states, rain_window_contacts=contacts
+        open_window_names, open_states, attributes
     ) == "Kitchen Porch Window, Office Window"
+    renamed_contacts = [
+        {
+            **contact,
+            "name": "Study Window",
+        }
+        if contact["entity_id"] == "binary_sensor.office_window"
+        else contact
+        for contact in contacts
+    ] + [
+        {
+            "entity_id": "binary_sensor.example_door",
+            "name": "Example Door",
+            "category": "security_boundary_door",
+        }
+    ]
+    assert render_template(
+        open_window_names,
+        {**open_states, "binary_sensor.example_door": "on"},
+        {("sensor.protected_contact_inventory", "contacts"): renamed_contacts},
+    ) == "Kitchen Porch Window, Study Window"
     assert {
         tuple(trigger["entity_id"])
         for trigger in rain_alert["trigger"]
         if trigger.get("id") == "window_open_trigger"
-    } == {tuple(contacts)}
+    } == {tuple(window_contact_ids)}
     assert any(
         condition.get("value_template") == "{{ open_window_names | trim != '' }}"
         for condition in rain_alert["condition"]
@@ -221,24 +254,46 @@ def test_rain_alert_requires_open_monitored_windows_and_names_them():
 def test_rain_alert_reuses_its_throttle_and_clears_only_after_all_windows_close():
     rain_alert = automation_by_id("notification_rain_forecast")
     clear_alert = automation_by_id("notification_rain_forecast_open_windows_clear")
-    contacts = rain_alert["variables"]["rain_window_contacts"]
+    contacts = canonical_window_contacts()
+    window_contact_ids = [contact["entity_id"] for contact in contacts]
     has_open_windows = clear_alert["variables"]["has_open_windows"]
-    closed_states = {entity_id: "off" for entity_id in contacts}
+    closed_states = {entity_id: "off" for entity_id in window_contact_ids}
     one_open_state = {
         **closed_states,
         "binary_sensor.office_window": "on",
     }
+    attributes = {("sensor.protected_contact_inventory", "contacts"): contacts}
 
     assert "automation.notification_rain_forecast" in str(rain_alert["condition"])
+    assert "sensor.protected_contact_inventory" in has_open_windows
+    assert "contact.category" in has_open_windows
+    assert render_template(has_open_windows, closed_states, attributes) == ""
     assert render_template(
-        has_open_windows, closed_states, rain_window_contacts=contacts
+        has_open_windows,
+        {**closed_states, "binary_sensor.example_door": "on"},
+        {
+            (
+                "sensor.protected_contact_inventory",
+                "contacts",
+            ): contacts
+            + [
+                {
+                    "entity_id": "binary_sensor.example_door",
+                    "name": "Example Door",
+                    "category": "security_boundary_door",
+                }
+            ]
+        },
     ) == ""
-    assert render_template(
-        has_open_windows, one_open_state, rain_window_contacts=contacts
-    ) == "true"
+    assert render_template(has_open_windows, one_open_state, attributes) == "true"
     assert clear_alert["condition"] == [
         {"condition": "template", "value_template": "{{ not has_open_windows }}"}
     ]
+    assert {
+        tuple(trigger["entity_id"])
+        for trigger in clear_alert["trigger"]
+        if trigger.get("platform") == "state"
+    } == {tuple(window_contact_ids)}
     assert clear_alert["action"] == [
         {
             "action": "notify.mobile_app_brian_phone",
