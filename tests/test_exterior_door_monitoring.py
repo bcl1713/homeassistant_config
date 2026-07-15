@@ -15,6 +15,10 @@ CONTACTS = {
         "name": "Back Door",
         "tag": "exterior-door-open-back",
     },
+    "binary_sensor.garage_garage_interior_door": {
+        "name": "Garage Interior Door",
+        "tag": "exterior-door-open-garage-interior",
+    },
 }
 
 
@@ -29,18 +33,18 @@ def automation_by_id(package, automation_id):
     raise AssertionError(f"automation {automation_id!r} not found")
 
 
-def test_exterior_door_contacts_are_limited_to_front_and_back_doors():
+def test_exterior_door_contacts_include_the_garage_interior_contact():
     package = load_package()
     contacts = package["homeassistant"]["customize"]["package.node_anchors"][
         "exterior_door_contacts"
     ]
 
     assert contacts == CONTACTS
-    assert "binary_sensor.garage_garage_interior_door" not in contacts
-    assert "garage-to-house security-boundary" in PACKAGE.read_text()
+    assert len({contact["tag"] for contact in contacts.values()}) == len(contacts)
+    assert "immediate armed-security and secure-house workflows" in PACKAGE.read_text()
 
 
-def test_open_alert_holds_for_two_continuous_minutes_and_uses_stable_tags():
+def test_open_alert_holds_for_two_continuous_minutes_and_cancels_on_early_close():
     package = load_package()
     automation = automation_by_id(package, "exterior_door_open_two_minute_alert")
 
@@ -53,6 +57,8 @@ def test_open_alert_holds_for_two_continuous_minutes_and_uses_stable_tags():
             "for": "00:02:00",
         }
     ]
+    # A state trigger with `for` only fires after an uninterrupted off -> on
+    # hold; returning to off before two minutes cancels the pending trigger.
     assert automation["variables"] == {"door_contacts": CONTACTS}
     assert automation["action"] == [
         {
@@ -70,7 +76,7 @@ def test_open_alert_holds_for_two_continuous_minutes_and_uses_stable_tags():
         }
     ]
     assert automation["mode"] == "parallel"
-    assert automation["max"] == 2
+    assert automation["max"] == 3
 
 
 def test_close_clears_only_the_matching_tag_for_each_monitored_door():
@@ -98,7 +104,7 @@ def test_close_clears_only_the_matching_tag_for_each_monitored_door():
         }
     ]
     assert automation["mode"] == "parallel"
-    assert automation["max"] == 2
+    assert automation["max"] == 3
 
 
 def test_historical_brian_only_back_door_automation_is_not_present():

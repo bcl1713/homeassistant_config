@@ -5,9 +5,9 @@
 # Sends one tagged household notification when a monitored exterior door remains
 # open for two minutes, then clears only that door's tag when it closes.
 #
-# The garage interior contact is intentionally excluded: this package monitors
-# exterior entry points. Its garage-to-house security-boundary treatment needs a
-# separately scoped decision rather than silently treating it as exterior.
+# The garage interior contact is included here only for this two-minute
+# household reminder. Its immediate armed-security and secure-house workflows
+# remain separately owned by their respective packages.
 
 homeassistant:
   customize:
@@ -19,6 +19,9 @@ homeassistant:
         binary_sensor.kitchen_back_door:
           name: "Back Door"
           tag: "exterior-door-open-back"
+        binary_sensor.garage_garage_interior_door:
+          name: "Garage Interior Door"
+          tag: "exterior-door-open-garage-interior"
 
 automation:
   - id: "exterior_door_open_two_minute_alert"
@@ -33,6 +36,7 @@ automation:
         entity_id:
           - binary_sensor.entry_front_door
           - binary_sensor.kitchen_back_door
+          - binary_sensor.garage_garage_interior_door
         from: "off"
         to: "on"
         for: "00:02:00"
@@ -46,7 +50,7 @@ automation:
           data:
             tag: "{{ door_contacts[trigger.entity_id]['tag'] }}"
     mode: parallel
-    max: 2
+    max: 3
 
   - id: "exterior_door_close_clear_alert"
     alias: "Exterior Door Close Clear Alert"
@@ -58,6 +62,7 @@ automation:
         entity_id:
           - binary_sensor.entry_front_door
           - binary_sensor.kitchen_back_door
+          - binary_sensor.garage_garage_interior_door
         from: "on"
         to: "off"
     action:
@@ -67,4 +72,4 @@ automation:
           data:
             tag: "{{ door_contacts[trigger.entity_id]['tag'] }}"
     mode: parallel
-    max: 2
+    max: 3
