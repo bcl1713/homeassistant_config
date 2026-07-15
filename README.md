@@ -72,7 +72,7 @@ All active package files under `packages/*.yaml` are documented in `packages/REA
 - `shared_infrastructure.yaml` - shared notifier/dashboard contracts for packages.
 - `towner_notifications.yaml` - school arrival/departure notification state handling.
 - `weather.yaml` - weather caching, MQTT data, forecasts, and weather-driven automation.
-- `window_ventilation.yaml` - advisory window ventilation recommendations and notifications.
+- `window_ventilation.yaml` - advisory ventilation recommendations and notification-only open-window HVAC warnings.
 
 Disabled package files, such as `*.yaml.disabled`, are retained as inactive reference material and are not part of the active package inventory.
 

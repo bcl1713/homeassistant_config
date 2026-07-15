@@ -28,6 +28,14 @@ def template_sensor_by_name(package, name):
     raise AssertionError(f"template sensor {name!r} not found")
 
 
+def template_binary_sensor_by_name(package, name):
+    for block in package["template"]:
+        for sensor in block.get("binary_sensor", []):
+            if sensor["name"] == name:
+                return sensor
+    raise AssertionError(f"template binary sensor {name!r} not found")
+
+
 def automation_by_id(package, automation_id):
     for automation in package["automation"]:
         if automation["id"] == automation_id:
@@ -100,6 +108,14 @@ DEFAULT_VENTILATION_STATES = {
     "input_number.window_ventilation_brief_purge_max_outdoor_dew_point": "70",
     "input_number.window_ventilation_winter_threshold": "55",
     "input_number.window_ventilation_high_indoor_humidity": "58",
+    "binary_sensor.kitchen_kitchen_porch_window": "off",
+    "binary_sensor.kitchen_kitchen_sink_window": "off",
+    "binary_sensor.living_room_living_room_window": "off",
+    "binary_sensor.master_bedroom_brian_s_window": "off",
+    "binary_sensor.master_bedroom_hester_s_window": "off",
+    "binary_sensor.porter_s_room_porter_s_window": "off",
+    "binary_sensor.towner_s_room_towner_s_window": "off",
+    "binary_sensor.office_window": "off",
 }
 
 
@@ -174,6 +190,56 @@ def test_window_ventilation_required_entities_are_defined():
     assert "Window Ventilation Favorable" in binary_names
     assert "Window Ventilation Unfavorable" in binary_names
     assert "Window Ventilation Brief Purge" in binary_names
+    assert "Window HVAC Open Warning" in binary_names
+
+
+def test_window_hvac_open_warning_only_matches_open_windows_while_hvac_runs():
+    package = load_package()
+    guard = template_binary_sensor_by_name(package, "Window HVAC Open Warning")
+
+    state_map = DEFAULT_VENTILATION_STATES | {
+        "binary_sensor.kitchen_kitchen_porch_window": "on",
+        "binary_sensor.office_window": "on",
+    }
+    heating_attrs = DEFAULT_VENTILATION_ATTRS | {
+        ("climate.dining_room_thermostat", "hvac_action"): "heating"
+    }
+    cooling_attrs = DEFAULT_VENTILATION_ATTRS | {
+        ("climate.dining_room_thermostat", "hvac_action"): "cooling"
+    }
+
+    assert render_ha_template(guard["state"], state_map=state_map, attr_map=heating_attrs) == "True"
+    assert render_ha_template(guard["state"], state_map=state_map, attr_map=cooling_attrs) == "True"
+    assert (
+        render_ha_template(
+            guard["state"], state_map=state_map, attr_map=DEFAULT_VENTILATION_ATTRS
+        )
+        == "False"
+    )
+    assert (
+        render_ha_template(
+            guard["state"],
+            state_map=DEFAULT_VENTILATION_STATES,
+            attr_map=heating_attrs,
+        )
+        == "False"
+    )
+    assert (
+        render_ha_template(
+            guard["attributes"]["open_windows"],
+            state_map=state_map,
+            attr_map=heating_attrs,
+        )
+        == "Kitchen Porch Window, Office Window"
+    )
+    assert (
+        render_ha_template(
+            guard["attributes"]["open_window_count"],
+            state_map=state_map,
+            attr_map=heating_attrs,
+        )
+        == "2"
+    )
 
 
 def test_window_ventilation_uses_household_relative_air_quality_baselines():
@@ -487,3 +553,56 @@ def test_window_ventilation_neutral_to_close_does_not_match_close_advisory():
         trigger.get("from") in (None, "neutral") and trigger["to"] == "close"
         for trigger in close_advisory["trigger"]
     )
+
+
+def test_window_hvac_open_warning_has_configurable_hold_and_separate_tagged_clear():
+    package = load_package()
+    warning = automation_by_id(package, "window_hvac_open_warning")
+    clear = automation_by_id(package, "window_hvac_open_warning_clear")
+
+    assert package["input_number"]["window_hvac_open_warning_hold_minutes"] == {
+        "name": "Window HVAC Open Warning Hold Time",
+        "min": 1,
+        "max": 120,
+        "step": 1,
+        "unit_of_measurement": "min",
+        "icon": "mdi:timer-outline",
+        "initial": 10,
+    }
+    assert warning["trigger"] == [
+        {
+            "platform": "state",
+            "entity_id": "binary_sensor.window_hvac_open_warning",
+            "to": "on",
+            "for": {
+                "minutes": "{{ states('input_number.window_hvac_open_warning_hold_minutes') | int(10) }}"
+            },
+        }
+    ]
+    assert warning["action"][-1]["service"] == "notify.all_mobile_devices"
+    warning_text = str(warning)
+    assert "Windows Open While Heating" in warning_text
+    assert "Windows Open While Cooling" in warning_text
+    assert "open_windows" in warning_text
+    assert "window-hvac-open-warning" in warning_text
+    assert "climate.set_" not in warning_text
+
+    assert clear["trigger"] == [
+        {
+            "platform": "state",
+            "entity_id": "binary_sensor.window_hvac_open_warning",
+            "from": "on",
+            "to": "off",
+        }
+    ]
+    assert clear["action"] == [
+        {
+            "service": "notify.all_mobile_devices",
+            "data": {
+                "message": "clear_notification",
+                "data": {"tag": "window-hvac-open-warning"},
+            },
+        }
+    ]
+    assert "two-minute" not in str(clear)
+    assert "security" not in str(clear)
