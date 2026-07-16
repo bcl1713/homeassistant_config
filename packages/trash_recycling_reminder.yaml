@@ -1,0 +1,175 @@
+# packages/trash_recycling_reminder.yaml
+#
+# Municipal collection-night reminder for explicitly scoped Zooz wall switches
+# and dimmers. Door/window contact indicators and remote button indicators are
+# intentionally excluded: they do not expose this switch-style LED trio.
+#
+# Calendar classification is deliberately based on the municipality event date
+# plus its message/description rather than any alternating-week calculation.
+# Only text containing "garbage" activates a reminder. Text also containing a
+# "recycl" stem selects green; otherwise garbage-only selects blue. Unknown or
+# recycling-only text is a safe no-op.
+
+input_boolean:
+  trash_recycling_led_reminder_active:
+    name: Trash and Recycling LED Reminder Active
+    icon: mdi:trash-can-outline
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      trash_recycling_led_snapshot_entities: &trash_recycling_led_snapshot_entities
+        - select.dining_room_table_light_led_indicator
+        - select.dining_room_table_light_led_indicator_color
+        - select.dining_room_table_light_led_indicator_brightness
+        - select.entry_led_indicator
+        - select.entry_led_indicator_color
+        - select.entry_led_indicator_brightness
+        - select.living_room_right_led_indicator
+        - select.living_room_right_led_indicator_color
+        - select.living_room_right_led_indicator_brightness
+        - select.living_room_left_led_indicator
+        - select.living_room_left_led_indicator_color
+        - select.living_room_left_led_indicator_brightness
+        - select.living_room_center_led_indicator
+        - select.living_room_center_led_indicator_color
+        - select.living_room_center_led_indicator_brightness
+        - select.towners_room_light_led_indicator
+        - select.towners_room_light_led_indicator_color
+        - select.towners_room_light_led_indicator_brightness
+        - select.back_yard_light_led_indicator
+        - select.back_yard_light_led_indicator_color
+        - select.back_yard_light_led_indicator_brightness
+        - select.kitchen_fan_light_led_indicator
+        - select.kitchen_fan_light_led_indicator_color
+        - select.kitchen_fan_light_led_indicator_brightness
+        - select.kitchen_bar_lights_led_indicator
+        - select.kitchen_bar_lights_led_indicator_color
+        - select.kitchen_bar_lights_led_indicator_brightness
+        - select.kitchen_counter_lights_led_indicator_2
+        - select.kitchen_counter_lights_led_indicator_color_2
+        - select.kitchen_counter_lights_led_indicator_brightness_2
+        - select.dimmer_led_indicator
+        - select.dimmer_led_indicator_color
+        - select.dimmer_led_indicator_brightness
+        - select.front_yard_lights_led_indicator
+        - select.front_yard_lights_led_indicator_color
+        - select.front_yard_lights_led_indicator_brightness
+        - select.coridor_led_indicator
+        - select.coridor_led_indicator_color
+        - select.coridor_led_indicator_brightness
+      trash_recycling_led_mode_entities: &trash_recycling_led_mode_entities
+        - select.dining_room_table_light_led_indicator
+        - select.entry_led_indicator
+        - select.living_room_right_led_indicator
+        - select.living_room_left_led_indicator
+        - select.living_room_center_led_indicator
+        - select.towners_room_light_led_indicator
+        - select.back_yard_light_led_indicator
+        - select.kitchen_fan_light_led_indicator
+        - select.kitchen_bar_lights_led_indicator
+        - select.kitchen_counter_lights_led_indicator_2
+        - select.dimmer_led_indicator
+        - select.front_yard_lights_led_indicator
+        - select.coridor_led_indicator
+      trash_recycling_led_color_entities: &trash_recycling_led_color_entities
+        - select.dining_room_table_light_led_indicator_color
+        - select.entry_led_indicator_color
+        - select.living_room_right_led_indicator_color
+        - select.living_room_left_led_indicator_color
+        - select.living_room_center_led_indicator_color
+        - select.towners_room_light_led_indicator_color
+        - select.back_yard_light_led_indicator_color
+        - select.kitchen_fan_light_led_indicator_color
+        - select.kitchen_bar_lights_led_indicator_color
+        - select.kitchen_counter_lights_led_indicator_color_2
+        - select.dimmer_led_indicator_color
+        - select.front_yard_lights_led_indicator_color
+        - select.coridor_led_indicator_color
+      trash_recycling_led_brightness_entities: &trash_recycling_led_brightness_entities
+        - select.dining_room_table_light_led_indicator_brightness
+        - select.entry_led_indicator_brightness
+        - select.living_room_right_led_indicator_brightness
+        - select.living_room_left_led_indicator_brightness
+        - select.living_room_center_led_indicator_brightness
+        - select.towners_room_light_led_indicator_brightness
+        - select.back_yard_light_led_indicator_brightness
+        - select.kitchen_fan_light_led_indicator_brightness
+        - select.kitchen_bar_lights_led_indicator_brightness
+        - select.kitchen_counter_lights_led_indicator_brightness_2
+        - select.dimmer_led_indicator_brightness
+        - select.front_yard_lights_led_indicator_brightness
+        - select.coridor_led_indicator_brightness
+
+automation:
+  - alias: "Trash and Recycling LED Reminder Start"
+    id: trash_recycling_led_reminder_start
+    description: >
+      At 18:00, snapshot each targeted Zooz LED setting and show blue for a
+      garbage-only municipal collection or green when recycling is also listed.
+    variables:
+      calendar_entity: calendar.1112_limerick_rd_papillion
+      collection_type: >
+        {% set event_start = as_datetime(state_attr(calendar_entity, 'start_time'), none) %}
+        {% set event_date = as_local(event_start).date() if event_start is not none else none %}
+        {% set event_text = [
+          state_attr(calendar_entity, 'message') | default('', true),
+          state_attr(calendar_entity, 'description') | default('', true)
+        ] | join(' ') | lower %}
+        {% if event_date == (now() + timedelta(days=1)).date() and 'garbage' in event_text %}
+          {{ 'garbage_recycling' if 'recycl' in event_text else 'garbage' }}
+        {% else %}
+          none
+        {% endif %}
+      reminder_color: "{{ 'Green' if collection_type == 'garbage_recycling' else 'Blue' }}"
+    trigger:
+      - platform: time
+        at: "18:00:00"
+    condition:
+      - condition: template
+        value_template: "{{ collection_type in ['garbage', 'garbage_recycling'] }}"
+    action:
+      - action: scene.create
+        data:
+          scene_id: trash_recycling_led_reminder_prior_settings
+          snapshot_entities: *trash_recycling_led_snapshot_entities
+      - action: select.select_option
+        target:
+          entity_id: *trash_recycling_led_mode_entities
+        data:
+          option: "Always on"
+      - action: select.select_option
+        target:
+          entity_id: *trash_recycling_led_color_entities
+        data:
+          option: "{{ reminder_color }}"
+      - action: select.select_option
+        target:
+          entity_id: *trash_recycling_led_brightness_entities
+        data:
+          option: "Bright (100%)"
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.trash_recycling_led_reminder_active
+    mode: single
+
+  - alias: "Trash and Recycling LED Reminder Restore"
+    id: trash_recycling_led_reminder_restore
+    description: >
+      At midnight, restore each Zooz LED mode, colour, and brightness from the
+      snapshot captured when the reminder began.
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.trash_recycling_led_reminder_active
+        state: "on"
+    action:
+      - action: scene.turn_on
+        target:
+          entity_id: scene.trash_recycling_led_reminder_prior_settings
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.trash_recycling_led_reminder_active
+    mode: single

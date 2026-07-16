@@ -71,6 +71,7 @@ All active package files under `packages/*.yaml` are documented in `packages/REA
 - `security_sanity.yaml` - reusable secure-house sanity check workflow.
 - `shared_infrastructure.yaml` - shared notifier/dashboard contracts for packages.
 - `towner_notifications.yaml` - school arrival/departure notification state handling.
+- `trash_recycling_reminder.yaml` - municipal calendar-driven Zooz wall-switch/dimmer LED reminder with per-device snapshot and midnight restore.
 - `weather.yaml` - weather caching, MQTT data, forecasts, and weather-driven automation.
 - `window_ventilation.yaml` - advisory ventilation recommendations and notification-only open-window HVAC warnings.
 
