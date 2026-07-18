@@ -19,6 +19,9 @@ homeassistant:
   customize:
     package.node_anchors:
       trash_recycling_led_snapshot_entities: &trash_recycling_led_snapshot_entities
+        - select.master_bathroom_master_bathroom_closet_led_indicator
+        - select.master_bathroom_master_bathroom_closet_led_indicator_color
+        - select.master_bathroom_master_bathroom_closet_led_indicator_brightness
         - select.dining_room_table_light_led_indicator
         - select.dining_room_table_light_led_indicator_color
         - select.dining_room_table_light_led_indicator_brightness
@@ -59,6 +62,7 @@ homeassistant:
         - select.coridor_led_indicator_color
         - select.coridor_led_indicator_brightness
       trash_recycling_led_mode_entities: &trash_recycling_led_mode_entities
+        - select.master_bathroom_master_bathroom_closet_led_indicator
         - select.dining_room_table_light_led_indicator
         - select.entry_led_indicator
         - select.living_room_right_led_indicator
@@ -73,6 +77,7 @@ homeassistant:
         - select.front_yard_lights_led_indicator
         - select.coridor_led_indicator
       trash_recycling_led_color_entities: &trash_recycling_led_color_entities
+        - select.master_bathroom_master_bathroom_closet_led_indicator_color
         - select.dining_room_table_light_led_indicator_color
         - select.entry_led_indicator_color
         - select.living_room_right_led_indicator_color
@@ -87,6 +92,7 @@ homeassistant:
         - select.front_yard_lights_led_indicator_color
         - select.coridor_led_indicator_color
       trash_recycling_led_brightness_entities: &trash_recycling_led_brightness_entities
+        - select.master_bathroom_master_bathroom_closet_led_indicator_brightness
         - select.dining_room_table_light_led_indicator_brightness
         - select.entry_led_indicator_brightness
         - select.living_room_right_led_indicator_brightness

@@ -74,7 +74,10 @@ def test_start_automation_snapshots_and_sets_explicit_switch_style_targets():
     color_entities = anchors["trash_recycling_led_color_entities"]
     brightness_entities = anchors["trash_recycling_led_brightness_entities"]
 
-    assert len(mode_entities) == len(color_entities) == len(brightness_entities) == 13
+    assert len(mode_entities) == len(color_entities) == len(brightness_entities) == 14
+    assert mode_entities[0] == "select.master_bathroom_master_bathroom_closet_led_indicator"
+    assert color_entities[0] == "select.master_bathroom_master_bathroom_closet_led_indicator_color"
+    assert brightness_entities[0] == "select.master_bathroom_master_bathroom_closet_led_indicator_brightness"
     assert set(snapshot) == set(mode_entities + color_entities + brightness_entities)
     assert all("door" not in entity and "window" not in entity for entity in snapshot)
     assert all("remote" not in entity for entity in snapshot)
