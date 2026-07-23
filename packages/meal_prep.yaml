@@ -17,7 +17,7 @@
 # - Set input_text.meal_prep_source_status to ready only after all source fields
 #   represent one coherent meal-plan snapshot.
 # - Set input_datetime.meal_prep_source_updated_at to that snapshot time.
-# - `ready` snapshots older than 180 minutes are stale and fail closed.
+# - `ready` snapshots older than 180 minutes or dated in the future fail closed.
 # - Valid non-ready status values are unavailable, error, and stale. Any other
 #   value is treated as unavailable.
 
@@ -102,6 +102,8 @@ template:
             unavailable
           {% elif updated_at is none or updated_at <= 0 %}
             unavailable
+          {% elif updated_at > now().timestamp() %}
+            unavailable
           {% elif now().timestamp() - updated_at > 10800 %}
             stale
           {% else %}
@@ -117,6 +119,8 @@ template:
               invalid source status
             {% elif updated_at is none or updated_at <= 0 %}
               missing source update time
+            {% elif updated_at > now().timestamp() %}
+              source update is in the future
             {% elif now().timestamp() - updated_at > 10800 %}
               source update is older than 180 minutes
             {% else %}

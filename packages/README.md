@@ -89,9 +89,9 @@ meal: the operator check is that `sensor.meal_prep_source_status` is
 `unavailable` with a reason and `sensor.meal_prep_session_state` is
 `unavailable` or `idle`. A future normalizer must write a coherent `ready`
 snapshot and its timestamp together. A non-`ready` status, a missing or
-unparseable update time, or an update older than 180 minutes fails closed. The
-package has no automation that changes these helpers; source updates and manual
-controls belong to later cards.
+unparseable update time, a future-dated timestamp, or a timestamp more than
+180 minutes old fails closed. The package has no automation that changes these
+helpers; source updates and manual controls belong to later cards.
 
 ## Notifications
 

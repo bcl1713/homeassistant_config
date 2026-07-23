@@ -160,6 +160,12 @@ def test_helpers_are_stable_named_and_restored_without_initial_values():
             "stale",
             "unavailable",
         ),
+        (
+            "future_source",
+            {"input_datetime.meal_prep_source_updated_at": "2026-07-23 18:01:00+00:00"},
+            "unavailable",
+            "unavailable",
+        ),
     ],
 )
 def test_fixture_matrix_covers_every_session_state(
@@ -242,9 +248,14 @@ def test_source_status_exposes_explicit_visible_reasons(ready_meal):
         status["attributes"]["reason"],
         ready_meal | {"input_datetime.meal_prep_source_updated_at": "2026-07-23 14:59:00+00:00"},
     )
+    future_reason = render(
+        status["attributes"]["reason"],
+        ready_meal | {"input_datetime.meal_prep_source_updated_at": "2026-07-23 18:01:00+00:00"},
+    )
 
     assert missing_time_reason == "missing source update time"
     assert stale_reason == "source update is older than 180 minutes"
+    assert future_reason == "source update is in the future"
 
 
 def test_package_is_source_independent_and_defers_actions_to_later_cards():
