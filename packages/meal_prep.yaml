@@ -1,0 +1,266 @@
+# packages/meal_prep.yaml
+#
+# Kitchen meal-preparation state model.
+#
+# This package is intentionally source-independent: it defines the persistent
+# helper seams that #209 will populate from Mealie and the read-only template
+# entities that #208/#210 will present or control. It contains no REST calls,
+# scripts, automations, notifications, or device actions.
+#
+# Persistence: every input helper intentionally omits `initial`. Home Assistant
+# restores its last saved helper state after a restart; when no restored state
+# exists, the session derives a fail-closed idle/unavailable result from the
+# blank helpers. `input_boolean` helpers use Home Assistant's off default when
+# no stored state is available.
+#
+# Source contract for a future normalizer:
+# - Set input_text.meal_prep_source_status to ready only after all source fields
+#   represent one coherent meal-plan snapshot.
+# - Set input_datetime.meal_prep_source_updated_at to that snapshot time.
+# - `ready` snapshots older than 180 minutes or dated in the future fail closed.
+# - Valid non-ready status values are unavailable, error, and stale. Any other
+#   value is treated as unavailable.
+
+input_boolean:
+  meal_prep_active:
+    name: "Meal Prep Active"
+    icon: mdi:chef-hat
+
+  meal_prep_done:
+    name: "Meal Prep Complete"
+    icon: mdi:check-circle-outline
+
+input_datetime:
+  meal_prep_target_time:
+    name: "Meal Prep Target Time"
+    icon: mdi:calendar-clock
+    has_date: true
+    has_time: true
+
+  meal_prep_source_updated_at:
+    name: "Meal Prep Source Updated At"
+    icon: mdi:database-clock-outline
+    has_date: true
+    has_time: true
+
+input_text:
+  # Persistent raw source seams. They are not directly presented to operators;
+  # template sensors below normalize invalid data and source freshness.
+  meal_prep_source_status:
+    name: "Meal Prep Source Status Input"
+    icon: mdi:database-alert-outline
+    max: 32
+
+  meal_prep_meal_title:
+    name: "Meal Prep Meal Title Input"
+    icon: mdi:food-outline
+    max: 255
+
+  meal_prep_meal_type:
+    name: "Meal Prep Meal Type Input"
+    icon: mdi:format-list-bulleted-type
+    max: 100
+
+  meal_prep_recipe_reference:
+    name: "Meal Prep Recipe Reference Input"
+    icon: mdi:identifier
+    max: 255
+
+  meal_prep_recipe_url:
+    name: "Meal Prep Recipe URL Input"
+    icon: mdi:link-variant
+    max: 255
+
+  meal_prep_current_step:
+    name: "Meal Prep Current Step Input"
+    icon: mdi:format-list-numbered
+    max: 255
+
+  meal_prep_next_step:
+    name: "Meal Prep Next Step Input"
+    icon: mdi:skip-next-outline
+    max: 255
+
+  meal_prep_snooze_until:
+    name: "Meal Prep Snooze Until"
+    icon: mdi:pause-circle-outline
+    max: 40
+
+template:
+  - sensor:
+      # The 180-minute freshness bound is intentionally package-owned until a
+      # later operator-control card adds a reviewed tuning helper.
+      - name: "Meal Prep Source Status"
+        unique_id: meal_prep_source_status
+        icon: mdi:database-check-outline
+        state: >
+          {% set raw_status = states('input_text.meal_prep_source_status') | lower | trim %}
+          {% set updated_at = as_timestamp(states('input_datetime.meal_prep_source_updated_at'), default=none) %}
+          {% if raw_status in ['unavailable', 'error', 'stale'] %}
+            {{ raw_status }}
+          {% elif raw_status != 'ready' %}
+            unavailable
+          {% elif updated_at is none or updated_at <= 0 %}
+            unavailable
+          {% elif updated_at > now().timestamp() %}
+            unavailable
+          {% elif now().timestamp() - updated_at > 10800 %}
+            stale
+          {% else %}
+            ready
+          {% endif %}
+        attributes:
+          reason: >
+            {% set raw_status = states('input_text.meal_prep_source_status') | lower | trim %}
+            {% set updated_at = as_timestamp(states('input_datetime.meal_prep_source_updated_at'), default=none) %}
+            {% if raw_status in ['unavailable', 'error', 'stale'] %}
+              source reported {{ raw_status }}
+            {% elif raw_status != 'ready' %}
+              invalid source status
+            {% elif updated_at is none or updated_at <= 0 %}
+              missing source update time
+            {% elif updated_at > now().timestamp() %}
+              source update is in the future
+            {% elif now().timestamp() - updated_at > 10800 %}
+              source update is older than 180 minutes
+            {% else %}
+              source snapshot is fresh
+            {% endif %}
+          source_updated_at: "{{ states('input_datetime.meal_prep_source_updated_at') }}"
+          freshness_limit_minutes: 180
+
+      - name: "Meal Prep Meal"
+        unique_id: meal_prep_meal
+        icon: mdi:food-outline
+        state: >
+          {% set value = states('input_text.meal_prep_meal_title') | trim %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' %}
+            unavailable
+          {% elif value | lower in ['unknown', 'unavailable', 'none'] %}
+            unavailable
+          {% elif value == '' %}
+            none
+          {% else %}
+            {{ value }}
+          {% endif %}
+
+      - name: "Meal Prep Meal Type"
+        unique_id: meal_prep_meal_type
+        icon: mdi:format-list-bulleted-type
+        state: >
+          {% set value = states('input_text.meal_prep_meal_type') | trim %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' %}
+            unavailable
+          {% elif value | lower in ['unknown', 'unavailable', 'none'] %}
+            unavailable
+          {% elif value == '' %}
+            none
+          {% else %}
+            {{ value }}
+          {% endif %}
+
+      - name: "Meal Prep Recipe Reference"
+        unique_id: meal_prep_recipe_reference
+        icon: mdi:identifier
+        state: >
+          {% set value = states('input_text.meal_prep_recipe_reference') | trim %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' %}
+            unavailable
+          {% elif value | lower in ['unknown', 'unavailable', 'none'] %}
+            unavailable
+          {% elif value == '' %}
+            none
+          {% else %}
+            {{ value }}
+          {% endif %}
+
+      - name: "Meal Prep Recipe URL"
+        unique_id: meal_prep_recipe_url
+        icon: mdi:link-variant
+        state: >
+          {% set value = states('input_text.meal_prep_recipe_url') | trim %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' %}
+            unavailable
+          {% elif value == '' %}
+            none
+          {% elif value | lower in ['unknown', 'unavailable', 'none'] or ' ' in value or not (value.startswith('http://') or value.startswith('https://')) %}
+            unavailable
+          {% else %}
+            {{ value }}
+          {% endif %}
+
+      - name: "Meal Prep Target Time"
+        unique_id: meal_prep_target_time
+        icon: mdi:calendar-clock
+        state: >
+          {% set value = states('input_datetime.meal_prep_target_time') %}
+          {% if value in ['unknown', 'unavailable', '', none] %}
+            none
+          {% elif as_timestamp(value, default=none) is none %}
+            unavailable
+          {% else %}
+            {{ value }}
+          {% endif %}
+
+      - name: "Meal Prep Current Step"
+        unique_id: meal_prep_current_step
+        icon: mdi:format-list-numbered
+        state: >
+          {% set value = states('input_text.meal_prep_current_step') | trim %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' %}
+            unavailable
+          {% elif value | lower in ['unknown', 'unavailable', 'none'] %}
+            unavailable
+          {% elif value == '' %}
+            none
+          {% else %}
+            {{ value }}
+          {% endif %}
+
+      - name: "Meal Prep Next Step"
+        unique_id: meal_prep_next_step
+        icon: mdi:skip-next-outline
+        state: >
+          {% set value = states('input_text.meal_prep_next_step') | trim %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' %}
+            unavailable
+          {% elif value | lower in ['unknown', 'unavailable', 'none'] %}
+            unavailable
+          {% elif value == '' %}
+            none
+          {% else %}
+            {{ value }}
+          {% endif %}
+
+      - name: "Meal Prep Session State"
+        unique_id: meal_prep_session_state
+        icon: mdi:chef-hat
+        state: >
+          {% set source_status = states('sensor.meal_prep_source_status') %}
+          {% set meal = states('sensor.meal_prep_meal') %}
+          {% set snooze_until = as_timestamp(states('input_text.meal_prep_snooze_until'), default=none) %}
+          {% set target_time = as_timestamp(states('input_datetime.meal_prep_target_time'), default=none) %}
+          {% if source_status != 'ready' or meal == 'unavailable' %}
+            unavailable
+          {% elif meal == 'none' %}
+            idle
+          {% elif is_state('input_boolean.meal_prep_done', 'on') %}
+            complete
+          {% elif snooze_until is not none and snooze_until > now().timestamp() %}
+            paused
+          {% elif is_state('input_boolean.meal_prep_active', 'on') %}
+            active
+          {% elif target_time is not none and now().timestamp() >= target_time %}
+            prep_due
+          {% else %}
+            planned
+          {% endif %}
+        attributes:
+          source_status: "{{ states('sensor.meal_prep_source_status') }}"
+          source_reason: "{{ state_attr('sensor.meal_prep_source_status', 'reason') }}"
+          target_time: "{{ states('sensor.meal_prep_target_time') }}"
+          snooze_until: "{{ states('input_text.meal_prep_snooze_until') }}"
+          semantics: >
+            idle=no valid meal; planned=fresh valid meal before target; prep_due=fresh valid meal at/after target;
+            active=manual active flag; paused=future snooze; complete=manual done flag;
+            unavailable=source is missing, invalid, error, or stale

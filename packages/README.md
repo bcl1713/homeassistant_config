@@ -31,6 +31,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `garage_door_monitoring.yaml` | Garage-door open-duration monitoring, reminder/escalation helpers, actionable notifications, and related scripts/templates. |
 | `known_batteries.yaml` | Template sensors that normalize known battery-powered devices into consistent names and attributes for the battery-health package. |
 | `light_groups.yaml` | Logical Home Assistant light groups for easier control by rooms or household areas. |
+| `meal_prep.yaml` | Source-independent kitchen meal-preparation state model. It owns persistent helper seams for a future Mealie normalizer and read-only meal/status/step/session sensors; it makes no live API calls or automatic transitions. |
 | `notifications.yaml` | Shared notification automations that do not belong to a larger feature package, currently including bus/school-day notification handling. |
 | `presence.yaml` | Presence-related behavior, including alarm-panel helpers and lighting automations tied to occupancy/time conditions. |
 | `protected_contacts.yaml` | Canonical, read-only inventory and open-state summary for eight window contacts plus Front Door, Back Door, and Garage Interior Door. Future packages should consume this seam rather than duplicate the protected-contact roster. |
@@ -57,6 +58,40 @@ Climate control is intentionally split across packages:
 - `dashboards/climate_control.yaml` is registered by `shared_infrastructure.yaml` and is the operator-facing view for the subsystem.
 
 Do not collapse these packages into one file just because they share a thermostat. The split keeps tuning helpers, behavioral automation, overlays, and diagnostics reviewable.
+
+## Kitchen meal-preparation state seam
+
+`meal_prep.yaml` is a state-model package, not an integration package. It is
+safe to load before a source is configured: the source-status sensor fails
+closed, and presentation sensors report `unavailable` or `none` rather than
+inventing meal or instruction content.
+
+| Entity ID | Friendly name | Purpose | Persistence decision |
+|---|---|---|---|
+| `input_boolean.meal_prep_active` | Meal Prep Active | Manual active-session flag for later controls. | Restored; no `initial` is set. |
+| `input_boolean.meal_prep_done` | Meal Prep Complete | Manual completion flag for later controls. | Restored; no `initial` is set. |
+| `input_datetime.meal_prep_target_time` | Meal Prep Target Time | Local planned/prep target-time seam. | Restored; no `initial` is set. |
+| `input_datetime.meal_prep_source_updated_at` | Meal Prep Source Updated At | Snapshot timestamp for freshness. | Restored; no `initial` is set. |
+| `input_text.meal_prep_snooze_until` | Meal Prep Snooze Until | ISO timestamp seam for a paused session. | Restored; no `initial` is set. |
+| `input_text.meal_prep_source_status` | Meal Prep Source Status Input | Future normalizer's raw status seam. | Restored; no `initial` is set. |
+| `input_text.meal_prep_meal_title`, `input_text.meal_prep_meal_type` | Meal Prep Meal Title/Type Input | Raw meal-identity seams. | Restored; no `initial` is set. |
+| `input_text.meal_prep_recipe_reference`, `input_text.meal_prep_recipe_url` | Meal Prep Recipe Reference/URL Input | Raw recipe seams. | Restored; no `initial` is set. |
+| `input_text.meal_prep_current_step`, `input_text.meal_prep_next_step` | Meal Prep Current/Next Step Input | Raw instruction-presentation seams. | Restored; no `initial` is set. |
+| `sensor.meal_prep_source_status` | Meal Prep Source Status | Normalized freshness/status and visible reason. | Derived at runtime. |
+| `sensor.meal_prep_meal`, `sensor.meal_prep_meal_type` | Meal Prep Meal/Meal Type | Safe normalized meal identity. | Derived at runtime. |
+| `sensor.meal_prep_recipe_reference`, `sensor.meal_prep_recipe_url` | Meal Prep Recipe Reference/URL | Safe normalized recipe seams. | Derived at runtime. |
+| `sensor.meal_prep_target_time` | Meal Prep Target Time | Safe local target-time presentation. | Derived at runtime. |
+| `sensor.meal_prep_current_step`, `sensor.meal_prep_next_step` | Meal Prep Current/Next Step | Safe normalized instruction seams. | Derived at runtime. |
+| `sensor.meal_prep_session_state` | Meal Prep Session State | `idle`, `planned`, `prep_due`, `active`, `paused`, `complete`, or `unavailable`. | Derived at runtime. |
+
+On a clean Home Assistant start, un-restored source helpers do not claim a
+meal: the operator check is that `sensor.meal_prep_source_status` is
+`unavailable` with a reason and `sensor.meal_prep_session_state` is
+`unavailable` or `idle`. A future normalizer must write a coherent `ready`
+snapshot and its timestamp together. A non-`ready` status, a missing or
+unparseable update time, a future-dated timestamp, or a timestamp more than
+180 minutes old fails closed. The package has no automation that changes these
+helpers; source updates and manual controls belong to later cards.
 
 ## Notifications
 
