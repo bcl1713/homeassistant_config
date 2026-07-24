@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import yaml
+from jinja2 import Template
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,20 @@ def load_yaml(path):
 
 def automation_by_alias(package, alias):
     return next(item for item in package["automation"] if item["alias"] == alias)
+
+
+def action_by_service(actions, service):
+    for action in actions:
+        if action.get("action") == service:
+            return action
+        for choice in action.get("choose", []):
+            found = action_by_service(choice.get("sequence", []), service)
+            if found:
+                return found
+        found = action_by_service(action.get("default", []), service)
+        if found:
+            return found
+    return None
 
 
 def test_mealie_read_path_has_only_bounded_get_requests_with_secret_backed_wiring():
@@ -50,6 +65,45 @@ def test_mealie_read_path_has_only_bounded_get_requests_with_secret_backed_wirin
     assert "DELETE" not in package_text
     assert "Bearer " not in package_text
     assert "mealie_authorization_header" in package_text
+
+
+def test_dynamic_rest_command_urls_receive_explicit_nonempty_service_data():
+    package = load_yaml(PACKAGE)
+    refresh = automation_by_alias(package, "Refresh Meal Prep from Mealie")
+
+    range_action = action_by_service(refresh["action"], "rest_command.mealie_get_range")
+    recipe_action = action_by_service(refresh["action"], "rest_command.mealie_get_recipe")
+    assert range_action is not None
+    assert recipe_action is not None
+
+    range_data = {
+        key: Template(value).render(
+            mealie_range_start="2026-07-24", mealie_range_end="2026-07-31"
+        )
+        for key, value in range_action["data"].items()
+    }
+    recipe_data = {
+        key: Template(value).render(mealie_recipe_id="selected-recipe-id")
+        for key, value in recipe_action["data"].items()
+    }
+
+    # These stand in for operator-owned secrets. Explicit service data is the
+    # supported template context when rest_command renders those URLs.
+    rendered_range_url = Template(
+        "https://mealie.example/api/households/mealplans?start_date={{ mealie_range_start }}&end_date={{ mealie_range_end }}"
+    ).render(**range_data)
+    rendered_recipe_url = Template(
+        "https://mealie.example/api/recipes/{{ mealie_recipe_id }}"
+    ).render(**recipe_data)
+
+    assert range_data == {
+        "mealie_range_start": "2026-07-24",
+        "mealie_range_end": "2026-07-31",
+    }
+    assert recipe_data == {"mealie_recipe_id": "selected-recipe-id"}
+    assert "start_date=2026-07-24" in rendered_range_url
+    assert "end_date=2026-07-31" in rendered_range_url
+    assert rendered_recipe_url.endswith("/selected-recipe-id")
 
 
 def test_refresh_uses_today_then_bounded_range_and_camel_case_fields_only():
@@ -104,6 +158,25 @@ def test_refresh_has_explicit_idle_missing_link_transport_and_malformed_payload_
     assert "10800" in text
     assert "input_text.meal_prep_source_status" in text
     assert "input_datetime.meal_prep_source_updated_at" in text
+
+
+def test_unauthorized_and_422_responses_fail_closed_via_transport_path():
+    package = load_yaml(PACKAGE)
+    refresh = automation_by_alias(package, "Refresh Meal Prep from Mealie")
+    transport_guard = next(
+        choice["conditions"]
+        for action in refresh["action"]
+        for choice in action.get("choose", [])
+        if choice["conditions"] == "{{ mealie_plan_status != 200 }}"
+    )
+
+    for status in (401, 422):
+        assert Template(transport_guard).render(mealie_plan_status=status) == "True"
+
+    text = PACKAGE.read_text()
+    assert "Mealie request failed (HTTP {{ mealie_plan_status }})" in text
+    assert "malformed Mealie meal-plan payload" in text
+    assert "malformed Mealie recipe payload" in text
 
 
 def test_normalized_recipe_output_is_bounded_and_populates_helper_seams():

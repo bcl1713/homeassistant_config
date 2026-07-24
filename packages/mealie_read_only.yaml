@@ -20,8 +20,8 @@ rest_command:
       Accept: application/json
 
   mealie_get_range:
-    # Secret value must retain {{ mealie_range_start }} and
-    # {{ mealie_range_end }} for Home Assistant template evaluation.
+    # The service-call data supplies these explicit template variables. The
+    # secret value retains {{ mealie_range_start }} and {{ mealie_range_end }}.
     url: !secret mealie_range_url
     method: GET
     timeout: 15
@@ -30,7 +30,8 @@ rest_command:
       Accept: application/json
 
   mealie_get_recipe:
-    # Secret value must retain {{ mealie_recipe_id }} for template evaluation.
+    # The service-call data supplies this explicit template variable. The
+    # secret value retains {{ mealie_recipe_id }}.
     url: !secret mealie_recipe_url
     method: GET
     timeout: 15
@@ -65,6 +66,11 @@ automation:
           - conditions: "{{ mealie_today_status == 200 and mealie_today_payload is sequence and mealie_today_payload is not string and mealie_today_payload is not mapping and mealie_today_payload | count == 0 }}"
             sequence:
               - action: rest_command.mealie_get_range
+                # rest_command does not inherit automation-local variables
+                # while rendering secret-backed URL templates.
+                data:
+                  mealie_range_start: "{{ mealie_range_start }}"
+                  mealie_range_end: "{{ mealie_range_end }}"
                 response_variable: mealie_range_response
                 continue_on_error: true
               - variables:
@@ -162,6 +168,10 @@ automation:
                       value: unavailable
             default:
               - action: rest_command.mealie_get_recipe
+                # Pass the selected ID through rest_command service data before
+                # its secret-backed URL is rendered.
+                data:
+                  mealie_recipe_id: "{{ mealie_recipe_id }}"
                 response_variable: mealie_recipe_response
                 continue_on_error: true
               - variables:
