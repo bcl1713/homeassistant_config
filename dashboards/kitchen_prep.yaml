@@ -105,25 +105,6 @@ views:
           {% endif %}
           {% endif %}
 
-      - type: entities
-        title: "Source details"
-        show_header_toggle: false
-        entities:
-          - entity: sensor.meal_prep_source_status
-            name: "Source status"
-          - type: attribute
-            entity: sensor.meal_prep_source_status
-            attribute: reason
-            name: "Source reason"
-          - type: attribute
-            entity: sensor.meal_prep_source_status
-            attribute: source_updated_at
-            name: "Source updated"
-          - entity: sensor.meal_prep_session_state
-            name: "Preparation state"
-          - entity: sensor.meal_prep_target_time
-            name: "Planned / prep time"
-
       - type: grid
         title: "Preparation controls"
         columns: 2
@@ -173,3 +154,22 @@ views:
             tap_action:
               action: perform-action
               perform_action: script.meal_prep_clear_session
+
+      - type: entities
+        title: "Source details"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.meal_prep_source_status
+            name: "Source status"
+          - type: attribute
+            entity: sensor.meal_prep_source_status
+            attribute: reason
+            name: "Source reason"
+          - type: attribute
+            entity: sensor.meal_prep_source_status
+            attribute: source_updated_at
+            name: "Source updated"
+          - entity: sensor.meal_prep_session_state
+            name: "Preparation state"
+          - entity: sensor.meal_prep_target_time
+            name: "Planned / prep time"
