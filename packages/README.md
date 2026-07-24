@@ -213,6 +213,32 @@ service references or unsafe fallback behavior. After deployment, an operator ca
 `media_player.kitchen_display`; that live check is not performed by repository
 validation.
 
+### Kitchen Prep deployment, recovery, and live smoke
+
+Mealie remains the source of truth; Home Assistant only reads and presents its
+meal/recipe snapshot and keeps local preparation-session state. Deploy the
+reviewed `dev` revision through the established Home Assistant deployment
+workflow, then confirm that `sensor.meal_prep_source_status`,
+`sensor.meal_prep_session_state`, and the `kitchen-prep` dashboard load. Do
+not expose the secret-backed Mealie header or URL values while checking this.
+
+For a live smoke test, use a controlled planned meal with a linked recipe and
+verify the fresh-source status, target time, manual controls, and one-time Cast
+payload (`dashboard_path: kitchen-prep`, `view_path: kitchen-prep`) on the
+physical `media_player.kitchen_display`. Record the verification time and
+automation/script trace IDs in the deployment record. Do not reload Home
+Assistant, invoke Cast, or alter household state solely for repository
+validation.
+
+To stop automatic Kitchen Prep behavior, disable
+`automation.meal_prep_automatic_start` and
+`automation.meal_prep_automatic_cleanup` through normal operator controls.
+`automation.meal_prep_refresh_from_mealie` can also be disabled when the
+read-only source refresh must be paused. Use
+`script.meal_prep_clear_session` to recover from a stale or abandoned local
+session; it preserves the Mealie snapshot. Do not add a separate display-off
+action: `presence_everyone_left` remains the sole away display-off owner.
+
 Packages should add dashboard-facing sensors/templates inside the feature package that owns the data, then wire the presentation in `dashboards/` when a dedicated operator view is needed.
 
 ## Disabled package files
