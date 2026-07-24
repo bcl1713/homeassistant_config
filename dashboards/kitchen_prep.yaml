@@ -1,0 +1,121 @@
+# dashboards/kitchen_prep.yaml
+#
+# Focused phone-first kitchen preparation view. The dashboard uses only the
+# read-only meal-prep state seams in packages/meal_prep.yaml. Manual controls
+# intentionally remain deferred to #210, which owns idempotent transitions.
+#
+# The direct view URL is also the future cast target for
+# media_player.kitchen_display. Rendering it on the live display is an operator
+# check after this dashboard has been deployed; this repository change performs
+# no Cast service call.
+
+title: "Kitchen Prep"
+views:
+  - title: "Kitchen Prep"
+    path: "kitchen-prep"
+    icon: mdi:chef-hat
+    badges: []
+    cards:
+      - type: markdown
+        title: "Meal status"
+        content: >-
+          {% set source_status = states('sensor.meal_prep_source_status') %}
+          {% set meal = states('sensor.meal_prep_meal') %}
+          {% if source_status != 'ready' %}
+          ## Meal source unavailable
+
+          Meal and instruction details are intentionally hidden until the
+          source reports a fresh, coherent snapshot.
+
+          **Source status:** {{ source_status | title }}
+
+          **Reason:** {{ state_attr('sensor.meal_prep_source_status', 'reason') }}
+          {% elif meal in ['none', 'unavailable', 'unknown'] %}
+          ## No meal planned
+
+          The fresh source does not currently provide a meal to prepare.
+
+          **Source status:** Ready
+          {% else %}
+          ## {{ meal }}
+
+          **Meal type:** {{ states('sensor.meal_prep_meal_type') | title }}
+
+          **Planned / prep time:** {{ states('sensor.meal_prep_target_time') }}
+
+          **Preparation state:** {{ states('sensor.meal_prep_session_state') | replace('_', ' ') | title }}
+
+          **Source status:** Ready
+          {% endif %}
+
+      - type: markdown
+        title: "Current step"
+        content: >-
+          {% set meal = states('sensor.meal_prep_meal') %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' or meal in ['none', 'unavailable', 'unknown'] %}
+          ## Waiting for a fresh meal source
+
+          No instruction is shown while the source is unavailable, stale, or
+          incomplete.
+          {% elif states('sensor.meal_prep_current_step') in ['none', 'unavailable'] %}
+          ## No current step is available
+
+          The source has not supplied an instruction to present.
+          {% else %}
+          ## {{ states('sensor.meal_prep_current_step') }}
+          {% endif %}
+
+      - type: markdown
+        title: "Next step"
+        content: >-
+          {% set meal = states('sensor.meal_prep_meal') %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' or meal in ['none', 'unavailable', 'unknown'] %}
+          The next instruction is unavailable until the meal source is fresh.
+          {% elif states('sensor.meal_prep_next_step') in ['none', 'unavailable'] %}
+          No next instruction is available.
+          {% else %}
+          {{ states('sensor.meal_prep_next_step') }}
+          {% endif %}
+
+      - type: markdown
+        title: "Recipe context"
+        content: >-
+          {% set meal = states('sensor.meal_prep_meal') %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' or meal in ['none', 'unavailable', 'unknown'] %}
+          Recipe details are unavailable until the source is fresh.
+          {% else %}
+          {% set recipe_url = states('sensor.meal_prep_recipe_url') %}
+          {% if recipe_url not in ['none', 'unavailable', 'unknown'] %}
+          **Recipe:** [Open recipe]({{ recipe_url }})
+          {% elif states('sensor.meal_prep_recipe_reference') not in ['none', 'unavailable', 'unknown'] %}
+          **Recipe reference:** {{ states('sensor.meal_prep_recipe_reference') }}
+          {% else %}
+          No recipe reference is available.
+          {% endif %}
+
+          Prep time, cook time, servings, and concise ingredient context are
+          intentionally deferred to the read-only Mealie normalizer in #209;
+          this dashboard does not invent recipe content.
+          {% endif %}
+
+      - type: entities
+        title: "Source details"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.meal_prep_source_status
+            name: "Source status"
+          - type: attribute
+            entity: sensor.meal_prep_source_status
+            attribute: reason
+            name: "Source reason"
+          - type: attribute
+            entity: sensor.meal_prep_source_status
+            attribute: source_updated_at
+            name: "Source updated"
+          - entity: sensor.meal_prep_session_state
+            name: "Preparation state"
+          - entity: sensor.meal_prep_target_time
+            name: "Planned / prep time"
+
+      # #210 owns the stable Start, Done, Skip, Snooze, and Finish script
+      # seams. Do not add buttons until that card supplies real services.

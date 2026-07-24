@@ -80,6 +80,7 @@ Current YAML dashboards:
 
 - `dashboards/climate_control.yaml` for climate operations and diagnostics.
 - `dashboards/window_ventilation.yaml` for advisory ventilation recommendations.
+- `dashboards/kitchen_prep.yaml` for the hidden, phone-first Kitchen Prep view.
 
 ### 7. Notifications
 
