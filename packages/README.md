@@ -145,11 +145,12 @@ in no automatic start rather than guessing.
 
 The restored `input_text.meal_prep_automatic_handled_key` is set for both manual
 and automatic starts. It prevents refreshes, reloads, and restarts from repeating
-the same meal's Cast. The only automatic device action is the shared display
-script, which directly calls `cast.show_lovelace_view` with `dashboard_path` and
-`view_path` both `kitchen-prep`; it makes no state-dependent wake or settle
-calls, so the same Cast request is used for already-awake and off receivers. It
-adds no lights, announcements, occupancy inference, or Mealie writes. Cleanup clears only local
+the same meal's Cast. Automatic orchestration directly calls
+`cast.show_lovelace_view` with `dashboard_path` and `view_path` both
+`kitchen-prep`, bypassing the display-script service wrapper. It makes no
+state-dependent wake or settle calls, so the same proven Cast request is used
+for already-awake and off receivers. It adds no lights, announcements, occupancy
+inference, or Mealie writes. Cleanup clears only local
 Kitchen Prep state for stale/invalid source, meal rollover, or everyone away
 outside guest mode; `presence_everyone_left` remains the authoritative
 display-off automation.

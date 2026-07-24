@@ -77,7 +77,14 @@ automation:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.meal_prep_active
-      - action: script.meal_prep_show_dashboard
+      # Direct dispatch avoids the script-service wrapper. The same Cast payload
+      # has been proven to render on both already-awake and off receivers.
+      - action: cast.show_lovelace_view
+        target:
+          entity_id: media_player.kitchen_display
+        data:
+          dashboard_path: kitchen-prep
+          view_path: kitchen-prep
 
   - alias: "Kitchen Prep: Clear invalid or rolled-over preparation session"
     id: "meal_prep_automatic_cleanup"
