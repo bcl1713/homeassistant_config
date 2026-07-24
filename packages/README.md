@@ -41,7 +41,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `security_door_alerts.yaml` | Immediate high-priority alerts when front, back, or garage-interior security-boundary contacts open while the alarm is armed away/night. Uses a separate security tag namespace, clears only those tags on close, and announces once through the master bedroom display. |
 | `security_lights.yaml` | Security-focused lighting helpers and automations, including after-dark/security-event lighting behavior. |
 | `security_sanity.yaml` | Reusable secure-house sanity check workflow used by routines and presence flows to verify/notify about doors, locks, garage state, and other security context. |
-| `shared_infrastructure.yaml` | Shared package contracts: `notify.all_mobile_devices` and YAML-managed Lovelace dashboards for climate control and ventilation advice. |
+| `shared_infrastructure.yaml` | Shared package contracts: `notify.all_mobile_devices` and YAML-managed Lovelace dashboards for climate control, ventilation advice, and Kitchen Prep. |
 | `towner_notifications.yaml` | School arrival/departure notification workflow that handles infrequent location updates, race conditions, verification windows, and timeout/reset states. |
 | `trash_recycling_reminder.yaml` | Municipality-calendar-driven trash/recycling-night Zooz LED reminder. It snapshots and restores explicitly scoped wall-switch/dimmer LED settings, shows blue for garbage-only and green when recycling is also listed, and safely ignores unknown or recycling-only calendar text. |
 | `weather.yaml` | Weather processing and cache helpers, including MQTT weather data, forecast sensors, and an open-window rain alert that names affected monitored windows and clears after they all close. |
@@ -124,6 +124,17 @@ packages should read `sensor.protected_contact_inventory` and
 
 - `climate-control` from `dashboards/climate_control.yaml`
 - `window-ventilation` from `dashboards/window_ventilation.yaml` (title: "Ventilation Advisor")
+- `kitchen-prep` from `dashboards/kitchen_prep.yaml` (title: "Kitchen Prep", hidden from the sidebar)
+
+The Kitchen Prep dashboard presents only normalized, fresh state from
+`meal_prep.yaml`. It intentionally defers prep/cook metadata, servings, and
+concise ingredient context to the read-only Mealie normalizer (#209), and
+Start/Done/Skip/Snooze/Finish controls to the idempotent scripts in #210.
+Until those owner cards land, the dashboard has no action buttons or dangling
+service references. After deployment, an operator can smoke-test the direct
+`kitchen-prep` Lovelace view with `cast.show_lovelace_view` on
+`media_player.kitchen_display`; that live check is not performed by repository
+validation.
 
 Packages should add dashboard-facing sensors/templates inside the feature package that owns the data, then wire the presentation in `dashboards/` when a dedicated operator view is needed.
 

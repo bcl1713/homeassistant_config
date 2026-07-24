@@ -83,6 +83,7 @@ YAML-managed dashboards live in `dashboards/` and are registered by `packages/sh
 
 - `dashboards/climate_control.yaml` provides the mobile-first climate operator view, thermostat controls, temperature and air-quality trend graphs, extreme-heat overlay controls, and diagnostics.
 - `dashboards/window_ventilation.yaml` provides the advisory ventilation view, current recommendation, comfort/dew-point context, rain/HVAC context, air-quality baseline comparisons, and tuning helpers.
+- `dashboards/kitchen_prep.yaml` provides a hidden, phone-first Kitchen Prep view. It renders only fresh meal-prep source data, intentionally defers recipe metadata to the read-only Mealie normalizer and manual controls to their owning cards, and is the future direct-view target for the kitchen display.
 
 ## Notifications and shared contracts
 

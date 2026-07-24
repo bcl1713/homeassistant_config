@@ -24,6 +24,13 @@ def test_shared_infrastructure_owns_root_level_package_contracts():
     dashboards = shared["lovelace"]["dashboards"]
     assert dashboards["window-ventilation"]["filename"] == "dashboards/window_ventilation.yaml"
     assert dashboards["climate-control"]["filename"] == "dashboards/climate_control.yaml"
+    assert dashboards["kitchen-prep"] == {
+        "mode": "yaml",
+        "title": "Kitchen Prep",
+        "icon": "mdi:chef-hat",
+        "show_in_sidebar": False,
+        "filename": "dashboards/kitchen_prep.yaml",
+    }
 
     notify_groups = shared["notify"]
     assert notify_groups == [
