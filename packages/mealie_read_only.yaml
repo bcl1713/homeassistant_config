@@ -75,7 +75,13 @@ automation:
                 continue_on_error: true
               - variables:
                   mealie_plan_status: "{{ mealie_range_response.status | default(0, true) | int(0) }}"
-                  mealie_plan_payload: "{{ mealie_range_response.content | default([], true) }}"
+                  # Mealie's bounded range endpoint returns a pagination
+                  # envelope. Normalize only its `items` field; a mapping
+                  # without that field, or a non-list `items` value, remains
+                  # subject to the fail-closed payload guard below.
+                  mealie_plan_payload: >-
+                    {%- set payload = mealie_range_response.content | default({}, true) -%}
+                    {{- payload['items'] if payload is mapping and payload['items'] is defined else payload -}}
         default:
           - variables:
               mealie_plan_status: "{{ mealie_today_status }}"
