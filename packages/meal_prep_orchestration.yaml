@@ -5,16 +5,16 @@
 # display. `presence_everyone_left` remains the authoritative display-off flow.
 #
 # Automatic start needs all of: a fresh valid source, a valid recipe identity,
-# a target timestamp for today, a positive PT#H#M Mealie prep duration, someone
-# home, and guest mode off. Missing/unsupported timing intentionally does
-# nothing rather than guessing a preparation window.
+# a target timestamp for today, a configured and validated lead-time start,
+# someone home, and guest mode off. Missing/unsupported timing intentionally
+# does nothing rather than guessing a preparation window.
 
 automation:
   - alias: "Kitchen Prep: Automatically start useful preparation window"
     id: "meal_prep_automatic_start"
     description: >
       Start and cast Kitchen Prep at most once per today+recipe identity during
-      its half-open [target - prepTime, target) window. Restored handled state
+      its half-open [automatic start, target) window. Restored handled state
       prevents repeat casts after refresh, reload, or Home Assistant restart.
     mode: single
     trigger:
@@ -28,7 +28,11 @@ automation:
           - sensor.meal_prep_meal
           - sensor.meal_prep_recipe_reference
           - sensor.meal_prep_target_time
+          - sensor.meal_prep_automatic_start_time
+          - input_select.meal_prep_automatic_lead_time_policy
           - input_text.meal_prep_recipe_prep_time
+          - input_text.meal_prep_recipe_cook_time
+          - input_text.meal_prep_recipe_total_time
           - input_boolean.mode_guest
           - zone.home
     variables:
@@ -36,14 +40,8 @@ automation:
       meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
       target_time: "{{ states('sensor.meal_prep_target_time') }}"
       target_timestamp: "{{ as_timestamp(target_time, default=none) }}"
-      prep_time: "{{ states('input_text.meal_prep_recipe_prep_time') | upper | trim }}"
-      prep_duration_valid: >
-        {{ prep_time | regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$') and prep_time != 'PT' }}
-      prep_hours: >
-        {{ (prep_time | regex_findall('^PT([0-9]+)H') | first | default('0', true)) | int(0) }}
-      prep_minutes_part: >
-        {{ (prep_time | regex_findall('([0-9]+)M$') | first | default('0', true)) | int(0) }}
-      prep_minutes: "{{ prep_hours | int(0) * 60 + prep_minutes_part | int(0) }}"
+      automatic_start_time: "{{ states('sensor.meal_prep_automatic_start_time') }}"
+      automatic_start_timestamp: "{{ as_timestamp(automatic_start_time, default=none) }}"
       snooze_until: "{{ as_timestamp(states('input_text.meal_prep_snooze_until'), default=none) }}"
     condition:
       - condition: template
@@ -56,14 +54,14 @@ automation:
              '|' not in recipe_reference and
              target_timestamp is not none and
              target_time.startswith(now().date().isoformat()) and
-             prep_duration_valid and prep_minutes | int(0) > 0 and
+             automatic_start_timestamp is not none and
              states('zone.home') | float(0) > 0 and
              is_state('input_boolean.mode_guest', 'off') and
              is_state('input_boolean.meal_prep_active', 'off') and
              is_state('input_boolean.meal_prep_done', 'off') and
              (snooze_until is none or snooze_until <= now().timestamp()) and
              states('input_text.meal_prep_automatic_handled_key') != meal_prep_identity and
-             now().timestamp() >= target_timestamp | float(0) - prep_minutes | int(0) * 60 and
+             now().timestamp() >= automatic_start_timestamp and
              now().timestamp() < target_timestamp | float(0) }}
     action:
       - action: input_text.set_value

@@ -41,12 +41,32 @@ def actions(node):
     return found
 
 
-def prep_minutes(value):
+def duration_minutes(value):
     match = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?", value or "")
     if not match or value == "PT":
         return None
     minutes = int(match.group(1) or 0) * 60 + int(match.group(2) or 0)
     return minutes or None
+
+
+def resolve_lead_time(*, policy="total_time", prep="PT30M", cook="PT20M", total="PT50M"):
+    prep_minutes = duration_minutes(prep)
+    cook_minutes = duration_minutes(cook)
+    total_minutes = duration_minutes(total)
+    if policy == "prep_only":
+        return (prep_minutes, "prep_time") if prep_minutes else (None, "none")
+    if policy == "prep_plus_cook":
+        return (
+            (prep_minutes + cook_minutes, "prep_plus_cook")
+            if prep_minutes and cook_minutes
+            else (None, "none")
+        )
+    if policy == "total_time":
+        if total_minutes:
+            return total_minutes, "total_time"
+        if prep_minutes and cook_minutes:
+            return prep_minutes + cook_minutes, "prep_plus_cook_fallback"
+    return None, "none"
 
 
 def automatic_start_is_eligible(
@@ -55,7 +75,10 @@ def automatic_start_is_eligible(
     meal="Dinner",
     recipe="recipe-123",
     target=NOW + timedelta(minutes=20),
+    policy="total_time",
     prep_time="PT30M",
+    cook_time="PT20M",
+    total_time="PT50M",
     home=1,
     guest=False,
     active=False,
@@ -63,7 +86,9 @@ def automatic_start_is_eligible(
     snoozed=False,
     handled_key="",
 ):
-    minutes = prep_minutes(prep_time)
+    minutes, _duration_source = resolve_lead_time(
+        policy=policy, prep=prep_time, cook=cook_time, total=total_time
+    )
     identity = f"{NOW.date().isoformat()}|{recipe}"
     return (
         source == "ready"
@@ -109,19 +134,31 @@ def test_automatic_start_has_bounded_triggers_and_exact_cast_payload():
     assert "homeassistant.turn_off" not in text
 
 
-def test_deterministic_window_and_missing_time_fallbacks_fail_closed():
-    assert prep_minutes("PT45M") == 45
-    assert prep_minutes("PT1H15M") == 75
-    assert prep_minutes("PT") is None
-    assert prep_minutes("") is None
-    assert prep_minutes("45 minutes") is None
+def test_lead_time_policy_selects_only_verified_duration_forms_and_fails_closed():
+    assert duration_minutes("PT45M") == 45
+    assert duration_minutes("PT1H15M") == 75
+    for invalid in ("PT", "", "PT0M", "PT0H", "-PT30M", "45 minutes", "P1D", "PT30S", "PT1.5H"):
+        assert duration_minutes(invalid) is None, invalid
+
+    assert resolve_lead_time(policy="prep_only", prep="PT30M") == (30, "prep_time")
+    assert resolve_lead_time(policy="prep_plus_cook", prep="PT30M", cook="PT20M") == (50, "prep_plus_cook")
+    assert resolve_lead_time(policy="total_time", prep="PT30M", cook="PT20M", total="PT45M") == (45, "total_time")
+    assert resolve_lead_time(policy="total_time", prep="PT30M", cook="PT20M", total="") == (50, "prep_plus_cook_fallback")
+    assert resolve_lead_time(policy="total_time", prep="PT30M", cook="PT20M", total="PT0M") == (50, "prep_plus_cook_fallback")
+    assert resolve_lead_time(policy="prep_plus_cook", prep="PT30M", cook="") == (None, "none")
+    assert resolve_lead_time(policy="prep_only", prep="PT0M") == (None, "none")
+    assert resolve_lead_time(policy="unexpected", prep="PT30M", cook="PT20M", total="PT50M") == (None, "none")
 
     assert automatic_start_is_eligible()
+    assert automatic_start_is_eligible(policy="prep_only", prep_time="PT30M")
+    assert automatic_start_is_eligible(policy="prep_plus_cook", prep_time="PT30M", cook_time="PT20M")
+    assert automatic_start_is_eligible(policy="total_time", prep_time="PT30M", cook_time="PT20M", total_time="")
     assert not automatic_start_is_eligible(target=None)
     assert not automatic_start_is_eligible(target=NOW + timedelta(days=1))
-    assert not automatic_start_is_eligible(prep_time="")
-    assert not automatic_start_is_eligible(prep_time="PT0M")
-    assert not automatic_start_is_eligible(target=NOW + timedelta(minutes=90), prep_time="PT30M")
+    assert not automatic_start_is_eligible(policy="prep_only", prep_time="")
+    assert not automatic_start_is_eligible(policy="prep_plus_cook", cook_time="PT0M")
+    assert not automatic_start_is_eligible(policy="total_time", prep_time="", cook_time="", total_time="PT0M")
+    assert not automatic_start_is_eligible(target=NOW + timedelta(minutes=90), total_time="PT30M")
     assert not automatic_start_is_eligible(target=NOW)
 
 

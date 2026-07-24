@@ -61,7 +61,7 @@ All active package files under `packages/*.yaml` are documented in `packages/REA
 - `garage_door_monitoring.yaml` - garage-door duration monitoring, reminders, and controls.
 - `known_batteries.yaml` - normalized template sensors for known battery-powered devices.
 - `light_groups.yaml` - logical light groups.
-- `meal_prep.yaml`, `mealie_read_only.yaml`, and `meal_prep_orchestration.yaml` - Kitchen Prep helper/state model, deterministic manual controls, bounded read-only Mealie adapter, and once-per-meal automatic prep-window/Cast orchestration.
+- `meal_prep.yaml`, `meal_prep_target_policy.yaml`, `mealie_read_only.yaml`, and `meal_prep_orchestration.yaml` - Kitchen Prep helper/state model, dinner-target and configurable lead-time policy, deterministic manual controls, bounded read-only Mealie adapter, and once-per-meal automatic prep-window/Cast orchestration.
 - `notifications.yaml` - shared notification automations that do not belong to a larger package.
 - `presence.yaml` - presence, alarm-panel, and presence-related lighting behavior.
 - `remotes.yaml` - Z-Wave remote helper scripts and blueprint-backed automations.
@@ -84,7 +84,7 @@ YAML-managed dashboards live in `dashboards/` and are registered by `packages/sh
 
 - `dashboards/climate_control.yaml` provides the mobile-first climate operator view, thermostat controls, temperature and air-quality trend graphs, extreme-heat overlay controls, and diagnostics.
 - `dashboards/window_ventilation.yaml` provides the advisory ventilation view, current recommendation, comfort/dew-point context, rain/HVAC context, air-quality baseline comparisons, and tuning helpers.
-- `dashboards/kitchen_prep.yaml` provides a hidden, phone-first Kitchen Prep view. It renders only fresh meal-prep source data, presents #210-owned manual controls that fail closed outside a valid session, and is the future direct-view target for the kitchen display.
+- `dashboards/kitchen_prep.yaml` provides a hidden, phone-first Kitchen Prep view. It renders only fresh meal-prep source data, exposes the selected dinner-ready timing policy and computed automatic start, presents #210-owned manual controls that fail closed outside a valid session, and is the future direct-view target for the kitchen display.
 
 ## Notifications and shared contracts
 

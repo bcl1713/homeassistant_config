@@ -3,6 +3,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import yaml
+from jinja2 import Environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,3 +106,27 @@ def test_mealie_mapping_and_dashboard_surface_resolved_target_source_without_wri
     assert "POST" not in mealie and "PUT" not in mealie and "PATCH" not in mealie and "DELETE" not in mealie
     assert "Target-time source:" in dashboard
     assert "attribute: source" in dashboard
+
+
+def test_lead_time_policy_defaults_to_total_time_and_exposes_safe_start_calculation():
+    policy = yaml.safe_load(POLICY.read_text())
+    selector = policy["input_select"]["meal_prep_automatic_lead_time_policy"]
+    start = next(
+        item
+        for block in policy["template"]
+        for item in block["sensor"]
+        if item["name"] == "Meal Prep Automatic Start Time"
+    )
+    text = POLICY.read_text()
+
+    assert selector["options"] == ["total_time", "prep_plus_cook", "prep_only"]
+    assert "Dinner-ready lead-time policy defaults to `total_time`" in text
+    assert "regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$')" in start["state"]
+    assert "prep_plus_cook_fallback" in start["attributes"]["duration_source"]
+    assert "total is never added" in text
+    for duration in ("prep_time", "cook_time", "total_time"):
+        assert f"input_text.meal_prep_recipe_{duration}" in text
+    environment = Environment()
+    environment.parse(start["state"])
+    environment.parse(start["attributes"]["policy"])
+    environment.parse(start["attributes"]["duration_source"])

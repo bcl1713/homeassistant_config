@@ -46,6 +46,12 @@ views:
 
           **Target-time source:** {{ state_attr('sensor.meal_prep_target_time', 'source') | title }}
 
+          **Dinner-ready policy:** {{ states('input_select.meal_prep_automatic_lead_time_policy') | replace('_', ' ') | title }}
+
+          **Automatic start:** {{ states('sensor.meal_prep_automatic_start_time') }}
+
+          **Lead-time source:** {{ state_attr('sensor.meal_prep_automatic_start_time', 'duration_source') | replace('_', ' ') | title }}
+
           **Preparation state:** {{ states('sensor.meal_prep_session_state') | replace('_', ' ') | title }}
 
           **Source status:** Ready
@@ -179,3 +185,11 @@ views:
             entity: sensor.meal_prep_target_time
             attribute: source
             name: "Target-time source"
+          - entity: input_select.meal_prep_automatic_lead_time_policy
+            name: "Dinner-ready policy"
+          - entity: sensor.meal_prep_automatic_start_time
+            name: "Automatic start"
+          - type: attribute
+            entity: sensor.meal_prep_automatic_start_time
+            attribute: duration_source
+            name: "Lead-time source"

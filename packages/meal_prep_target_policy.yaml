@@ -14,6 +14,23 @@
 # Missing, malformed, timezone-ambiguous, or date-mismatched values resolve to
 # source=none; they never guess a dinner time. Mealie's date-only field remains
 # a meal-date identity, not a scheduled time.
+#
+# Dinner-ready lead-time policy defaults to `total_time`: dinner should be ready
+# to serve at the resolved target. Operators may select `prep_only` when the
+# target means cooking should begin, or `prep_plus_cook` when Mealie's separate
+# preparation and cook fields are authoritative. Only positive PT#H#M values
+# are accepted. Under `total_time`, a missing or invalid total falls back only
+# to the sum of valid positive prep and cook values; total is never added to
+# either component, avoiding double-counting.
+
+input_select:
+  meal_prep_automatic_lead_time_policy:
+    name: "Meal Prep Automatic Lead-Time Policy"
+    icon: mdi:timer-cog-outline
+    options:
+      - total_time
+      - prep_plus_cook
+      - prep_only
 
 input_datetime:
   meal_prep_default_dinner_time:
@@ -48,6 +65,64 @@ input_text:
     name: "Meal Prep Source Scheduled Time Input"
     icon: mdi:calendar-clock
     max: 40
+
+template:
+  - sensor:
+      - name: "Meal Prep Automatic Start Time"
+        unique_id: meal_prep_automatic_start_time
+        icon: mdi:clock-start
+        state: >
+          {% set policy = states('input_select.meal_prep_automatic_lead_time_policy') | lower | trim %}
+          {% set target = states('sensor.meal_prep_target_time') %}
+          {% set target_timestamp = as_timestamp(target, default=none) %}
+          {% set prep = states('input_text.meal_prep_recipe_prep_time') | upper | trim %}
+          {% set cook = states('input_text.meal_prep_recipe_cook_time') | upper | trim %}
+          {% set total = states('input_text.meal_prep_recipe_total_time') | upper | trim %}
+          {% set prep_valid = prep | regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$') and prep != 'PT' %}
+          {% set cook_valid = cook | regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$') and cook != 'PT' %}
+          {% set total_valid = total | regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$') and total != 'PT' %}
+          {% set prep_minutes = (prep | regex_findall('^PT([0-9]+)H') | first | default('0', true) | int(0)) * 60 + (prep | regex_findall('([0-9]+)M$') | first | default('0', true) | int(0)) %}
+          {% set cook_minutes = (cook | regex_findall('^PT([0-9]+)H') | first | default('0', true) | int(0)) * 60 + (cook | regex_findall('([0-9]+)M$') | first | default('0', true) | int(0)) %}
+          {% set total_minutes = (total | regex_findall('^PT([0-9]+)H') | first | default('0', true) | int(0)) * 60 + (total | regex_findall('([0-9]+)M$') | first | default('0', true) | int(0)) %}
+          {% if states('sensor.meal_prep_source_status') != 'ready' or target_timestamp is none %}
+            none
+          {% elif policy == 'prep_only' and prep_valid and prep_minutes > 0 %}
+            {{ (target_timestamp - prep_minutes * 60) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+          {% elif policy == 'prep_plus_cook' and prep_valid and cook_valid and prep_minutes > 0 and cook_minutes > 0 %}
+            {{ (target_timestamp - (prep_minutes + cook_minutes) * 60) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+          {% elif policy == 'total_time' and total_valid and total_minutes > 0 %}
+            {{ (target_timestamp - total_minutes * 60) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+          {% elif policy == 'total_time' and prep_valid and cook_valid and prep_minutes > 0 and cook_minutes > 0 %}
+            {{ (target_timestamp - (prep_minutes + cook_minutes) * 60) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+          {% else %}
+            none
+          {% endif %}
+        attributes:
+          policy: >
+            {% set policy = states('input_select.meal_prep_automatic_lead_time_policy') | lower | trim %}
+            {{ policy if policy in ['total_time', 'prep_plus_cook', 'prep_only'] else 'none' }}
+          duration_source: >
+            {% set policy = states('input_select.meal_prep_automatic_lead_time_policy') | lower | trim %}
+            {% set prep = states('input_text.meal_prep_recipe_prep_time') | upper | trim %}
+            {% set cook = states('input_text.meal_prep_recipe_cook_time') | upper | trim %}
+            {% set total = states('input_text.meal_prep_recipe_total_time') | upper | trim %}
+            {% set prep_valid = prep | regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$') and prep != 'PT' %}
+            {% set cook_valid = cook | regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$') and cook != 'PT' %}
+            {% set total_valid = total | regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$') and total != 'PT' %}
+            {% set prep_minutes = (prep | regex_findall('^PT([0-9]+)H') | first | default('0', true) | int(0)) * 60 + (prep | regex_findall('([0-9]+)M$') | first | default('0', true) | int(0)) %}
+            {% set cook_minutes = (cook | regex_findall('^PT([0-9]+)H') | first | default('0', true) | int(0)) * 60 + (cook | regex_findall('([0-9]+)M$') | first | default('0', true) | int(0)) %}
+            {% set total_minutes = (total | regex_findall('^PT([0-9]+)H') | first | default('0', true) | int(0)) * 60 + (total | regex_findall('([0-9]+)M$') | first | default('0', true) | int(0)) %}
+            {% if policy == 'prep_only' and prep_valid and prep_minutes > 0 %}
+              prep_time
+            {% elif policy == 'prep_plus_cook' and prep_valid and cook_valid and prep_minutes > 0 and cook_minutes > 0 %}
+              prep_plus_cook
+            {% elif policy == 'total_time' and total_valid and total_minutes > 0 %}
+              total_time
+            {% elif policy == 'total_time' and prep_valid and cook_valid and prep_minutes > 0 and cook_minutes > 0 %}
+              prep_plus_cook_fallback
+            {% else %}
+              none
+            {% endif %}
 
 automation:
   - alias: "Kitchen Prep: Resolve target time policy"

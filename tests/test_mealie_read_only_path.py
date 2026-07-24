@@ -260,6 +260,13 @@ def test_normalized_recipe_output_is_bounded_and_populates_helper_seams():
 
     assert helpers["meal_prep_recipe_summary"]["max"] == 160
     assert helpers["meal_prep_ingredient_context"]["max"] == 255
+    for helper in (
+        "meal_prep_recipe_prep_time",
+        "meal_prep_recipe_cook_time",
+        "meal_prep_recipe_total_time",
+    ):
+        assert helpers[helper]["max"] == 40
+        assert f"input_text.{helper}" in text
     assert "input_text.meal_prep_recipe_summary" in text
     assert "input_text.meal_prep_ingredient_context" in text
     assert "[:6]" in text

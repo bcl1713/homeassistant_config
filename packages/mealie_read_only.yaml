@@ -330,6 +330,16 @@ automation:
                       value: "{{ mealie_recipe.prepTime | default('', true) | string | trim | truncate(40, true, '') }}"
                   - action: input_text.set_value
                     target:
+                      entity_id: input_text.meal_prep_recipe_cook_time
+                    data:
+                      value: "{{ mealie_recipe.cookTime | default('', true) | string | trim | truncate(40, true, '') }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_recipe_total_time
+                    data:
+                      value: "{{ mealie_recipe.totalTime | default('', true) | string | trim | truncate(40, true, '') }}"
+                  - action: input_text.set_value
+                    target:
                       entity_id: input_text.meal_prep_ingredient_context
                     data:
                       value: >
