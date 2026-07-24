@@ -137,9 +137,9 @@ script:
       # unavailable.
       - condition: template
         value_template: >
-          {{ recipe_reference == recipe_reference | trim and
+          {{ recipe_reference == recipe_reference | regex_replace('\\s', '') and
              recipe_reference | lower not in ['', 'none', 'unavailable', 'unknown'] and
-             ' ' not in recipe_reference and '|' not in recipe_reference }}
+             '|' not in recipe_reference }}
       - variables:
           meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
       - condition: template
@@ -180,9 +180,9 @@ script:
           recipe_reference: "{{ states('sensor.meal_prep_recipe_reference') }}"
       - condition: template
         value_template: >
-          {{ recipe_reference == recipe_reference | trim and
+          {{ recipe_reference == recipe_reference | regex_replace('\\s', '') and
              recipe_reference | lower not in ['', 'none', 'unavailable', 'unknown'] and
-             ' ' not in recipe_reference and '|' not in recipe_reference }}
+             '|' not in recipe_reference }}
       - variables:
           meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
           current_step: "{{ states('sensor.meal_prep_current_step') }}"
@@ -224,9 +224,9 @@ script:
           recipe_reference: "{{ states('sensor.meal_prep_recipe_reference') }}"
       - condition: template
         value_template: >
-          {{ recipe_reference == recipe_reference | trim and
+          {{ recipe_reference == recipe_reference | regex_replace('\\s', '') and
              recipe_reference | lower not in ['', 'none', 'unavailable', 'unknown'] and
-             ' ' not in recipe_reference and '|' not in recipe_reference }}
+             '|' not in recipe_reference }}
       - variables:
           meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
           current_step: "{{ states('sensor.meal_prep_current_step') }}"
@@ -279,9 +279,9 @@ script:
           recipe_reference: "{{ states('sensor.meal_prep_recipe_reference') }}"
       - condition: template
         value_template: >
-          {{ recipe_reference == recipe_reference | trim and
+          {{ recipe_reference == recipe_reference | regex_replace('\\s', '') and
              recipe_reference | lower not in ['', 'none', 'unavailable', 'unknown'] and
-             ' ' not in recipe_reference and '|' not in recipe_reference }}
+             '|' not in recipe_reference }}
       - variables:
           meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
           bounded_snooze_minutes: "{{ [5, [snooze_minutes | default(30, true) | int(30), 60] | min] | max }}"
@@ -305,9 +305,9 @@ script:
           recipe_reference: "{{ states('sensor.meal_prep_recipe_reference') }}"
       - condition: template
         value_template: >
-          {{ recipe_reference == recipe_reference | trim and
+          {{ recipe_reference == recipe_reference | regex_replace('\\s', '') and
              recipe_reference | lower not in ['', 'none', 'unavailable', 'unknown'] and
-             ' ' not in recipe_reference and '|' not in recipe_reference }}
+             '|' not in recipe_reference }}
       - variables:
           meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
       - condition: template

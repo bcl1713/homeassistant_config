@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import yaml
@@ -52,6 +53,9 @@ def render_recipe_guard(script, recipe_reference):
     variables = script["sequence"][0]["variables"]
     guard = condition_templates(script)[0]
     environment = Environment(trim_blocks=True, lstrip_blocks=True)
+    environment.filters["regex_replace"] = lambda value, find, replace: re.sub(
+        find, replace, value
+    )
     environment.globals["states"] = lambda entity_id: {
         "sensor.meal_prep_recipe_reference": recipe_reference
     }.get(entity_id, "unknown")
@@ -122,7 +126,11 @@ def test_state_changing_controls_reject_invalid_recipe_references_before_identit
             "none",
             "unknown",
             "unavailable",
-            "recipe reference",
+            "recipe reference",  # ASCII space
+            "recipe\t123",  # tab
+            "recipe\n123",  # newline
+            "recipe\r123",  # carriage return
+            "recipe\u00a0123",  # non-breaking space
             "recipe|123",
         ):
             assert render_recipe_guard(script, invalid_reference) == "False", (
