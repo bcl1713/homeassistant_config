@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import yaml
+from jinja2 import Environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +48,20 @@ def condition_templates(script):
     ]
 
 
+def render_recipe_guard(script, recipe_reference):
+    variables = script["sequence"][0]["variables"]
+    guard = condition_templates(script)[0]
+    environment = Environment(trim_blocks=True, lstrip_blocks=True)
+    environment.globals["states"] = lambda entity_id: {
+        "sensor.meal_prep_recipe_reference": recipe_reference
+    }.get(entity_id, "unknown")
+
+    normalized_reference = environment.from_string(variables["recipe_reference"]).render()
+    return environment.from_string(guard).render(
+        recipe_reference=normalized_reference
+    ).strip()
+
+
 def test_start_preparation_has_a_stable_manual_script_seam():
     script = load_package()["script"]["meal_prep_start_preparation"]
 
@@ -86,9 +101,39 @@ def test_start_resets_only_new_session_identity_and_reactivation_keeps_progress(
     assert script_services(script).count("input_boolean.turn_on") == 1
 
 
+def test_state_changing_controls_reject_invalid_recipe_references_before_identity_or_mutation():
+    scripts = load_package()["script"]
+    state_changing_scripts = (
+        "meal_prep_start_preparation",
+        "meal_prep_complete_current_step",
+        "meal_prep_skip_current_step",
+        "meal_prep_snooze_preparation",
+        "meal_prep_finish_for_today",
+    )
+
+    for script_name in state_changing_scripts:
+        script = scripts[script_name]
+
+        assert list(script["sequence"][0]["variables"]) == ["recipe_reference"]
+        assert "meal_prep_identity" in script["sequence"][2]["variables"]
+        assert render_recipe_guard(script, "recipe-123") == "True"
+        for invalid_reference in (
+            "",
+            "none",
+            "unknown",
+            "unavailable",
+            "recipe reference",
+            "recipe|123",
+        ):
+            assert render_recipe_guard(script, invalid_reference) == "False", (
+                script_name,
+                invalid_reference,
+            )
+
+
 def test_done_advances_only_a_valid_active_matching_session_once():
     script = load_package()["script"]["meal_prep_complete_current_step"]
-    condition = condition_templates(script)[0]
+    condition = condition_templates(script)[1]
     actions = script_services(script)
 
     assert "sensor.meal_prep_source_status" in condition
