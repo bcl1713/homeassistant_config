@@ -1,0 +1,283 @@
+# packages/mealie_read_only.yaml
+#
+# Read-only Mealie adapter for the Kitchen Prep state model. All endpoints are
+# GET-only. URLs and the complete Authorization header stay in secrets.yaml;
+# never add a token, header value, or response payload to this repository.
+#
+# The refresh runs at startup and every 15 minutes. It requests today's plan,
+# then one bounded today-to-+7-day range only when today has no entries. Recipe
+# content is fetched only for the selected entry and is normalized into short
+# helper values. Source status is set last so presentation never sees a partial
+# snapshot.
+
+rest_command:
+  mealie_get_today:
+    url: !secret mealie_today_url
+    method: GET
+    timeout: 15
+    headers:
+      Authorization: !secret mealie_authorization_header
+      Accept: application/json
+
+  mealie_get_range:
+    # Secret value must retain {{ mealie_range_start }} and
+    # {{ mealie_range_end }} for Home Assistant template evaluation.
+    url: !secret mealie_range_url
+    method: GET
+    timeout: 15
+    headers:
+      Authorization: !secret mealie_authorization_header
+      Accept: application/json
+
+  mealie_get_recipe:
+    # Secret value must retain {{ mealie_recipe_id }} for template evaluation.
+    url: !secret mealie_recipe_url
+    method: GET
+    timeout: 15
+    headers:
+      Authorization: !secret mealie_authorization_header
+      Accept: application/json
+
+automation:
+  - alias: "Refresh Meal Prep from Mealie"
+    id: "meal_prep_refresh_from_mealie"
+    description: >
+      Read today's or next bounded Mealie meal plan and its linked recipe into
+      Kitchen Prep helpers. GET-only; malformed payloads and non-fresh failures
+      fail closed. A prior snapshot remains visible only while it is fresh and
+      carries a visible cached reason.
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: time_pattern
+        minutes: "/15"
+    variables:
+      mealie_range_start: "{{ now().date().isoformat() }}"
+      mealie_range_end: "{{ (now() + timedelta(days=7)).date().isoformat() }}"
+    action:
+      - action: rest_command.mealie_get_today
+        response_variable: mealie_today_response
+        continue_on_error: true
+      - variables:
+          mealie_today_status: "{{ mealie_today_response.status | default(0, true) | int(0) }}"
+          mealie_today_payload: "{{ mealie_today_response.content | default([], true) }}"
+      - choose:
+          - conditions: "{{ mealie_today_status == 200 and mealie_today_payload is sequence and mealie_today_payload is not string and mealie_today_payload is not mapping and mealie_today_payload | count == 0 }}"
+            sequence:
+              - action: rest_command.mealie_get_range
+                response_variable: mealie_range_response
+                continue_on_error: true
+              - variables:
+                  mealie_plan_status: "{{ mealie_range_response.status | default(0, true) | int(0) }}"
+                  mealie_plan_payload: "{{ mealie_range_response.content | default([], true) }}"
+        default:
+          - variables:
+              mealie_plan_status: "{{ mealie_today_status }}"
+              mealie_plan_payload: "{{ mealie_today_payload }}"
+      - choose:
+          - conditions: "{{ mealie_plan_status != 200 }}"
+            sequence:
+              - choose:
+                  - conditions: >
+                      {% set updated = as_timestamp(states('input_datetime.meal_prep_source_updated_at'), default=none) %}
+                      {{ is_state('input_text.meal_prep_source_status', 'ready') and updated is not none and updated > 0 and now().timestamp() - updated <= 10800 }}
+                    sequence:
+                      - action: input_text.set_value
+                        target:
+                          entity_id: input_text.meal_prep_source_reason
+                        data:
+                          value: "using fresh cached snapshot after Mealie request failure"
+                default:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_source_reason
+                    data:
+                      value: "Mealie request failed (HTTP {{ mealie_plan_status }})"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_source_status
+                    data:
+                      value: unavailable
+          - conditions: "{{ mealie_plan_payload is not sequence or mealie_plan_payload is string or mealie_plan_payload is mapping }}"
+            sequence:
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_source_reason
+                data:
+                  value: "malformed Mealie meal-plan payload"
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_source_status
+                data:
+                  value: unavailable
+          - conditions: "{{ mealie_plan_payload | count == 0 }}"
+            sequence:
+              - action: input_text.set_value
+                target:
+                  entity_id:
+                    - input_text.meal_prep_source_status
+                    - input_text.meal_prep_meal_title
+                    - input_text.meal_prep_meal_type
+                    - input_text.meal_prep_recipe_reference
+                    - input_text.meal_prep_recipe_url
+                    - input_text.meal_prep_current_step
+                    - input_text.meal_prep_next_step
+                    - input_text.meal_prep_recipe_summary
+                    - input_text.meal_prep_ingredient_context
+                data:
+                  value: ""
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_source_reason
+                data:
+                  value: "no meal planned"
+              - action: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.meal_prep_source_updated_at
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_source_status
+                data:
+                  value: ready
+        default:
+          - variables:
+              mealie_entry: "{{ mealie_plan_payload[0] }}"
+              mealie_recipe_id: "{{ mealie_plan_payload[0].recipeId | default('', true) | string | trim }}"
+          - choose:
+              - conditions: "{{ mealie_entry is not mapping or mealie_recipe_id == '' }}"
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_source_reason
+                    data:
+                      value: "meal plan entry has no recipeId"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_source_status
+                    data:
+                      value: unavailable
+            default:
+              - action: rest_command.mealie_get_recipe
+                response_variable: mealie_recipe_response
+                continue_on_error: true
+              - variables:
+                  mealie_recipe_status: "{{ mealie_recipe_response.status | default(0, true) | int(0) }}"
+                  mealie_recipe: "{{ mealie_recipe_response.content | default({}, true) }}"
+              - choose:
+                  - conditions: "{{ mealie_recipe_status != 200 }}"
+                    sequence:
+                      - action: input_text.set_value
+                        target:
+                          entity_id: input_text.meal_prep_source_reason
+                        data:
+                          value: "Mealie request failed (HTTP {{ mealie_recipe_status }})"
+                      - action: input_text.set_value
+                        target:
+                          entity_id: input_text.meal_prep_source_status
+                        data:
+                          value: unavailable
+                  - conditions: >
+                      {{ mealie_recipe is not mapping or
+                         (mealie_recipe.name | default('', true) | string | trim) == '' or
+                         mealie_recipe.recipeInstructions is not defined or
+                         mealie_recipe.recipeInstructions is not sequence or
+                         mealie_recipe.recipeInstructions is string or
+                         mealie_recipe.recipeIngredient is not defined or
+                         mealie_recipe.recipeIngredient is not sequence or
+                         mealie_recipe.recipeIngredient is string }}
+                    sequence:
+                      - action: input_text.set_value
+                        target:
+                          entity_id: input_text.meal_prep_source_reason
+                        data:
+                          value: "malformed Mealie recipe payload"
+                      - action: input_text.set_value
+                        target:
+                          entity_id: input_text.meal_prep_source_status
+                        data:
+                          value: unavailable
+                default:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_source_status
+                    data:
+                      value: unavailable
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_meal_title
+                    data:
+                      value: "{{ mealie_recipe.name | string | trim | truncate(255, true, '') }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_meal_type
+                    data:
+                      value: "{{ mealie_entry.entryType | default('', true) | string | trim | truncate(100, true, '') }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_recipe_reference
+                    data:
+                      value: "{{ mealie_recipe_id | truncate(255, true, '') }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_recipe_url
+                    data:
+                      value: ""
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_current_step
+                    data:
+                      value: >
+                        {% set steps = mealie_recipe.recipeInstructions %}
+                        {% set first = steps[0] if steps | count > 0 else {} %}
+                        {{ (first.text if first is mapping else first if first is string else '') | string | trim | truncate(255, true, '') }}
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_next_step
+                    data:
+                      value: >
+                        {% set steps = mealie_recipe.recipeInstructions %}
+                        {% set second = steps[1] if steps | count > 1 else {} %}
+                        {{ (second.text if second is mapping else second if second is string else '') | string | trim | truncate(255, true, '') }}
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_recipe_summary
+                    data:
+                      value: >
+                        {% set values = namespace(parts=[]) %}
+                        {% for label, value in [('Prep', mealie_recipe.prepTime), ('Cook', mealie_recipe.cookTime), ('Total', mealie_recipe.totalTime), ('Serves', mealie_recipe.recipeYield)] %}
+                          {% if value | default(none, true) is not none and value | string | trim != '' %}
+                            {% set values.parts = values.parts + [label ~ ': ' ~ (value | string | trim)] %}
+                          {% endif %}
+                        {% endfor %}
+                        {{ values.parts | join(' • ') | truncate(160, true, '') }}
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_ingredient_context
+                    data:
+                      value: >
+                        {% set values = namespace(parts=[]) %}
+                        {% for ingredient in mealie_recipe.recipeIngredient[:6] %}
+                          {% set text = ingredient.note if ingredient is mapping and ingredient.note is defined else ingredient.food.name if ingredient is mapping and ingredient.food is mapping and ingredient.food.name is defined else ingredient if ingredient is string else '' %}
+                          {% if text | string | trim != '' %}
+                            {% set values.parts = values.parts + [text | string | trim] %}
+                          {% endif %}
+                        {% endfor %}
+                        {{ values.parts | join(', ') | truncate(255, true, '') }}
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_source_reason
+                    data:
+                      value: "fresh Mealie snapshot"
+                  - action: input_datetime.set_datetime
+                    target:
+                      entity_id: input_datetime.meal_prep_source_updated_at
+                    data:
+                      datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_source_status
+                    data:
+                      value: ready
+    mode: single
