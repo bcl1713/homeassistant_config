@@ -591,23 +591,11 @@ script:
   meal_prep_show_dashboard:
     alias: "Kitchen Prep: Show dashboard"
     description: >
-      Wake the kitchen display when needed, allow its Cast receiver to settle,
-      then show the YAML-managed Kitchen Prep view.
+      Directly show the YAML-managed Kitchen Prep view on the kitchen display.
+      The Cast integration owns receiver wake/launch handling; pre-waking the
+      receiver can leave it on the Cast splash instead of rendering this view.
     mode: single
     sequence:
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: media_player.kitchen_display
-                state: "off"
-            sequence:
-              - action: media_player.turn_on
-                target:
-                  entity_id: media_player.kitchen_display
-              - wait_template: "{{ not is_state('media_player.kitchen_display', 'off') }}"
-                timeout: "00:00:15"
-                continue_on_timeout: false
-              - delay: "00:00:02"
       - action: cast.show_lovelace_view
         target:
           entity_id: media_player.kitchen_display

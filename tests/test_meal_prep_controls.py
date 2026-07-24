@@ -207,31 +207,11 @@ def test_finish_and_clear_are_local_persistent_state_transitions():
 def test_show_dashboard_targets_the_registered_kitchen_display_view():
     script = load_package()["script"]["meal_prep_show_dashboard"]
 
-    wake_display = script["sequence"][0]
-    assert wake_display["choose"][0]["conditions"] == [
-        {
-            "condition": "state",
-            "entity_id": "media_player.kitchen_display",
-            "state": "off",
-        }
-    ]
-    wake_sequence = wake_display["choose"][0]["sequence"]
-    assert wake_sequence[0] == {
-        "action": "media_player.turn_on",
-        "target": {"entity_id": "media_player.kitchen_display"},
-    }
-    assert wake_sequence[1] == {
-        "wait_template": "{{ not is_state('media_player.kitchen_display', 'off') }}",
-        "timeout": "00:00:15",
-        "continue_on_timeout": False,
-    }
-    assert wake_sequence[2] == {"delay": "00:00:02"}
-
-    assert script_services(script) == [
-        "media_player.turn_on",
-        "cast.show_lovelace_view",
-    ]
-    action = script["sequence"][-1]
+    # The Cast action is deliberately state-agnostic: the integration handles
+    # either an already-awake or an off receiver without a pre-wake sequence.
+    assert script_services(script) == ["cast.show_lovelace_view"]
+    assert len(script["sequence"]) == 1
+    action = script["sequence"][0]
     assert action["target"]["entity_id"] == "media_player.kitchen_display"
     assert action["data"] == {
         "dashboard_path": "kitchen-prep",
