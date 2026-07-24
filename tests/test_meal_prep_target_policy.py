@@ -95,7 +95,7 @@ def test_timezone_conversion_and_date_rollover_use_local_meal_date_identity():
     )[1] == "none"
 
 
-def test_mealie_mapping_and_dashboard_surface_resolved_target_source_without_writes():
+def test_mealie_mapping_and_dashboard_surface_resolved_target_source_with_only_explicit_writeback():
     mealie = MEALIE.read_text()
     dashboard = DASHBOARD.read_text()
 
@@ -103,7 +103,9 @@ def test_mealie_mapping_and_dashboard_surface_resolved_target_source_without_wri
     assert "mealie_scheduled_time" in mealie
     assert "timezone-less timestamp is rejected" in mealie
     assert "input_text.meal_prep_source_scheduled_time" in mealie
-    assert "POST" not in mealie and "PUT" not in mealie and "PATCH" not in mealie and "DELETE" not in mealie
+    assert "POST" not in mealie and "PUT" not in mealie and "DELETE" not in mealie
+    assert mealie.count("method: PATCH") == 1
+    assert "mealie_mark_made" in mealie
     assert "Target-time source:" in dashboard
     assert "attribute: source" in dashboard
 

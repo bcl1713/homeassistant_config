@@ -58,7 +58,7 @@ def variable_value(actions, name, matching_text=None):
     return None
 
 
-def test_mealie_read_path_has_only_bounded_get_requests_with_secret_backed_wiring():
+def test_mealie_adapter_uses_bounded_get_requests_and_one_explicit_secret_backed_write_command():
     package = load_yaml(PACKAGE)
     commands = package["rest_command"]
 
@@ -66,12 +66,25 @@ def test_mealie_read_path_has_only_bounded_get_requests_with_secret_backed_wirin
         "mealie_get_today",
         "mealie_get_range",
         "mealie_get_recipe",
+        "mealie_mark_made",
     }
-    for command in commands.values():
+    for name in ("mealie_get_today", "mealie_get_range", "mealie_get_recipe"):
+        command = commands[name]
         assert command["method"] == "GET"
         assert command["timeout"] == 15
         assert command["headers"]["Authorization"] == "!secret mealie_authorization_header"
         assert command["headers"]["Accept"] == "application/json"
+
+    write = commands["mealie_mark_made"]
+    assert write["url"] == "!secret mealie_mark_made_url"
+    assert write["method"] == "PATCH"
+    assert write["timeout"] == 15
+    assert write["headers"] == {
+        "Authorization": "!secret mealie_authorization_header",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    assert write["payload"] == '{"timestamp":"{{ mealie_made_timestamp }}"}'
 
     assert commands["mealie_get_today"]["url"] == "!secret mealie_today_url"
     assert commands["mealie_get_range"]["url"] == "!secret mealie_range_url"
@@ -80,10 +93,12 @@ def test_mealie_read_path_has_only_bounded_get_requests_with_secret_backed_wirin
     package_text = PACKAGE.read_text()
     assert "POST" not in package_text
     assert "PUT" not in package_text
-    assert "PATCH" not in package_text
     assert "DELETE" not in package_text
     assert "Bearer " not in package_text
     assert "mealie_authorization_header" in package_text
+    assert "rest_command.mealie_mark_made" not in automation_by_alias(
+        package, "Refresh Meal Prep from Mealie"
+    )["action"].__str__()
 
 
 def test_dynamic_rest_command_urls_receive_explicit_nonempty_service_data():

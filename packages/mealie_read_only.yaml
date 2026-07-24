@@ -1,8 +1,10 @@
 # packages/mealie_read_only.yaml
 #
-# Read-only Mealie adapter for the Kitchen Prep state model. All endpoints are
-# GET-only. URLs and the complete Authorization header stay in secrets.yaml;
+# Read-only Mealie adapter for the Kitchen Prep state model. Its refresh endpoints
+# are GET-only. URLs and the complete Authorization header stay in secrets.yaml;
 # never add a token, header value, or response payload to this repository.
+# The sole exception is the separately enabled, confirmed Kitchen Prep
+# `mealie_mark_made` script, which uses the verified PATCH last-made endpoint.
 #
 # The refresh runs at startup and every 15 minutes. It requests today's plan,
 # then one bounded today-to-+7-day range only when today has no entries. Recipe
@@ -15,7 +17,7 @@ rest_command:
     url: !secret mealie_today_url
     method: GET
     timeout: 15
-    headers:
+    headers: &mealie_read_headers
       Authorization: !secret mealie_authorization_header
       Accept: application/json
 
@@ -35,9 +37,18 @@ rest_command:
     url: !secret mealie_recipe_url
     method: GET
     timeout: 15
+    headers: *mealie_read_headers
+
+  mealie_mark_made:
+    # The explicit Kitchen Prep script supplies mealie_recipe_id and a stable
+    # retry timestamp. This is never called by refresh, Start, or Finish today.
+    url: !secret mealie_mark_made_url
+    method: PATCH
+    timeout: 15
     headers:
-      Authorization: !secret mealie_authorization_header
-      Accept: application/json
+      <<: *mealie_read_headers
+      Content-Type: application/json
+    payload: '{"timestamp":"{{ mealie_made_timestamp }}"}'
 
 automation:
   - alias: "Refresh Meal Prep from Mealie"

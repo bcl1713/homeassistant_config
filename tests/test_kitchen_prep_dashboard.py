@@ -65,7 +65,10 @@ def test_kitchen_prep_dashboard_presents_only_real_state_and_control_seams():
     assert dashboard["views"][0]["path"] == "kitchen-prep"
     assert dashboard["views"][0]["badges"] == []
     assert refs == {
+        "input_boolean.meal_prep_mealie_writeback_enabled",
         "input_select.meal_prep_automatic_lead_time_policy",
+        "input_text.meal_prep_mealie_write_reason",
+        "input_text.meal_prep_mealie_write_status",
         "sensor.meal_prep_automatic_start_time",
         "sensor.meal_prep_source_status",
         "sensor.meal_prep_session_state",
@@ -91,6 +94,7 @@ def test_kitchen_prep_dashboard_presents_only_real_state_and_control_seams():
         "script.meal_prep_skip_current_step",
         "script.meal_prep_snooze_preparation",
         "script.meal_prep_finish_for_today",
+        "script.meal_prep_mark_made_in_mealie",
         "script.meal_prep_show_dashboard",
         "script.meal_prep_clear_session",
     ):
@@ -157,6 +161,7 @@ def test_kitchen_prep_dashboard_buttons_call_only_real_manual_script_services():
         "Skip",
         "Snooze 30 min",
         "Finish today",
+        "Mark made in Mealie",
         "Show display",
         "Clear session",
     ]
@@ -170,6 +175,14 @@ def test_kitchen_prep_dashboard_buttons_call_only_real_manual_script_services():
             "data": {"snooze_minutes": 30},
         },
         {"action": "perform-action", "perform_action": "script.meal_prep_finish_for_today"},
+        {
+            "action": "perform-action",
+            "perform_action": "script.meal_prep_mark_made_in_mealie",
+            "data": {"confirm": True},
+            "confirmation": {
+                "text": "Set this linked recipe's Last made timestamp in Mealie? Finish today stays local-only."
+            },
+        },
         {"action": "perform-action", "perform_action": "script.meal_prep_show_dashboard"},
         {"action": "perform-action", "perform_action": "script.meal_prep_clear_session"},
     ]

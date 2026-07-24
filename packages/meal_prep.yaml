@@ -31,6 +31,12 @@ input_boolean:
     name: "Meal Prep Complete"
     icon: mdi:check-circle-outline
 
+  # This is off unless an operator explicitly enables the supported Mealie
+  # last-made write-back. Finish today always remains local-only.
+  meal_prep_mealie_writeback_enabled:
+    name: "Enable Mealie made-this write-back"
+    icon: mdi:cloud-sync-outline
+
 input_datetime:
   meal_prep_target_time:
     name: "Meal Prep Target Time"
@@ -132,6 +138,34 @@ input_text:
   meal_prep_automatic_handled_key:
     name: "Meal Prep Automatic Handled Key"
     icon: mdi:shield-check-outline
+    max: 255
+
+  # Local, bounded write-back audit seams. The pending identity/timestamp make a
+  # retry use the exact same PATCH body after a timeout or transport failure.
+  # No response body, URL, or credential is ever stored here.
+  meal_prep_mealie_marked_key:
+    name: "Meal Prep Mealie Marked Key"
+    icon: mdi:cloud-check-outline
+    max: 255
+
+  meal_prep_mealie_write_pending_key:
+    name: "Meal Prep Mealie Write Pending Key"
+    icon: mdi:key-clock
+    max: 255
+
+  meal_prep_mealie_write_pending_timestamp:
+    name: "Meal Prep Mealie Write Pending Timestamp"
+    icon: mdi:clock-check-outline
+    max: 40
+
+  meal_prep_mealie_write_status:
+    name: "Meal Prep Mealie Write Status"
+    icon: mdi:cloud-alert-outline
+    max: 32
+
+  meal_prep_mealie_write_reason:
+    name: "Meal Prep Mealie Write Reason"
+    icon: mdi:information-outline
     max: 255
 
   meal_prep_last_skipped_step:
@@ -360,6 +394,199 @@ script:
           entity_id: input_text.meal_prep_automatic_handled_key
         data:
           value: "{{ meal_prep_identity }}"
+
+  meal_prep_mark_made_in_mealie:
+    alias: "Kitchen Prep: Mark made in Mealie"
+    description: >
+      Explicitly set the linked recipe's Mealie last-made timestamp. This is
+      disabled by default, requires dashboard confirmation, and never runs from
+      Start or Finish today. A stable meal identity and timestamp make retries
+      safe after an unknown transport outcome.
+    mode: single
+    fields:
+      confirm:
+        name: "Confirm Mealie write-back"
+        description: "Must be explicitly true; the dashboard also shows a confirmation dialog."
+        required: true
+        selector:
+          boolean:
+    sequence:
+      - variables:
+          recipe_reference: "{{ states('sensor.meal_prep_recipe_reference') }}"
+      - variables:
+          meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
+      - choose:
+          - conditions: "{{ not is_state('input_boolean.meal_prep_mealie_writeback_enabled', 'on') }}"
+            sequence:
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_status
+                data:
+                  value: disabled
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_reason
+                data:
+                  value: "Mealie write-back is disabled"
+          - conditions: >
+              {{ not (recipe_reference | regex_match('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$')) or
+                 states('sensor.meal_prep_source_status') != 'ready' or
+                 states('sensor.meal_prep_meal') in ['none', 'unavailable', 'unknown'] }}
+            sequence:
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_status
+                data:
+                  value: invalid
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_reason
+                data:
+                  value: "Mealie write-back requires a fresh linked recipe"
+          - conditions: "{{ confirm | default(false) | bool == false }}"
+            sequence:
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_status
+                data:
+                  value: unconfirmed
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_reason
+                data:
+                  value: "Mealie write-back was not confirmed"
+          - conditions: "{{ states('input_text.meal_prep_mealie_marked_key') == meal_prep_identity }}"
+            sequence:
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_status
+                data:
+                  value: duplicate
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_reason
+                data:
+                  value: "This recipe is already marked made for today"
+        default:
+          - choose:
+              - conditions: >
+                  {{ states('input_text.meal_prep_mealie_write_pending_key') != meal_prep_identity or
+                     as_timestamp(states('input_text.meal_prep_mealie_write_pending_timestamp'), default=none) is none }}
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_pending_key
+                    data:
+                      value: "{{ meal_prep_identity }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_pending_timestamp
+                    data:
+                      value: "{{ now().isoformat() }}"
+          - variables:
+              mealie_made_timestamp: >
+                {% set pending_timestamp = states('input_text.meal_prep_mealie_write_pending_timestamp') %}
+                {{ pending_timestamp if states('input_text.meal_prep_mealie_write_pending_key') == meal_prep_identity and as_timestamp(pending_timestamp, default=none) is not none else now().isoformat() }}
+          - action: rest_command.mealie_mark_made
+            data:
+              mealie_recipe_id: "{{ recipe_reference }}"
+              mealie_made_timestamp: "{{ mealie_made_timestamp }}"
+            response_variable: mealie_write_response
+            continue_on_error: true
+          - variables:
+              mealie_write_status: "{{ mealie_write_response.status | default(0, true) | int(0) }}"
+              mealie_write_content: "{{ mealie_write_response.content | default({}, true) }}"
+          - choose:
+              - conditions: >
+                  {{ mealie_write_status == 200 and mealie_write_content is mapping and
+                     (mealie_write_content.id | default('', true) | string | lower | trim) == (recipe_reference | lower) }}
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_marked_key
+                    data:
+                      value: "{{ meal_prep_identity }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_status
+                    data:
+                      value: success
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_reason
+                    data:
+                      value: "Marked made in Mealie"
+              - conditions: "{{ mealie_write_status in [401, 403] }}"
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_status
+                    data:
+                      value: unauthorized
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_reason
+                    data:
+                      value: "Mealie write-back was not authorized"
+              - conditions: "{{ mealie_write_status == 409 }}"
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_status
+                    data:
+                      value: duplicate
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_reason
+                    data:
+                      value: "Mealie rejected the write as a duplicate"
+              - conditions: "{{ mealie_write_status in [404, 405, 501] }}"
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_status
+                    data:
+                      value: unsupported
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_reason
+                    data:
+                      value: "Mealie write-back endpoint is unavailable"
+              - conditions: "{{ mealie_write_status in [408, 504] }}"
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_status
+                    data:
+                      value: timeout
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_reason
+                    data:
+                      value: "Mealie write-back timed out; retry is safe"
+              - conditions: "{{ mealie_write_status == 0 }}"
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_status
+                    data:
+                      value: unavailable
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_mealie_write_reason
+                    data:
+                      value: "Mealie write-back was unavailable; retry is safe"
+            default:
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_status
+                data:
+                  value: failed
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_mealie_write_reason
+                data:
+                  value: "Mealie write-back response was malformed or unsuccessful"
 
   meal_prep_show_dashboard:
     alias: "Kitchen Prep: Show dashboard"
