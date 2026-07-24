@@ -1,0 +1,133 @@
+# packages/meal_prep_target_policy.yaml
+#
+# Kitchen Prep target-time policy. This package has no Mealie requests or
+# household/device actions. It resolves a local target timestamp only from the
+# fresh, coherent source snapshot and explicit household configuration.
+#
+# Precedence is deliberately fixed:
+# 1. a valid Mealie scheduled timestamp (ISO-8601 with an explicit UTC offset),
+# 2. a matching local per-day/per-meal override, then
+# 3. the household's local default dinner time.
+#
+# The per-day/per-meal override key is YYYY-MM-DD|dinner and its value is a
+# local date+time. Both must match the current source meal date/type exactly.
+# Missing, malformed, timezone-ambiguous, or date-mismatched values resolve to
+# source=none; they never guess a dinner time. Mealie's date-only field remains
+# a meal-date identity, not a scheduled time.
+
+input_datetime:
+  meal_prep_default_dinner_time:
+    name: "Meal Prep Default Dinner Time"
+    icon: mdi:clock-outline
+    has_date: false
+    has_time: true
+
+  meal_prep_target_time_override:
+    name: "Meal Prep Target Time Override"
+    icon: mdi:calendar-edit
+    has_date: true
+    has_time: true
+
+input_text:
+  meal_prep_target_time_override_key:
+    name: "Meal Prep Target Time Override Key"
+    icon: mdi:key-variant
+    max: 32
+
+  meal_prep_target_time_source:
+    name: "Meal Prep Target Time Source"
+    icon: mdi:calendar-check-outline
+    max: 16
+
+  meal_prep_meal_date:
+    name: "Meal Prep Meal Date Input"
+    icon: mdi:calendar
+    max: 10
+
+  meal_prep_source_scheduled_time:
+    name: "Meal Prep Source Scheduled Time Input"
+    icon: mdi:calendar-clock
+    max: 40
+
+automation:
+  - alias: "Kitchen Prep: Resolve target time policy"
+    id: "meal_prep_resolve_target_time"
+    description: >
+      Resolve only a fresh source meal's local target according to the documented
+      Mealie, per-day/per-meal override, then household-default precedence. It
+      does not refresh sources, write Mealie, or control household devices.
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: state
+        entity_id:
+          - sensor.meal_prep_source_status
+          - sensor.meal_prep_meal
+          - sensor.meal_prep_meal_type
+          - input_text.meal_prep_meal_date
+          - input_text.meal_prep_source_scheduled_time
+          - input_datetime.meal_prep_target_time_override
+          - input_text.meal_prep_target_time_override_key
+          - input_datetime.meal_prep_default_dinner_time
+    variables:
+      source_ready: "{{ states('sensor.meal_prep_source_status') == 'ready' }}"
+      meal_present: "{{ states('sensor.meal_prep_meal') not in ['none', 'unknown', 'unavailable'] }}"
+      meal_type: "{{ states('sensor.meal_prep_meal_type') | lower | trim }}"
+      meal_date: "{{ states('input_text.meal_prep_meal_date') | trim }}"
+      meal_date_valid: "{{ meal_date | regex_match('^\\d{4}-\\d{2}-\\d{2}$') }}"
+      source_scheduled_time: "{{ states('input_text.meal_prep_source_scheduled_time') | trim }}"
+      source_scheduled_timestamp: "{{ as_timestamp(source_scheduled_time, default=none) }}"
+      source_scheduled_valid: >
+        {{ source_scheduled_time | regex_match('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:Z|[+-]\\d{2}:\\d{2})$') and
+           source_scheduled_timestamp is not none and
+           source_scheduled_timestamp > 0 and
+           source_scheduled_timestamp | timestamp_custom('%Y-%m-%d', true) == meal_date }}
+      override_key: "{{ states('input_text.meal_prep_target_time_override_key') | lower | trim }}"
+      override_time: "{{ states('input_datetime.meal_prep_target_time_override') }}"
+      override_timestamp: "{{ as_timestamp(override_time, default=none) }}"
+      override_valid: >
+        {{ override_key == meal_date ~ '|' ~ meal_type and
+           override_time.startswith(meal_date) and
+           override_timestamp is not none and override_timestamp > 0 }}
+      default_dinner_time: "{{ states('input_datetime.meal_prep_default_dinner_time') }}"
+      default_valid: "{{ default_dinner_time | regex_match('^\\d{2}:\\d{2}:\\d{2}$') }}"
+    action:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_target_time_source
+        data:
+          value: >
+            {% if not source_ready or not meal_present or not meal_date_valid %}
+              none
+            {% elif source_scheduled_valid %}
+              mealie
+            {% elif override_valid %}
+              override
+            {% elif meal_type == 'dinner' and default_valid %}
+              default
+            {% else %}
+              none
+            {% endif %}
+      - choose:
+          - conditions: "{{ source_ready and meal_present and meal_date_valid and source_scheduled_valid }}"
+            sequence:
+              - action: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.meal_prep_target_time
+                data:
+                  datetime: "{{ source_scheduled_timestamp | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}"
+          - conditions: "{{ source_ready and meal_present and meal_date_valid and override_valid }}"
+            sequence:
+              - action: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.meal_prep_target_time
+                data:
+                  datetime: "{{ override_time }}"
+          - conditions: "{{ source_ready and meal_present and meal_date_valid and meal_type == 'dinner' and default_valid }}"
+            sequence:
+              - action: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.meal_prep_target_time
+                data:
+                  datetime: "{{ meal_date ~ ' ' ~ default_dinner_time }}"
