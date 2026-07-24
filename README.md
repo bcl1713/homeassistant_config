@@ -61,7 +61,7 @@ All active package files under `packages/*.yaml` are documented in `packages/REA
 - `garage_door_monitoring.yaml` - garage-door duration monitoring, reminders, and controls.
 - `known_batteries.yaml` - normalized template sensors for known battery-powered devices.
 - `light_groups.yaml` - logical light groups.
-- `meal_prep.yaml` and `mealie_read_only.yaml` - Kitchen Prep helper/state model, deterministic manual controls, and bounded read-only Mealie adapter for fresh meal, recipe, instruction, timing, and ingredient context.
+- `meal_prep.yaml`, `mealie_read_only.yaml`, and `meal_prep_orchestration.yaml` - Kitchen Prep helper/state model, deterministic manual controls, bounded read-only Mealie adapter, and once-per-meal automatic prep-window/Cast orchestration.
 - `notifications.yaml` - shared notification automations that do not belong to a larger package.
 - `presence.yaml` - presence, alarm-panel, and presence-related lighting behavior.
 - `remotes.yaml` - Z-Wave remote helper scripts and blueprint-backed automations.

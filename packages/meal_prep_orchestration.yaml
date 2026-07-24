@@ -1,0 +1,126 @@
+# packages/meal_prep_orchestration.yaml
+#
+# Bounded automatic Kitchen Prep orchestration. This package never reloads HA,
+# changes lights, announces steps, writes Mealie, or turns off the kitchen
+# display. `presence_everyone_left` remains the authoritative display-off flow.
+#
+# Automatic start needs all of: a fresh valid source, a valid recipe identity,
+# a target timestamp for today, a positive PT#H#M Mealie prep duration, someone
+# home, and guest mode off. Missing/unsupported timing intentionally does
+# nothing rather than guessing a preparation window.
+
+automation:
+  - alias: "Kitchen Prep: Automatically start useful preparation window"
+    id: "meal_prep_automatic_start"
+    description: >
+      Start and cast Kitchen Prep at most once per today+recipe identity during
+      its half-open [target - prepTime, target) window. Restored handled state
+      prevents repeat casts after refresh, reload, or Home Assistant restart.
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: time_pattern
+        minutes: "/1"
+      - platform: state
+        entity_id:
+          - sensor.meal_prep_source_status
+          - sensor.meal_prep_meal
+          - sensor.meal_prep_recipe_reference
+          - sensor.meal_prep_target_time
+          - input_text.meal_prep_recipe_prep_time
+          - input_boolean.mode_guest
+          - zone.home
+    variables:
+      recipe_reference: "{{ states('sensor.meal_prep_recipe_reference') }}"
+      meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
+      target_time: "{{ states('sensor.meal_prep_target_time') }}"
+      target_timestamp: "{{ as_timestamp(target_time, default=none) }}"
+      prep_time: "{{ states('input_text.meal_prep_recipe_prep_time') | upper | trim }}"
+      prep_duration_valid: >
+        {{ prep_time | regex_match('^PT(?:[0-9]+H)?(?:[0-9]+M)?$') and prep_time != 'PT' }}
+      prep_hours: >
+        {{ (prep_time | regex_findall('^PT([0-9]+)H') | first | default('0', true)) | int(0) }}
+      prep_minutes_part: >
+        {{ (prep_time | regex_findall('([0-9]+)M$') | first | default('0', true)) | int(0) }}
+      prep_minutes: "{{ prep_hours | int(0) * 60 + prep_minutes_part | int(0) }}"
+      snooze_until: "{{ as_timestamp(states('input_text.meal_prep_snooze_until'), default=none) }}"
+    condition:
+      - condition: template
+        value_template: >
+          {{ states('sensor.meal_prep_source_status') == 'ready' and
+             states('sensor.meal_prep_meal') not in ['none', 'unavailable', 'unknown'] and
+             states('sensor.meal_prep_current_step') not in ['none', 'unavailable', 'unknown'] and
+             recipe_reference == recipe_reference | regex_replace('\\s', '') and
+             recipe_reference | lower not in ['', 'none', 'unavailable', 'unknown'] and
+             '|' not in recipe_reference and
+             target_timestamp is not none and
+             target_time.startswith(now().date().isoformat()) and
+             prep_duration_valid and prep_minutes | int(0) > 0 and
+             states('zone.home') | float(0) > 0 and
+             is_state('input_boolean.mode_guest', 'off') and
+             is_state('input_boolean.meal_prep_active', 'off') and
+             is_state('input_boolean.meal_prep_done', 'off') and
+             (snooze_until is none or snooze_until <= now().timestamp()) and
+             states('input_text.meal_prep_automatic_handled_key') != meal_prep_identity and
+             now().timestamp() >= target_timestamp | float(0) - prep_minutes | int(0) * 60 and
+             now().timestamp() < target_timestamp | float(0) }}
+    action:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_session_key
+        data:
+          value: "{{ meal_prep_identity }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_automatic_handled_key
+        data:
+          value: "{{ meal_prep_identity }}"
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.meal_prep_active
+      - action: cast.show_lovelace_view
+        target:
+          entity_id: media_player.kitchen_display
+        data:
+          dashboard_path: kitchen-prep
+          view_path: kitchen-prep
+
+  - alias: "Kitchen Prep: Clear invalid or rolled-over preparation session"
+    id: "meal_prep_automatic_cleanup"
+    description: >
+      Clear local session flags when source data becomes unsafe, the meal/date
+      identity changes, or everyone leaves outside guest mode. It deliberately
+      does not issue media-player actions; presence owns display-off behavior.
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: time
+        at: "00:00:00"
+      - platform: state
+        entity_id:
+          - sensor.meal_prep_source_status
+          - sensor.meal_prep_meal
+          - sensor.meal_prep_recipe_reference
+          - zone.home
+          - input_boolean.mode_guest
+    variables:
+      recipe_reference: "{{ states('sensor.meal_prep_recipe_reference') }}"
+      meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ recipe_reference }}"
+      session_key: "{{ states('input_text.meal_prep_session_key') }}"
+      recipe_reference_valid: >
+        {{ recipe_reference == recipe_reference | regex_replace('\\s', '') and
+           recipe_reference | lower not in ['', 'none', 'unavailable', 'unknown'] and
+           '|' not in recipe_reference }}
+    condition:
+      - condition: template
+        value_template: >
+          {{ session_key not in ['', 'unknown', 'unavailable'] and
+             (states('sensor.meal_prep_source_status') != 'ready' or
+              states('sensor.meal_prep_meal') in ['none', 'unavailable', 'unknown'] or
+              not recipe_reference_valid or
+              session_key != meal_prep_identity or
+              (is_state('input_boolean.mode_guest', 'off') and states('zone.home') | float(0) <= 0)) }}
+    action:
+      - action: script.meal_prep_clear_session
