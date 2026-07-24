@@ -33,6 +33,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `light_groups.yaml` | Logical Home Assistant light groups for easier control by rooms or household areas. |
 | `meal_prep.yaml` | Kitchen meal-preparation state model and deterministic manual Start/Done/Skip/Snooze/Finish/display/clear script seams. It owns persistent helper seams and read-only normalized meal/status/step/session/recipe-context sensors. |
 | `mealie_read_only.yaml` | Read-only Mealie GET adapter. It refreshes a bounded today/upcoming plan and linked recipe into `meal_prep.yaml` helpers every 15 minutes. |
+| `meal_prep_orchestration.yaml` | Kitchen Prep automatic start/cleanup and one-time Cast behavior, bounded by fresh source data, today’s target/prep window, household presence, and guest mode. |
 | `notifications.yaml` | Shared notification automations that do not belong to a larger feature package, currently including bus/school-day notification handling. |
 | `presence.yaml` | Presence-related behavior, including alarm-panel helpers and lighting automations tied to occupancy/time conditions. |
 | `protected_contacts.yaml` | Canonical, read-only inventory and open-state summary for eight window contacts plus Front Door, Back Door, and Garage Interior Door. Future packages should consume this seam rather than duplicate the protected-contact roster. |
@@ -77,6 +78,8 @@ inventing meal or instruction content.
 | `input_text.meal_prep_session_key` | Meal Prep Session Key | Date + recipe-reference identity that scopes restored active/done/snooze state. | Restored; no `initial` is set. |
 | `input_text.meal_prep_last_skipped_step` | Meal Prep Last Skipped Step | Bounded record of the most recent deliberate skip; it never marks the meal complete. | Restored; no `initial` is set. |
 | `input_text.meal_prep_remaining_steps` | Meal Prep Remaining Steps | Bounded escaped-delimiter source queue after the current/next steps, used only for deterministic manual advancement. | Restored; no `initial` is set. |
+| `input_text.meal_prep_recipe_prep_time` | Meal Prep Recipe Prep Time Input | Raw Mealie `prepTime` duration for automatic-window calculation. | Restored; no `initial` is set. |
+| `input_text.meal_prep_automatic_handled_key` | Meal Prep Automatic Handled Key | Date + recipe identity manually or automatically claimed to prevent repeat automatic starts/Casts. | Restored; no `initial` is set. |
 | `input_text.meal_prep_source_status` | Meal Prep Source Status Input | Future normalizer's raw status seam. | Restored; no `initial` is set. |
 | `input_text.meal_prep_meal_title`, `input_text.meal_prep_meal_type` | Meal Prep Meal Title/Type Input | Raw meal-identity seams. | Restored; no `initial` is set. |
 | `input_text.meal_prep_recipe_reference`, `input_text.meal_prep_recipe_url` | Meal Prep Recipe Reference/URL Input | Raw recipe seams. | Restored; no `initial` is set. |
@@ -117,6 +120,24 @@ stale, malformed, or non-matching source/session state. The normalizer preserves
 current/next values during an active matching session, so its 15-minute refresh
 cannot replay an already advanced step. Later source steps are held only in a
 bounded, delimiter-safe queue; controls never invent steps beyond that source data.
+
+### Kitchen Prep automatic orchestration
+
+`meal_prep_orchestration.yaml` starts only for a fresh, valid meal whose target
+timestamp is today, in the half-open prep window `[target - prepTime, target)`,
+with `zone.home` above zero and guest mode off. Mealie `prepTime` must be a
+positive ISO-8601 `PT#H#M` duration; missing, zero, or unsupported duration and
+missing/invalid target time deliberately result in no automatic start.
+
+The restored `input_text.meal_prep_automatic_handled_key` is set for both manual
+and automatic starts. It prevents refreshes, reloads, and restarts from repeating
+the same meal's Cast. The only automatic device action is
+`cast.show_lovelace_view` to `media_player.kitchen_display` with
+`dashboard_path` and `view_path` both `kitchen-prep`. It adds no lights,
+announcements, occupancy inference, or Mealie writes. Cleanup clears only local
+Kitchen Prep state for stale/invalid source, meal rollover, or everyone away
+outside guest mode; `presence_everyone_left` remains the authoritative
+display-off automation.
 
 ### Mealie read-only wiring
 

@@ -124,6 +124,7 @@ automation:
                     - input_text.meal_prep_next_step
                     - input_text.meal_prep_remaining_steps
                     - input_text.meal_prep_recipe_summary
+                    - input_text.meal_prep_recipe_prep_time
                     - input_text.meal_prep_ingredient_context
                 data:
                   value: ""
@@ -279,6 +280,11 @@ automation:
                           {% endif %}
                         {% endfor %}
                         {{ values.parts | join(' • ') | truncate(160, true, '') }}
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_recipe_prep_time
+                    data:
+                      value: "{{ mealie_recipe.prepTime | default('', true) | string | trim | truncate(40, true, '') }}"
                   - action: input_text.set_value
                     target:
                       entity_id: input_text.meal_prep_ingredient_context

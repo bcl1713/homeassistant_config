@@ -194,6 +194,7 @@ def test_finish_and_clear_are_local_persistent_state_transitions():
         "input_boolean.turn_off",
         "input_boolean.turn_on",
         "input_text.set_value",
+        "input_text.set_value",
     ]
     assert clear_services == ["input_boolean.turn_off", "input_text.set_value"]
     clear_text = str(scripts["meal_prep_clear_session"]["sequence"])

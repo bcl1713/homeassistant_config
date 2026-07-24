@@ -92,6 +92,13 @@ input_text:
     icon: mdi:timer-outline
     max: 160
 
+  # The read-only adapter stores Mealie's ISO-8601 `prepTime` here. Automatic
+  # orchestration is the only consumer and fails closed for unsupported values.
+  meal_prep_recipe_prep_time:
+    name: "Meal Prep Recipe Prep Time Input"
+    icon: mdi:timer-sand
+    max: 40
+
   meal_prep_ingredient_context:
     name: "Meal Prep Ingredient Context Input"
     icon: mdi:format-list-bulleted
@@ -107,6 +114,13 @@ input_text:
   meal_prep_session_key:
     name: "Meal Prep Session Key"
     icon: mdi:key-variant
+    max: 255
+
+  # Date+recipe identity already claimed by manual or automatic preparation.
+  # Restoring it prevents a reload/refresh from casting the same meal again.
+  meal_prep_automatic_handled_key:
+    name: "Meal Prep Automatic Handled Key"
+    icon: mdi:shield-check-outline
     max: 255
 
   meal_prep_last_skipped_step:
@@ -168,6 +182,11 @@ script:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.meal_prep_active
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_automatic_handled_key
+        data:
+          value: "{{ meal_prep_identity }}"
 
   meal_prep_complete_current_step:
     alias: "Kitchen Prep: Done / advance current step"
@@ -325,6 +344,11 @@ script:
           entity_id: input_text.meal_prep_snooze_until
         data:
           value: ""
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_automatic_handled_key
+        data:
+          value: "{{ meal_prep_identity }}"
 
   meal_prep_show_dashboard:
     alias: "Kitchen Prep: Show dashboard"
