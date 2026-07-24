@@ -127,6 +127,19 @@ def test_kitchen_prep_dashboard_is_concise_and_fail_closed_when_source_is_unavai
     assert "full recipe" not in DASHBOARD.read_text().lower()
 
 
+def test_kitchen_prep_dashboard_keeps_diagnostics_after_preparation_controls():
+    cards = load_dashboard()["views"][0]["cards"]
+
+    assert [card["title"] for card in cards] == [
+        "Meal status",
+        "Current step",
+        "Next step",
+        "Recipe context",
+        "Preparation controls",
+        "Source details",
+    ]
+
+
 def test_kitchen_prep_dashboard_buttons_call_only_real_manual_script_services():
     cards = load_dashboard()["views"][0]["cards"]
     control_card = next(card for card in cards if card.get("title") == "Preparation controls")
