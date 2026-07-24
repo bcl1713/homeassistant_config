@@ -2,6 +2,7 @@ from pathlib import Path
 
 import yaml
 from jinja2 import Template
+from jinja2.nativetypes import NativeEnvironment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +36,24 @@ def action_by_service(actions, service):
                 return found
         found = action_by_service(action.get("default", []), service)
         if found:
+            return found
+    return None
+
+
+def variable_value(actions, name, matching_text=None):
+    for action in actions:
+        variables = action.get("variables", {})
+        value = variables.get(name)
+        if value is not None and (
+            matching_text is None or matching_text in str(value)
+        ):
+            return value
+        for choice in action.get("choose", []):
+            found = variable_value(choice.get("sequence", []), name, matching_text)
+            if found is not None:
+                return found
+        found = variable_value(action.get("default", []), name, matching_text)
+        if found is not None:
             return found
     return None
 
@@ -177,6 +196,61 @@ def test_unauthorized_and_422_responses_fail_closed_via_transport_path():
     assert "Mealie request failed (HTTP {{ mealie_plan_status }})" in text
     assert "malformed Mealie meal-plan payload" in text
     assert "malformed Mealie recipe payload" in text
+
+
+def test_range_pagination_envelope_normalizes_only_its_items_list():
+    package = load_yaml(PACKAGE)
+    refresh = automation_by_alias(package, "Refresh Meal Prep from Mealie")
+    range_payload_template = variable_value(
+        refresh["action"], "mealie_plan_payload", "mealie_range_response.content"
+    )
+    assert isinstance(range_payload_template, str)
+    malformed_guard = next(
+        choice["conditions"]
+        for action in refresh["action"]
+        for choice in action.get("choose", [])
+        if choice["conditions"]
+        == "{{ mealie_plan_payload is not sequence or mealie_plan_payload is string or mealie_plan_payload is mapping }}"
+    )
+    envelope = {
+        "items": [{"recipeId": "selected-recipe-id", "entryType": "dinner"}],
+        "next": None,
+        "page": 1,
+        "per_page": 10,
+        "previous": None,
+        "total": 1,
+        "total_pages": 1,
+    }
+
+    normalized = NativeEnvironment().from_string(range_payload_template).render(
+        mealie_range_response={"content": envelope}
+    )
+
+    assert normalized == envelope["items"]
+    assert Template(malformed_guard).render(mealie_plan_payload=normalized) == "False"
+
+
+def test_range_pagination_envelope_malformed_variants_fail_closed_or_follow_no_meal_path():
+    package = load_yaml(PACKAGE)
+    refresh = automation_by_alias(package, "Refresh Meal Prep from Mealie")
+    range_payload_template = variable_value(
+        refresh["action"], "mealie_plan_payload", "mealie_range_response.content"
+    )
+    assert isinstance(range_payload_template, str)
+    malformed_guard = next(
+        choice["conditions"]
+        for action in refresh["action"]
+        for choice in action.get("choose", [])
+        if choice["conditions"]
+        == "{{ mealie_plan_payload is not sequence or mealie_plan_payload is string or mealie_plan_payload is mapping }}"
+    )
+    normalizer = NativeEnvironment().from_string(range_payload_template)
+
+    for payload in ({}, {"items": "not-a-list"}, {"items": {"recipeId": "x"}}):
+        normalized = normalizer.render(mealie_range_response={"content": payload})
+        assert Template(malformed_guard).render(mealie_plan_payload=normalized) == "True"
+
+    assert normalizer.render(mealie_range_response={"content": {"items": []}}) == []
 
 
 def test_normalized_recipe_output_is_bounded_and_populates_helper_seams():
