@@ -5,7 +5,8 @@
 # This package is intentionally source-independent: it defines the persistent
 # helper seams that #209 will populate from Mealie and the read-only template
 # entities that #208/#210 will present or control. It contains no REST calls,
-# scripts, automations, notifications, or device actions.
+# automations, notifications, or device actions. The scripts below are manual
+# operator seams only; they do not announce, refresh a source, or infer cooking.
 #
 # Persistence: every input helper intentionally omits `initial`. Home Assistant
 # restores its last saved helper state after a restart; when no restored state
@@ -100,6 +101,224 @@ input_text:
     name: "Meal Prep Snooze Until"
     icon: mdi:pause-circle-outline
     max: 40
+
+  # Session-local, bounded audit state. The identity is date + recipe reference
+  # so a restored done/active flag never leaks into another day's meal.
+  meal_prep_session_key:
+    name: "Meal Prep Session Key"
+    icon: mdi:key-variant
+    max: 255
+
+  meal_prep_last_skipped_step:
+    name: "Meal Prep Last Skipped Step"
+    icon: mdi:skip-next-circle-outline
+    max: 255
+
+  # Escaped-delimiter instructions after current/next. The adapter only stores
+  # complete delimiter boundaries in this bounded helper.
+  meal_prep_remaining_steps:
+    name: "Meal Prep Remaining Steps"
+    icon: mdi:format-list-numbered
+    max: 255
+
+script:
+  meal_prep_start_preparation:
+    alias: "Kitchen Prep: Start preparation"
+    description: >
+      Manually begin the fresh current meal once. A matching restored session
+      retains its progress; a new date/recipe identity clears only local state.
+    mode: single
+    sequence:
+      - variables:
+          meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ states('sensor.meal_prep_recipe_reference') }}"
+      - condition: template
+        value_template: >
+          {{ states('sensor.meal_prep_source_status') == 'ready' and
+             states('sensor.meal_prep_meal') not in ['none', 'unavailable', 'unknown'] and
+             states('sensor.meal_prep_current_step') not in ['none', 'unavailable', 'unknown'] }}
+      - choose:
+          - conditions: "{{ states('input_text.meal_prep_session_key') != meal_prep_identity }}"
+            sequence:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.meal_prep_done
+              - action: input_text.set_value
+                target:
+                  entity_id:
+                    - input_text.meal_prep_snooze_until
+                    - input_text.meal_prep_last_skipped_step
+                data:
+                  value: ""
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.meal_prep_session_key
+                data:
+                  value: "{{ meal_prep_identity }}"
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.meal_prep_active
+
+  meal_prep_complete_current_step:
+    alias: "Kitchen Prep: Done / advance current step"
+    description: >
+      Advance the active session once by promoting the supplied next step. The
+      script is single-run and never runs from startup/reload.
+    mode: single
+    sequence:
+      - variables:
+          meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ states('sensor.meal_prep_recipe_reference') }}"
+          current_step: "{{ states('sensor.meal_prep_current_step') }}"
+          next_step: "{{ states('sensor.meal_prep_next_step') }}"
+          queued_step: "{{ states('input_text.meal_prep_remaining_steps').split('\\u001f')[0] if states('input_text.meal_prep_remaining_steps') not in ['', 'unknown', 'unavailable'] else '' }}"
+          following_steps: "{{ states('input_text.meal_prep_remaining_steps').split('\\u001f')[1:] | join('\\u001f') if states('input_text.meal_prep_remaining_steps') not in ['', 'unknown', 'unavailable'] else '' }}"
+      - condition: template
+        value_template: >
+          {{ states('sensor.meal_prep_source_status') == 'ready' and
+             is_state('input_boolean.meal_prep_active', 'on') and
+             states('input_text.meal_prep_session_key') == meal_prep_identity and
+             current_step not in ['none', 'unavailable', 'unknown'] and
+             next_step not in ['none', 'unavailable', 'unknown'] }}
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_current_step
+        data:
+          value: "{{ next_step }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_next_step
+        data:
+          value: "{{ queued_step }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_remaining_steps
+        data:
+          value: "{{ following_steps }}"
+
+  meal_prep_skip_current_step:
+    alias: "Kitchen Prep: Skip current step"
+    description: >
+      Record a deliberate skip, then advance without marking the meal complete.
+      A bounded source queue can supply later steps; no step is fabricated when
+      the current/next/queue source seams have no valid value.
+    mode: single
+    sequence:
+      - variables:
+          meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ states('sensor.meal_prep_recipe_reference') }}"
+          current_step: "{{ states('sensor.meal_prep_current_step') }}"
+          next_step: "{{ states('sensor.meal_prep_next_step') }}"
+          queued_step: "{{ states('input_text.meal_prep_remaining_steps').split('\\u001f')[0] if states('input_text.meal_prep_remaining_steps') not in ['', 'unknown', 'unavailable'] else '' }}"
+          following_steps: "{{ states('input_text.meal_prep_remaining_steps').split('\\u001f')[1:] | join('\\u001f') if states('input_text.meal_prep_remaining_steps') not in ['', 'unknown', 'unavailable'] else '' }}"
+      - condition: template
+        value_template: >
+          {{ states('sensor.meal_prep_source_status') == 'ready' and
+             is_state('input_boolean.meal_prep_active', 'on') and
+             states('input_text.meal_prep_session_key') == meal_prep_identity and
+             current_step not in ['none', 'unavailable', 'unknown'] }}
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_last_skipped_step
+        data:
+          value: "{{ current_step }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_current_step
+        data:
+          value: "{{ '' if next_step in ['none', 'unavailable', 'unknown'] else next_step }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_next_step
+        data:
+          value: "{{ queued_step }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_remaining_steps
+        data:
+          value: "{{ following_steps }}"
+
+  meal_prep_snooze_preparation:
+    alias: "Kitchen Prep: Snooze preparation"
+    description: "Pause the active session for a bounded 5-to-60-minute interval."
+    mode: single
+    fields:
+      snooze_minutes:
+        name: "Snooze minutes"
+        default: 30
+        selector:
+          number:
+            min: 5
+            max: 60
+            step: 5
+            unit_of_measurement: min
+    sequence:
+      - variables:
+          meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ states('sensor.meal_prep_recipe_reference') }}"
+          bounded_snooze_minutes: "{{ [5, [snooze_minutes | default(30, true) | int(30), 60] | min] | max }}"
+      - condition: template
+        value_template: >
+          {{ states('sensor.meal_prep_source_status') == 'ready' and
+             is_state('input_boolean.meal_prep_active', 'on') and
+             states('input_text.meal_prep_session_key') == meal_prep_identity }}
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_snooze_until
+        data:
+          value: "{{ (now() + timedelta(minutes=bounded_snooze_minutes | int)).isoformat() }}"
+
+  meal_prep_finish_for_today:
+    alias: "Kitchen Prep: Finish for today"
+    description: "Suppress the matching current meal/date without changing source data."
+    mode: single
+    sequence:
+      - variables:
+          meal_prep_identity: "{{ now().date().isoformat() ~ '|' ~ states('sensor.meal_prep_recipe_reference') }}"
+      - condition: template
+        value_template: >
+          {{ states('sensor.meal_prep_source_status') == 'ready' and
+             states('input_text.meal_prep_session_key') == meal_prep_identity }}
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.meal_prep_active
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.meal_prep_done
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meal_prep_snooze_until
+        data:
+          value: ""
+
+  meal_prep_show_dashboard:
+    alias: "Kitchen Prep: Show dashboard"
+    description: "Show the YAML-managed Kitchen Prep view on the kitchen display."
+    mode: single
+    sequence:
+      - action: cast.show_lovelace_view
+        target:
+          entity_id: media_player.kitchen_display
+        data:
+          dashboard_path: kitchen-prep
+          view_path: kitchen-prep
+
+  meal_prep_clear_session:
+    alias: "Kitchen Prep: Hide / clear preparation session"
+    description: >
+      Clear only local preparation state. It intentionally leaves the fresh
+      Mealie source snapshot intact for the dashboard's next planned session.
+    mode: single
+    sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.meal_prep_active
+            - input_boolean.meal_prep_done
+      - action: input_text.set_value
+        target:
+          entity_id:
+            - input_text.meal_prep_snooze_until
+            - input_text.meal_prep_session_key
+            - input_text.meal_prep_last_skipped_step
+        data:
+          value: ""
 
 template:
   - sensor:
@@ -283,17 +502,21 @@ template:
         state: >
           {% set source_status = states('sensor.meal_prep_source_status') %}
           {% set meal = states('sensor.meal_prep_meal') %}
+          {% set recipe_reference = states('sensor.meal_prep_recipe_reference') %}
+          {% set session_key = states('input_text.meal_prep_session_key') %}
+          {% set current_identity = now().date().isoformat() ~ '|' ~ recipe_reference %}
+          {% set session_matches_current_meal = recipe_reference not in ['none', 'unavailable', 'unknown'] and session_key == current_identity %}
           {% set snooze_until = as_timestamp(states('input_text.meal_prep_snooze_until'), default=none) %}
           {% set target_time = as_timestamp(states('input_datetime.meal_prep_target_time'), default=none) %}
           {% if source_status != 'ready' or meal == 'unavailable' %}
             unavailable
           {% elif meal == 'none' %}
             idle
-          {% elif is_state('input_boolean.meal_prep_done', 'on') %}
+          {% elif session_matches_current_meal and is_state('input_boolean.meal_prep_done', 'on') %}
             complete
-          {% elif snooze_until is not none and snooze_until > now().timestamp() %}
+          {% elif session_matches_current_meal and snooze_until is not none and snooze_until > now().timestamp() %}
             paused
-          {% elif is_state('input_boolean.meal_prep_active', 'on') %}
+          {% elif session_matches_current_meal and is_state('input_boolean.meal_prep_active', 'on') %}
             active
           {% elif target_time is not none and now().timestamp() >= target_time %}
             prep_due
@@ -305,7 +528,8 @@ template:
           source_reason: "{{ state_attr('sensor.meal_prep_source_status', 'reason') }}"
           target_time: "{{ states('sensor.meal_prep_target_time') }}"
           snooze_until: "{{ states('input_text.meal_prep_snooze_until') }}"
+          session_key: "{{ states('input_text.meal_prep_session_key') }}"
           semantics: >
             idle=no valid meal; planned=fresh valid meal before target; prep_due=fresh valid meal at/after target;
-            active=manual active flag; paused=future snooze; complete=manual done flag;
+            active=matching manual active flag; paused=matching future snooze; complete=matching manual done flag;
             unavailable=source is missing, invalid, error, or stale

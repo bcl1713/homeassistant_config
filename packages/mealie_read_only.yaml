@@ -122,6 +122,7 @@ automation:
                     - input_text.meal_prep_recipe_url
                     - input_text.meal_prep_current_step
                     - input_text.meal_prep_next_step
+                    - input_text.meal_prep_remaining_steps
                     - input_text.meal_prep_recipe_summary
                     - input_text.meal_prep_ingredient_context
                 data:
@@ -165,6 +166,14 @@ automation:
               - variables:
                   mealie_recipe_status: "{{ mealie_recipe_response.status | default(0, true) | int(0) }}"
                   mealie_recipe: "{{ mealie_recipe_response.content | default({}, true) }}"
+                  # #210 owns manual advancement. Keep an active matching
+                  # session's current/next instruction values stable across a
+                  # scheduled source refresh; a new recipe/date still seeds a
+                  # fresh pair below.
+                  mealie_session_key: "{{ now().date().isoformat() ~ '|' ~ mealie_recipe_id }}"
+                  mealie_preserve_manual_progress: >
+                    {{ is_state('input_boolean.meal_prep_active', 'on') and
+                       states('input_text.meal_prep_session_key') == mealie_session_key }}
               - choose:
                   - conditions: "{{ mealie_recipe_status != 200 }}"
                     sequence:
@@ -224,22 +233,40 @@ automation:
                       entity_id: input_text.meal_prep_recipe_url
                     data:
                       value: ""
-                  - action: input_text.set_value
-                    target:
-                      entity_id: input_text.meal_prep_current_step
-                    data:
-                      value: >
-                        {% set steps = mealie_recipe.recipeInstructions %}
-                        {% set first = steps[0] if steps | count > 0 else {} %}
-                        {{ (first.text if first is mapping else first if first is string else '') | string | trim | truncate(255, true, '') }}
-                  - action: input_text.set_value
-                    target:
-                      entity_id: input_text.meal_prep_next_step
-                    data:
-                      value: >
-                        {% set steps = mealie_recipe.recipeInstructions %}
-                        {% set second = steps[1] if steps | count > 1 else {} %}
-                        {{ (second.text if second is mapping else second if second is string else '') | string | trim | truncate(255, true, '') }}
+                  - choose:
+                      - conditions: "{{ not mealie_preserve_manual_progress }}"
+                        sequence:
+                          - action: input_text.set_value
+                            target:
+                              entity_id: input_text.meal_prep_current_step
+                            data:
+                              value: >
+                                {% set steps = mealie_recipe.recipeInstructions %}
+                                {% set first = steps[0] if steps | count > 0 else {} %}
+                                {{ (first.text if first is mapping else first if first is string else '') | string | trim | truncate(255, true, '') }}
+                          - action: input_text.set_value
+                            target:
+                              entity_id: input_text.meal_prep_next_step
+                            data:
+                              value: >
+                                {% set steps = mealie_recipe.recipeInstructions %}
+                                {% set second = steps[1] if steps | count > 1 else {} %}
+                                {{ (second.text if second is mapping else second if second is string else '') | string | trim | truncate(255, true, '') }}
+                          - action: input_text.set_value
+                            target:
+                              entity_id: input_text.meal_prep_remaining_steps
+                            data:
+                              value: >
+                                {% set values = namespace(parts=[], length=0) %}
+                                {% for source_step in mealie_recipe.recipeInstructions[2:] %}
+                                  {% set step = (source_step.text if source_step is mapping else source_step if source_step is string else '') | string | trim | truncate(255, true, '') %}
+                                  {% set separator_length = 1 if values.parts | count > 0 else 0 %}
+                                  {% if step != '' and values.length + step | length + separator_length <= 255 %}
+                                    {% set values.parts = values.parts + [step] %}
+                                    {% set values.length = values.length + step | length + separator_length %}
+                                  {% endif %}
+                                {% endfor %}
+                                {{ values.parts | join('\u001f') }}
                   - action: input_text.set_value
                     target:
                       entity_id: input_text.meal_prep_recipe_summary

@@ -56,7 +56,7 @@ def test_kitchen_prep_dashboard_is_yaml_managed_and_hidden():
     }
 
 
-def test_kitchen_prep_dashboard_presents_only_real_read_only_state_seams():
+def test_kitchen_prep_dashboard_presents_only_real_state_and_control_seams():
     dashboard = load_dashboard()
     cards = dashboard["views"][0]["cards"]
     refs = set(entity_refs(cards))
@@ -83,8 +83,16 @@ def test_kitchen_prep_dashboard_presents_only_real_read_only_state_seams():
 
     assert "media_player.kitchen_display" in dashboard_text
     assert "media_player.display_kitchen" not in dashboard_text
-    assert "service:" not in dashboard_text
-    assert "script." not in dashboard_text
+    for script_id in (
+        "script.meal_prep_start_preparation",
+        "script.meal_prep_complete_current_step",
+        "script.meal_prep_skip_current_step",
+        "script.meal_prep_snooze_preparation",
+        "script.meal_prep_finish_for_today",
+        "script.meal_prep_show_dashboard",
+        "script.meal_prep_clear_session",
+    ):
+        assert script_id in dashboard_text
 
 
 def test_kitchen_prep_dashboard_is_concise_and_fail_closed_when_source_is_unavailable():
@@ -119,10 +127,31 @@ def test_kitchen_prep_dashboard_is_concise_and_fail_closed_when_source_is_unavai
     assert "full recipe" not in DASHBOARD.read_text().lower()
 
 
-def test_kitchen_prep_dashboard_defers_controls_to_the_owner_card_without_dangling_services():
-    dashboard_text = DASHBOARD.read_text()
+def test_kitchen_prep_dashboard_buttons_call_only_real_manual_script_services():
+    cards = load_dashboard()["views"][0]["cards"]
+    control_card = next(card for card in cards if card.get("title") == "Preparation controls")
+    buttons = control_card["cards"]
 
-    assert "#210 owns the stable Start, Done, Skip, Snooze, and Finish script" in dashboard_text
-    assert "Do not add buttons until that card supplies real services." in dashboard_text
-    assert "type: button" not in dashboard_text
-    assert "tap_action:" not in dashboard_text
+    assert control_card["type"] == "grid"
+    assert [button["name"] for button in buttons] == [
+        "Start",
+        "Done",
+        "Skip",
+        "Snooze 30 min",
+        "Finish today",
+        "Show display",
+        "Clear session",
+    ]
+    assert [button["tap_action"] for button in buttons] == [
+        {"action": "perform-action", "perform_action": "script.meal_prep_start_preparation"},
+        {"action": "perform-action", "perform_action": "script.meal_prep_complete_current_step"},
+        {"action": "perform-action", "perform_action": "script.meal_prep_skip_current_step"},
+        {
+            "action": "perform-action",
+            "perform_action": "script.meal_prep_snooze_preparation",
+            "data": {"snooze_minutes": 30},
+        },
+        {"action": "perform-action", "perform_action": "script.meal_prep_finish_for_today"},
+        {"action": "perform-action", "perform_action": "script.meal_prep_show_dashboard"},
+        {"action": "perform-action", "perform_action": "script.meal_prep_clear_session"},
+    ]
