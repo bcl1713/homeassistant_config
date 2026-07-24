@@ -157,6 +157,10 @@ Assistant `secrets.yaml` (never commit that file):
 - `mealie_recipe_url`: the full recipe URL containing literal
   `{{ mealie_recipe_id }}`.
 
+The adapter passes those values as explicit `rest_command` service data when it
+calls the range and recipe endpoints. Do not rely on automation-local variables
+being implicitly available while a secret-backed `rest_command` URL is rendered.
+
 The adapter accepts the verified camelCase fields only (`entryType`, `recipeId`,
 `prepTime`, `cookTime`, `totalTime`, `recipeIngredient`, and
 `recipeInstructions`). It stores current/next instruction strings plus a
