@@ -107,7 +107,7 @@ def automatic_start_is_eligible(
     )
 
 
-def test_automatic_start_has_bounded_triggers_and_reuses_the_display_script():
+def test_automatic_start_has_bounded_triggers_and_directly_casts_the_registered_view():
     automatic = automation_by_id(load_yaml(PACKAGE), "meal_prep_automatic_start")
     text = PACKAGE.read_text()
 
@@ -122,9 +122,17 @@ def test_automatic_start_has_bounded_triggers_and_reuses_the_display_script():
         "input_text.set_value",
         "input_text.set_value",
         "input_boolean.turn_on",
-        "script.meal_prep_show_dashboard",
+        "cast.show_lovelace_view",
     ]
-    assert automatic["action"][-1] == {"action": "script.meal_prep_show_dashboard"}
+    assert automatic["action"][-1] == {
+        "action": "cast.show_lovelace_view",
+        "target": {"entity_id": "media_player.kitchen_display"},
+        "data": {
+            "dashboard_path": "kitchen-prep",
+            "view_path": "kitchen-prep",
+        },
+    }
+    assert "script.meal_prep_show_dashboard" not in str(automatic["action"])
     assert "homeassistant.turn_off" not in text
 
 
