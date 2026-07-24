@@ -119,7 +119,7 @@ refresh, notification, or inferred cooking transition.
 | `script.meal_prep_snooze_preparation` | Requires an active matching fresh session and writes an ISO deadline bounded to 5–60 minutes (dashboard default: 30). |
 | `script.meal_prep_finish_for_today` | Stops the active matching session, clears its snooze, and sets its restored done flag; a different date/recipe identity does not inherit completion. |
 | `script.meal_prep_mark_made_in_mealie` | Separate, disabled-by-default Mealie write. It requires the dashboard's confirmation and a fresh UUID-linked recipe, then PATCHes only that recipe's `last-made` timestamp. It never runs from Start or Finish today; local identity/timestamp state blocks duplicates and makes unknown-outcome retries safe. |
-| `script.meal_prep_show_dashboard` | Statically configures `cast.show_lovelace_view` for `media_player.kitchen_display` and the registered `kitchen-prep` view; repository validation does not call it. |
+| `script.meal_prep_show_dashboard` | When the kitchen display is off, wakes it and waits briefly for the receiver before calling `cast.show_lovelace_view` for the registered `kitchen-prep` view; repository validation does not call it. |
 | `script.meal_prep_clear_session` | Clears only local session flags/audit state, never the Mealie snapshot. |
 
 All scripts use `mode: single`, have no triggers, and fail closed on missing,
@@ -145,10 +145,11 @@ in no automatic start rather than guessing.
 
 The restored `input_text.meal_prep_automatic_handled_key` is set for both manual
 and automatic starts. It prevents refreshes, reloads, and restarts from repeating
-the same meal's Cast. The only automatic device action is
-`cast.show_lovelace_view` to `media_player.kitchen_display` with
-`dashboard_path` and `view_path` both `kitchen-prep`. It adds no lights,
-announcements, occupancy inference, or Mealie writes. Cleanup clears only local
+the same meal's Cast. The only automatic device action is the shared display script, which conditionally
+wakes `media_player.kitchen_display`, waits for its receiver to settle, then
+calls `cast.show_lovelace_view` with `dashboard_path` and `view_path` both
+`kitchen-prep`. It adds no lights, announcements, occupancy inference, or Mealie
+writes. Cleanup clears only local
 Kitchen Prep state for stale/invalid source, meal rollover, or everyone away
 outside guest mode; `presence_everyone_left` remains the authoritative
 display-off automation.
