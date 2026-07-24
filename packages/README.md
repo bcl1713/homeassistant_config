@@ -81,6 +81,9 @@ inventing meal or instruction content.
 | `input_text.meal_prep_remaining_steps` | Meal Prep Remaining Steps | Bounded escaped-delimiter source queue after the current/next steps, used only for deterministic manual advancement. | Restored; no `initial` is set. |
 | `input_text.meal_prep_recipe_prep_time`, `input_text.meal_prep_recipe_cook_time`, `input_text.meal_prep_recipe_total_time` | Meal Prep Recipe Timing Inputs | Raw Mealie `prepTime`, `cookTime`, and `totalTime` durations for automatic lead-time calculation. | Restored; no `initial` is set. |
 | `input_text.meal_prep_automatic_handled_key` | Meal Prep Automatic Handled Key | Date + recipe identity manually or automatically claimed to prevent repeat automatic starts/Casts. | Restored; no `initial` is set. |
+| `input_boolean.meal_prep_mealie_writeback_enabled` | Enable Mealie made-this write-back | Explicit opt-in for the separate confirmed Mealie last-made PATCH. Defaults off when no state is restored. | Restored; off without a prior state. |
+| `input_text.meal_prep_mealie_marked_key`, `input_text.meal_prep_mealie_write_pending_key`, `input_text.meal_prep_mealie_write_pending_timestamp` | Mealie write identity | Local stable identity and timestamp used to prevent duplicates and make an unknown-outcome retry send the same PATCH body. | Restored; no `initial` is set. |
+| `input_text.meal_prep_mealie_write_status`, `input_text.meal_prep_mealie_write_reason` | Mealie write-back result | Bounded local success/failure result only; never stores a Mealie payload, URL, or credential. | Restored; no `initial` is set. |
 | `input_text.meal_prep_source_status` | Meal Prep Source Status Input | Future normalizer's raw status seam. | Restored; no `initial` is set. |
 | `input_text.meal_prep_meal_title`, `input_text.meal_prep_meal_type` | Meal Prep Meal Title/Type Input | Raw meal-identity seams. | Restored; no `initial` is set. |
 | `input_text.meal_prep_recipe_reference`, `input_text.meal_prep_recipe_url` | Meal Prep Recipe Reference/URL Input | Raw recipe seams. | Restored; no `initial` is set. |
@@ -115,6 +118,7 @@ refresh, notification, or inferred cooking transition.
 | `script.meal_prep_skip_current_step` | Records the skipped current step, promotes a valid next step when one exists, and never sets the completion flag or fabricates a later step. |
 | `script.meal_prep_snooze_preparation` | Requires an active matching fresh session and writes an ISO deadline bounded to 5–60 minutes (dashboard default: 30). |
 | `script.meal_prep_finish_for_today` | Stops the active matching session, clears its snooze, and sets its restored done flag; a different date/recipe identity does not inherit completion. |
+| `script.meal_prep_mark_made_in_mealie` | Separate, disabled-by-default Mealie write. It requires the dashboard's confirmation and a fresh UUID-linked recipe, then PATCHes only that recipe's `last-made` timestamp. It never runs from Start or Finish today; local identity/timestamp state blocks duplicates and makes unknown-outcome retries safe. |
 | `script.meal_prep_show_dashboard` | Statically configures `cast.show_lovelace_view` for `media_player.kitchen_display` and the registered `kitchen-prep` view; repository validation does not call it. |
 | `script.meal_prep_clear_session` | Clears only local session flags/audit state, never the Mealie snapshot. |
 
@@ -155,7 +159,38 @@ display-off automation.
 one bounded today-to-seven-day range only when today is empty, and one linked
 recipe request for the selected entry. It refreshes at Home Assistant startup
 and every 15 minutes (a 15-minute cadence); the single automation mode prevents
-overlapping API calls. No meal, recipe, shopping, or food write endpoint is configured.
+overlapping API calls. No meal, recipe, shopping, or food write endpoint is configured by the
+refresh automation.
+
+### Optional confirmed Mealie made-this write-back
+
+The separate `script.meal_prep_mark_made_in_mealie` is the only Kitchen Prep
+write path. It is disabled by default through
+`input_boolean.meal_prep_mealie_writeback_enabled`; `Finish today`, Start, the
+15-minute refresh, and automatic orchestration remain local/read-only. When an
+operator enables the toggle, the dashboard's **Mark made in Mealie** button
+still presents a confirmation dialog and sends `confirm: true` to the script.
+
+The verified Mealie `mealie-next` contract (upstream commit
+`23603cc218f04d8cebfbf99d19d9877c69cb95dd`, 2026-07-24) is
+`PATCH /api/recipes/{slug}/last-made` with JSON `{"timestamp":"<ISO-8601>"}`.
+The Kitchen Prep adapter accepts only a fresh UUID-linked recipe and verifies a
+200 JSON recipe response with the same ID before recording local success. This
+changes only Mealie's linked recipe **Last made** timestamp; it does not create
+a meal plan, timeline event, shopping entry, or any Home Assistant completion
+state.
+
+Before enabling it, add `mealie_mark_made_url` to `secrets.yaml` as the full
+`/api/recipes/{{ mealie_recipe_id }}/last-made` URL. Do not commit or display
+that URL, its authorization header, request payload, or response. The script
+persists the date+recipe identity and a single ISO timestamp before the PATCH:
+a successful identity prevents duplicate writes, while a timeout or transport
+failure leaves the identity unmarked so a retry sends the exact same timestamp.
+Unauthorized, duplicate, malformed, unavailable, timeout, transport, and
+unsupported-endpoint responses fail closed and store only a bounded local
+status/reason. To disable the feature immediately, turn off
+`input_boolean.meal_prep_mealie_writeback_enabled`; no restart or reload is
+needed.
 
 Before deploying, the operator must add these values to the existing Home
 Assistant `secrets.yaml` (never commit that file):
@@ -166,6 +201,8 @@ Assistant `secrets.yaml` (never commit that file):
   `{{ mealie_range_start }}` and `{{ mealie_range_end }}` placeholders.
 - `mealie_recipe_url`: the full recipe URL containing literal
   `{{ mealie_recipe_id }}`.
+- `mealie_mark_made_url`: only when enabling optional write-back, the full
+  `/api/recipes/{{ mealie_recipe_id }}/last-made` URL.
 
 The adapter passes those values as explicit `rest_command` service data when it
 calls the range and recipe endpoints. Do not rely on automation-local variables

@@ -151,6 +151,16 @@ views:
               action: perform-action
               perform_action: script.meal_prep_finish_for_today
           - type: button
+            name: "Mark made in Mealie"
+            icon: mdi:cloud-check-outline
+            tap_action:
+              action: perform-action
+              perform_action: script.meal_prep_mark_made_in_mealie
+              data:
+                confirm: true
+              confirmation:
+                text: "Set this linked recipe's Last made timestamp in Mealie? Finish today stays local-only."
+          - type: button
             name: "Show display"
             icon: mdi:cast-connected
             tap_action:
@@ -187,6 +197,12 @@ views:
             name: "Target-time source"
           - entity: input_select.meal_prep_automatic_lead_time_policy
             name: "Dinner-ready policy"
+          - entity: input_boolean.meal_prep_mealie_writeback_enabled
+            name: "Enable Mealie made-this write-back"
+          - entity: input_text.meal_prep_mealie_write_status
+            name: "Mealie write-back status"
+          - entity: input_text.meal_prep_mealie_write_reason
+            name: "Mealie write-back result"
           - entity: sensor.meal_prep_automatic_start_time
             name: "Automatic start"
           - type: attribute

@@ -212,7 +212,7 @@ def test_cleanup_covers_restart_rollover_away_and_stale_without_display_or_extra
     assert "kitchen occupancy" not in text.lower()
 
 
-def test_mealie_prep_time_is_bounded_source_data_and_no_write_endpoint_was_added():
+def test_mealie_prep_time_is_bounded_source_data_and_refresh_stays_get_only():
     mealie = load_yaml(MEALIE)
     helpers = load_yaml(STATE_MODEL)["input_text"]
     text = MEALIE.read_text()
@@ -220,6 +220,12 @@ def test_mealie_prep_time_is_bounded_source_data_and_no_write_endpoint_was_added
     assert helpers["meal_prep_recipe_prep_time"]["max"] == 40
     assert "input_text.meal_prep_recipe_prep_time" in text
     assert "mealie_recipe.prepTime" in text
-    assert all(command["method"] == "GET" for command in mealie["rest_command"].values())
-    for forbidden in ("POST", "PUT", "PATCH", "DELETE"):
+    assert all(
+        command["method"] == "GET"
+        for name, command in mealie["rest_command"].items()
+        if name != "mealie_mark_made"
+    )
+    assert mealie["rest_command"]["mealie_mark_made"]["method"] == "PATCH"
+    assert "rest_command.mealie_mark_made" not in str(mealie["automation"])
+    for forbidden in ("POST", "PUT", "DELETE"):
         assert forbidden not in text

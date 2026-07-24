@@ -85,6 +85,7 @@ def test_all_required_manual_control_scripts_are_stable_and_non_automatic():
         "meal_prep_skip_current_step",
         "meal_prep_snooze_preparation",
         "meal_prep_finish_for_today",
+        "meal_prep_mark_made_in_mealie",
         "meal_prep_show_dashboard",
         "meal_prep_clear_session",
     }
