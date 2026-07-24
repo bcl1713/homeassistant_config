@@ -92,11 +92,22 @@ input_text:
     icon: mdi:timer-outline
     max: 160
 
-  # The read-only adapter stores Mealie's ISO-8601 `prepTime` here. Automatic
-  # orchestration is the only consumer and fails closed for unsupported values.
+  # The read-only adapter stores Mealie's verified ISO-8601 timing fields here.
+  # Automatic orchestration consumes only the selected, validated lead-time
+  # result and fails closed for unsupported values.
   meal_prep_recipe_prep_time:
     name: "Meal Prep Recipe Prep Time Input"
     icon: mdi:timer-sand
+    max: 40
+
+  meal_prep_recipe_cook_time:
+    name: "Meal Prep Recipe Cook Time Input"
+    icon: mdi:stove
+    max: 40
+
+  meal_prep_recipe_total_time:
+    name: "Meal Prep Recipe Total Time Input"
+    icon: mdi:timer-check-outline
     max: 40
 
   meal_prep_ingredient_context:

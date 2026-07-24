@@ -73,13 +73,13 @@ inventing meal or instruction content.
 |---|---|---|---|
 | `input_boolean.meal_prep_active` | Meal Prep Active | Manual active-session flag for the matching meal/date identity. | Restored; no `initial` is set. |
 | `input_boolean.meal_prep_done` | Meal Prep Complete | Manual finish-for-today flag for the matching meal/date identity. | Restored; no `initial` is set. |
-| `input_datetime.meal_prep_target_time` | Meal Prep Target Time | Local planned/prep target-time seam. | Restored; no `initial` is set. |
+| `input_datetime.meal_prep_target_time` | Meal Prep Target Time | Local dinner-ready target-time seam. | Restored; no `initial` is set. |
 | `input_datetime.meal_prep_source_updated_at` | Meal Prep Source Updated At | Snapshot timestamp for freshness. | Restored; no `initial` is set. |
 | `input_text.meal_prep_snooze_until` | Meal Prep Snooze Until | ISO timestamp seam for a paused session. | Restored; no `initial` is set. |
 | `input_text.meal_prep_session_key` | Meal Prep Session Key | Date + recipe-reference identity that scopes restored active/done/snooze state. | Restored; no `initial` is set. |
 | `input_text.meal_prep_last_skipped_step` | Meal Prep Last Skipped Step | Bounded record of the most recent deliberate skip; it never marks the meal complete. | Restored; no `initial` is set. |
 | `input_text.meal_prep_remaining_steps` | Meal Prep Remaining Steps | Bounded escaped-delimiter source queue after the current/next steps, used only for deterministic manual advancement. | Restored; no `initial` is set. |
-| `input_text.meal_prep_recipe_prep_time` | Meal Prep Recipe Prep Time Input | Raw Mealie `prepTime` duration for automatic-window calculation. | Restored; no `initial` is set. |
+| `input_text.meal_prep_recipe_prep_time`, `input_text.meal_prep_recipe_cook_time`, `input_text.meal_prep_recipe_total_time` | Meal Prep Recipe Timing Inputs | Raw Mealie `prepTime`, `cookTime`, and `totalTime` durations for automatic lead-time calculation. | Restored; no `initial` is set. |
 | `input_text.meal_prep_automatic_handled_key` | Meal Prep Automatic Handled Key | Date + recipe identity manually or automatically claimed to prevent repeat automatic starts/Casts. | Restored; no `initial` is set. |
 | `input_text.meal_prep_source_status` | Meal Prep Source Status Input | Future normalizer's raw status seam. | Restored; no `initial` is set. |
 | `input_text.meal_prep_meal_title`, `input_text.meal_prep_meal_type` | Meal Prep Meal Title/Type Input | Raw meal-identity seams. | Restored; no `initial` is set. |
@@ -88,7 +88,9 @@ inventing meal or instruction content.
 | `sensor.meal_prep_source_status` | Meal Prep Source Status | Normalized freshness/status and visible reason. | Derived at runtime. |
 | `sensor.meal_prep_meal`, `sensor.meal_prep_meal_type` | Meal Prep Meal/Meal Type | Safe normalized meal identity. | Derived at runtime. |
 | `sensor.meal_prep_recipe_reference`, `sensor.meal_prep_recipe_url` | Meal Prep Recipe Reference/URL | Safe normalized recipe seams. | Derived at runtime. |
-| `sensor.meal_prep_target_time` | Meal Prep Target Time | Safe local target-time presentation. | Derived at runtime. |
+| `sensor.meal_prep_target_time` | Meal Prep Target Time | Safe local dinner-ready target-time presentation. | Derived at runtime. |
+| `input_select.meal_prep_automatic_lead_time_policy` | Meal Prep Automatic Lead-Time Policy | Configurable dinner-ready timing semantic. | Defaults to `total_time` by first option; selection is restored. |
+| `sensor.meal_prep_automatic_start_time` | Meal Prep Automatic Start Time | Safe calculated start from target minus selected lead time. | Derived at runtime. |
 | `sensor.meal_prep_current_step`, `sensor.meal_prep_next_step` | Meal Prep Current/Next Step | Safe normalized instruction seams. | Derived at runtime. |
 | `sensor.meal_prep_session_state` | Meal Prep Session State | `idle`, `planned`, `prep_due`, `active`, `paused`, `complete`, or `unavailable`. | Derived at runtime. |
 
@@ -125,10 +127,17 @@ bounded, delimiter-safe queue; controls never invent steps beyond that source da
 ### Kitchen Prep automatic orchestration
 
 `meal_prep_orchestration.yaml` starts only for a fresh, valid meal whose target
-timestamp is today, in the half-open prep window `[target - prepTime, target)`,
-with `zone.home` above zero and guest mode off. Mealie `prepTime` must be a
-positive ISO-8601 `PT#H#M` duration; missing, zero, or unsupported duration and
-missing/invalid target time deliberately result in no automatic start.
+timestamp is today, in the half-open `[automatic start, target)` window, with
+`zone.home` above zero and guest mode off. The dinner-ready policy is configured
+by `input_select.meal_prep_automatic_lead_time_policy`: `total_time` (the
+default) treats the target as ready-to-serve and uses valid Mealie `totalTime`;
+`prep_plus_cook` sums valid `prepTime` and `cookTime`; and `prep_only` uses valid
+`prepTime` alone when the target means cooking should begin. `total_time` falls
+back only to valid positive prep-plus-cook when `totalTime` is missing or invalid;
+it never adds total to either component, so it cannot double-count. The only
+accepted forms are positive ISO-8601 `PT#H#M` values. Zero, negative, malformed,
+partial, date/day, second, fractional, and otherwise unsupported values result
+in no automatic start rather than guessing.
 
 The restored `input_text.meal_prep_automatic_handled_key` is set for both manual
 and automatic starts. It prevents refreshes, reloads, and restarts from repeating

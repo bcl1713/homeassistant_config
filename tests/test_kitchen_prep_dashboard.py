@@ -65,6 +65,8 @@ def test_kitchen_prep_dashboard_presents_only_real_state_and_control_seams():
     assert dashboard["views"][0]["path"] == "kitchen-prep"
     assert dashboard["views"][0]["badges"] == []
     assert refs == {
+        "input_select.meal_prep_automatic_lead_time_policy",
+        "sensor.meal_prep_automatic_start_time",
         "sensor.meal_prep_source_status",
         "sensor.meal_prep_session_state",
         "sensor.meal_prep_target_time",
@@ -115,6 +117,9 @@ def test_kitchen_prep_dashboard_is_concise_and_fail_closed_when_source_is_unavai
     assert "states('sensor.meal_prep_meal')" in status
     assert "states('sensor.meal_prep_meal_type')" in status
     assert "states('sensor.meal_prep_target_time')" in status
+    assert "states('input_select.meal_prep_automatic_lead_time_policy')" in status
+    assert "states('sensor.meal_prep_automatic_start_time')" in status
+    assert "duration_source" in status
     assert "state_attr('sensor.meal_prep_source_status', 'reason')" in status
 
     assert "## {{ states('sensor.meal_prep_current_step') }}" in current_step
