@@ -521,13 +521,20 @@ template:
         icon: mdi:calendar-clock
         state: >
           {% set value = states('input_datetime.meal_prep_target_time') %}
-          {% if value in ['unknown', 'unavailable', '', none] %}
+          {% set source = states('input_text.meal_prep_target_time_source') | lower | trim %}
+          {% if source not in ['mealie', 'override', 'default'] %}
+            none
+          {% elif value in ['unknown', 'unavailable', '', none] %}
             none
           {% elif as_timestamp(value, default=none) is none %}
             unavailable
           {% else %}
             {{ value }}
           {% endif %}
+        attributes:
+          source: >
+            {% set source = states('input_text.meal_prep_target_time_source') | lower | trim %}
+            {{ source if source in ['mealie', 'override', 'default'] else 'none' }}
 
       - name: "Meal Prep Current Step"
         unique_id: meal_prep_current_step
@@ -590,6 +597,7 @@ template:
           source_status: "{{ states('sensor.meal_prep_source_status') }}"
           source_reason: "{{ state_attr('sensor.meal_prep_source_status', 'reason') }}"
           target_time: "{{ states('sensor.meal_prep_target_time') }}"
+          target_time_source: "{{ state_attr('sensor.meal_prep_target_time', 'source') }}"
           snooze_until: "{{ states('input_text.meal_prep_snooze_until') }}"
           session_key: "{{ states('input_text.meal_prep_session_key') }}"
           semantics: >

@@ -138,6 +138,8 @@ automation:
                     - input_text.meal_prep_recipe_summary
                     - input_text.meal_prep_recipe_prep_time
                     - input_text.meal_prep_ingredient_context
+                    - input_text.meal_prep_meal_date
+                    - input_text.meal_prep_source_scheduled_time
                 data:
                   value: ""
               - action: input_text.set_value
@@ -159,14 +161,29 @@ automation:
           - variables:
               mealie_entry: "{{ mealie_plan_payload[0] }}"
               mealie_recipe_id: "{{ mealie_plan_payload[0].recipeId | default('', true) | string | trim }}"
+              # Mealie's date-only entry field establishes date+recipe identity.
+              # An ISO timestamp with an explicit offset is additionally a
+              # scheduled-time candidate; a timezone-less timestamp is rejected.
+              mealie_entry_date: "{{ mealie_plan_payload[0].date | default('', true) | string | trim }}"
+              mealie_entry_timestamp: "{{ as_timestamp(mealie_plan_payload[0].date | default('', true) | string | trim, default=none) }}"
+              mealie_meal_date: >
+                {% set value = mealie_plan_payload[0].date | default('', true) | string | trim %}
+                {% if value | regex_match('^\\d{4}-\\d{2}-\\d{2}$') %}
+                  {{ value }}
+                {% elif value | regex_match('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:Z|[+-]\\d{2}:\\d{2})$') and mealie_entry_timestamp is not none %}
+                  {{ mealie_entry_timestamp | timestamp_custom('%Y-%m-%d', true) }}
+                {% endif %}
+              mealie_scheduled_time: >
+                {% set value = mealie_plan_payload[0].date | default('', true) | string | trim %}
+                {{ value if value | regex_match('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:Z|[+-]\\d{2}:\\d{2})$') else '' }}
           - choose:
-              - conditions: "{{ mealie_entry is not mapping or mealie_recipe_id == '' }}"
+              - conditions: "{{ mealie_entry is not mapping or mealie_recipe_id == '' or mealie_meal_date | trim == '' }}"
                 sequence:
                   - action: input_text.set_value
                     target:
                       entity_id: input_text.meal_prep_source_reason
                     data:
-                      value: "meal plan entry has no recipeId"
+                      value: "meal plan entry has no recipeId or valid date"
                   - action: input_text.set_value
                     target:
                       entity_id: input_text.meal_prep_source_status
@@ -245,6 +262,16 @@ automation:
                       entity_id: input_text.meal_prep_recipe_reference
                     data:
                       value: "{{ mealie_recipe_id | truncate(255, true, '') }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_meal_date
+                    data:
+                      value: "{{ mealie_meal_date | trim }}"
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.meal_prep_source_scheduled_time
+                    data:
+                      value: "{{ mealie_scheduled_time | trim }}"
                   - action: input_text.set_value
                     target:
                       entity_id: input_text.meal_prep_recipe_url

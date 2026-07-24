@@ -83,6 +83,7 @@ def ready_meal():
         "input_text.meal_prep_current_step": "Chop vegetables",
         "input_text.meal_prep_next_step": "Preheat oven",
         "input_datetime.meal_prep_target_time": "2026-07-23 19:00:00+00:00",
+        "input_text.meal_prep_target_time_source": "default",
         "input_text.meal_prep_snooze_until": "",
         "input_text.meal_prep_session_key": "2026-07-23|recipe-123",
         "input_text.meal_prep_last_skipped_step": "",
@@ -193,6 +194,12 @@ def test_ready_snapshot_exposes_normalized_meal_recipe_and_instruction_seams(rea
     assert evaluated["sensor.meal_prep_target_time"] == "2026-07-23 19:00:00+00:00"
     assert evaluated["sensor.meal_prep_current_step"] == "Chop vegetables"
     assert evaluated["sensor.meal_prep_next_step"] == "Preheat oven"
+
+
+def test_target_time_is_hidden_when_no_policy_source_resolved_it(ready_meal):
+    evaluated = evaluate(ready_meal | {"input_text.meal_prep_target_time_source": "none"})
+
+    assert evaluated["sensor.meal_prep_target_time"] == "none"
 
 
 @pytest.mark.parametrize(

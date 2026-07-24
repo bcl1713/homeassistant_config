@@ -44,6 +44,8 @@ views:
 
           **Planned / prep time:** {{ states('sensor.meal_prep_target_time') }}
 
+          **Target-time source:** {{ state_attr('sensor.meal_prep_target_time', 'source') | title }}
+
           **Preparation state:** {{ states('sensor.meal_prep_session_state') | replace('_', ' ') | title }}
 
           **Source status:** Ready
@@ -173,3 +175,7 @@ views:
             name: "Preparation state"
           - entity: sensor.meal_prep_target_time
             name: "Planned / prep time"
+          - type: attribute
+            entity: sensor.meal_prep_target_time
+            attribute: source
+            name: "Target-time source"

@@ -32,6 +32,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `known_batteries.yaml` | Template sensors that normalize known battery-powered devices into consistent names and attributes for the battery-health package. |
 | `light_groups.yaml` | Logical Home Assistant light groups for easier control by rooms or household areas. |
 | `meal_prep.yaml` | Kitchen meal-preparation state model and deterministic manual Start/Done/Skip/Snooze/Finish/display/clear script seams. It owns persistent helper seams and read-only normalized meal/status/step/session/recipe-context sensors. |
+| `meal_prep_target_policy.yaml` | Explicit Kitchen Prep target-time resolution: valid Mealie scheduled timestamp, matching local per-day/per-meal override, then household default dinner time; no usable value remains unconfigured. |
 | `mealie_read_only.yaml` | Read-only Mealie GET adapter. It refreshes a bounded today/upcoming plan and linked recipe into `meal_prep.yaml` helpers every 15 minutes. |
 | `meal_prep_orchestration.yaml` | Kitchen Prep automatic start/cleanup and one-time Cast behavior, bounded by fresh source data, today’s target/prep window, household presence, and guest mode. |
 | `notifications.yaml` | Shared notification automations that do not belong to a larger feature package, currently including bus/school-day notification handling. |
