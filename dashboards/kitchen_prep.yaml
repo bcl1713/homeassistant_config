@@ -1,8 +1,9 @@
 # dashboards/kitchen_prep.yaml
 #
 # Focused phone-first kitchen preparation view. The dashboard uses only the
-# read-only meal-prep state seams in packages/meal_prep.yaml. Manual controls
-# intentionally remain deferred to #210, which owns idempotent transitions.
+# read-only meal-prep state seams in packages/meal_prep.yaml and the #210
+# manual script seams. Controls fail closed in their scripts when the source,
+# meal, or session identity is invalid.
 #
 # The direct view URL is also the future cast target for
 # media_player.kitchen_display. Rendering it on the live display is an operator
@@ -123,5 +124,52 @@ views:
           - entity: sensor.meal_prep_target_time
             name: "Planned / prep time"
 
-      # #210 owns the stable Start, Done, Skip, Snooze, and Finish script
-      # seams. Do not add buttons until that card supplies real services.
+      - type: grid
+        title: "Preparation controls"
+        columns: 2
+        square: false
+        cards:
+          - type: button
+            name: "Start"
+            icon: mdi:play-circle-outline
+            tap_action:
+              action: perform-action
+              perform_action: script.meal_prep_start_preparation
+          - type: button
+            name: "Done"
+            icon: mdi:check-circle-outline
+            tap_action:
+              action: perform-action
+              perform_action: script.meal_prep_complete_current_step
+          - type: button
+            name: "Skip"
+            icon: mdi:skip-next-outline
+            tap_action:
+              action: perform-action
+              perform_action: script.meal_prep_skip_current_step
+          - type: button
+            name: "Snooze 30 min"
+            icon: mdi:pause-circle-outline
+            tap_action:
+              action: perform-action
+              perform_action: script.meal_prep_snooze_preparation
+              data:
+                snooze_minutes: 30
+          - type: button
+            name: "Finish today"
+            icon: mdi:flag-checkered
+            tap_action:
+              action: perform-action
+              perform_action: script.meal_prep_finish_for_today
+          - type: button
+            name: "Show display"
+            icon: mdi:cast-connected
+            tap_action:
+              action: perform-action
+              perform_action: script.meal_prep_show_dashboard
+          - type: button
+            name: "Clear session"
+            icon: mdi:close-circle-outline
+            tap_action:
+              action: perform-action
+              perform_action: script.meal_prep_clear_session

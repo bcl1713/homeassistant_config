@@ -31,7 +31,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `garage_door_monitoring.yaml` | Garage-door open-duration monitoring, reminder/escalation helpers, actionable notifications, and related scripts/templates. |
 | `known_batteries.yaml` | Template sensors that normalize known battery-powered devices into consistent names and attributes for the battery-health package. |
 | `light_groups.yaml` | Logical Home Assistant light groups for easier control by rooms or household areas. |
-| `meal_prep.yaml` | Kitchen meal-preparation state model. It owns persistent helper seams and read-only normalized meal/status/step/session/recipe-context sensors. |
+| `meal_prep.yaml` | Kitchen meal-preparation state model and deterministic manual Start/Done/Skip/Snooze/Finish/display/clear script seams. It owns persistent helper seams and read-only normalized meal/status/step/session/recipe-context sensors. |
 | `mealie_read_only.yaml` | Read-only Mealie GET adapter. It refreshes a bounded today/upcoming plan and linked recipe into `meal_prep.yaml` helpers every 15 minutes. |
 | `notifications.yaml` | Shared notification automations that do not belong to a larger feature package, currently including bus/school-day notification handling. |
 | `presence.yaml` | Presence-related behavior, including alarm-panel helpers and lighting automations tied to occupancy/time conditions. |
@@ -69,11 +69,14 @@ inventing meal or instruction content.
 
 | Entity ID | Friendly name | Purpose | Persistence decision |
 |---|---|---|---|
-| `input_boolean.meal_prep_active` | Meal Prep Active | Manual active-session flag for later controls. | Restored; no `initial` is set. |
-| `input_boolean.meal_prep_done` | Meal Prep Complete | Manual completion flag for later controls. | Restored; no `initial` is set. |
+| `input_boolean.meal_prep_active` | Meal Prep Active | Manual active-session flag for the matching meal/date identity. | Restored; no `initial` is set. |
+| `input_boolean.meal_prep_done` | Meal Prep Complete | Manual finish-for-today flag for the matching meal/date identity. | Restored; no `initial` is set. |
 | `input_datetime.meal_prep_target_time` | Meal Prep Target Time | Local planned/prep target-time seam. | Restored; no `initial` is set. |
 | `input_datetime.meal_prep_source_updated_at` | Meal Prep Source Updated At | Snapshot timestamp for freshness. | Restored; no `initial` is set. |
 | `input_text.meal_prep_snooze_until` | Meal Prep Snooze Until | ISO timestamp seam for a paused session. | Restored; no `initial` is set. |
+| `input_text.meal_prep_session_key` | Meal Prep Session Key | Date + recipe-reference identity that scopes restored active/done/snooze state. | Restored; no `initial` is set. |
+| `input_text.meal_prep_last_skipped_step` | Meal Prep Last Skipped Step | Bounded record of the most recent deliberate skip; it never marks the meal complete. | Restored; no `initial` is set. |
+| `input_text.meal_prep_remaining_steps` | Meal Prep Remaining Steps | Bounded escaped-delimiter source queue after the current/next steps, used only for deterministic manual advancement. | Restored; no `initial` is set. |
 | `input_text.meal_prep_source_status` | Meal Prep Source Status Input | Future normalizer's raw status seam. | Restored; no `initial` is set. |
 | `input_text.meal_prep_meal_title`, `input_text.meal_prep_meal_type` | Meal Prep Meal Title/Type Input | Raw meal-identity seams. | Restored; no `initial` is set. |
 | `input_text.meal_prep_recipe_reference`, `input_text.meal_prep_recipe_url` | Meal Prep Recipe Reference/URL Input | Raw recipe seams. | Restored; no `initial` is set. |
@@ -92,7 +95,28 @@ meal: the operator check is that `sensor.meal_prep_source_status` is
 snapshot and its timestamp together. A non-`ready` status, a missing or
 unparseable update time, a future-dated timestamp, or a timestamp more than
 180 minutes old fails closed. `mealie_read_only.yaml` is the only automated
-writer for source helpers; manual controls belong to later cards.
+writer for source helpers. Manual controls are script-only and perform no
+refresh, notification, or inferred cooking transition.
+
+### Kitchen Prep manual controls
+
+`meal_prep.yaml` owns these stable script service IDs:
+
+| Service | Deterministic behavior |
+|---|---|
+| `script.meal_prep_start_preparation` | Requires a fresh valid meal/current step, records a new date+recipe identity once, and activates the session. Re-running it for the same restored identity does not reset progress. |
+| `script.meal_prep_complete_current_step` | Requires an active matching fresh session and a valid supplied next step; promotes next to current once and clears next. It has no startup/reload trigger. |
+| `script.meal_prep_skip_current_step` | Records the skipped current step, promotes a valid next step when one exists, and never sets the completion flag or fabricates a later step. |
+| `script.meal_prep_snooze_preparation` | Requires an active matching fresh session and writes an ISO deadline bounded to 5–60 minutes (dashboard default: 30). |
+| `script.meal_prep_finish_for_today` | Stops the active matching session, clears its snooze, and sets its restored done flag; a different date/recipe identity does not inherit completion. |
+| `script.meal_prep_show_dashboard` | Statically configures `cast.show_lovelace_view` for `media_player.kitchen_display` and the registered `kitchen-prep` view; repository validation does not call it. |
+| `script.meal_prep_clear_session` | Clears only local session flags/audit state, never the Mealie snapshot. |
+
+All scripts use `mode: single`, have no triggers, and fail closed on missing,
+stale, malformed, or non-matching source/session state. The normalizer preserves
+current/next values during an active matching session, so its 15-minute refresh
+cannot replay an already advanced step. Later source steps are held only in a
+bounded, delimiter-safe queue; controls never invent steps beyond that source data.
 
 ### Mealie read-only wiring
 
@@ -114,9 +138,12 @@ Assistant `secrets.yaml` (never commit that file):
 
 The adapter accepts the verified camelCase fields only (`entryType`, `recipeId`,
 `prepTime`, `cookTime`, `totalTime`, `recipeIngredient`, and
-`recipeInstructions`). It stores at most two instruction strings, six concise
+`recipeInstructions`). It stores current/next instruction strings plus a
+255-character, escaped-delimiter bounded queue for later instructions, six concise
 ingredient labels / 255 characters, and a 160-character timing/servings
-summary. Empty plans become the explicit ready/no-meal state. Missing recipe
+summary. Empty plans become the explicit ready/no-meal state. During an active
+matching manual session, refresh preserves the current/next pair rather than
+overwriting manual progress. Missing recipe
 links, malformed payloads, auth errors, timeouts, and server errors fail closed.
 A prior snapshot may remain visible only for its 180-minute freshness bound and
 its source reason explicitly says it is a fresh cached snapshot after a Mealie
@@ -156,11 +183,11 @@ packages should read `sensor.protected_contact_inventory` and
 - `kitchen-prep` from `dashboards/kitchen_prep.yaml` (title: "Kitchen Prep", hidden from the sidebar)
 
 The Kitchen Prep dashboard presents only normalized, fresh state from
-`meal_prep.yaml`. It intentionally defers prep/cook metadata, servings, and
-concise ingredient context to the read-only Mealie normalizer (#209), and
-Start/Done/Skip/Snooze/Finish controls to the idempotent scripts in #210.
-Until those owner cards land, the dashboard has no action buttons or dangling
-service references. After deployment, an operator can smoke-test the direct
+`meal_prep.yaml`. It defers prep/cook metadata, servings, and concise ingredient
+context to the read-only Mealie normalizer (#209), and its seven manual buttons
+call the #210-owned stable Start/Done/Skip/Snooze/Finish/display/clear scripts.
+Each script guards invalid source/session state, so the buttons have no dangling
+service references or unsafe fallback behavior. After deployment, an operator can smoke-test the direct
 `kitchen-prep` Lovelace view with `cast.show_lovelace_view` on
 `media_player.kitchen_display`; that live check is not performed by repository
 validation.

@@ -84,6 +84,8 @@ def ready_meal():
         "input_text.meal_prep_next_step": "Preheat oven",
         "input_datetime.meal_prep_target_time": "2026-07-23 19:00:00+00:00",
         "input_text.meal_prep_snooze_until": "",
+        "input_text.meal_prep_session_key": "2026-07-23|recipe-123",
+        "input_text.meal_prep_last_skipped_step": "",
         "input_boolean.meal_prep_active": "off",
         "input_boolean.meal_prep_done": "off",
     }
@@ -109,6 +111,9 @@ def test_helpers_are_stable_named_and_restored_without_initial_values():
             "meal_prep_current_step": ("Meal Prep Current Step Input", "mdi:format-list-numbered"),
             "meal_prep_next_step": ("Meal Prep Next Step Input", "mdi:skip-next-outline"),
             "meal_prep_snooze_until": ("Meal Prep Snooze Until", "mdi:pause-circle-outline"),
+            "meal_prep_session_key": ("Meal Prep Session Key", "mdi:key-variant"),
+            "meal_prep_last_skipped_step": ("Meal Prep Last Skipped Step", "mdi:skip-next-circle-outline"),
+            "meal_prep_remaining_steps": ("Meal Prep Remaining Steps", "mdi:format-list-numbered"),
         },
     }
 
@@ -258,15 +263,38 @@ def test_source_status_exposes_explicit_visible_reasons(ready_meal):
     assert future_reason == "source update is in the future"
 
 
-def test_package_is_source_independent_and_defers_actions_to_later_cards():
+def test_restored_session_flags_are_scoped_to_the_current_date_and_recipe(ready_meal):
+    stale_identity = ready_meal | {
+        "input_boolean.meal_prep_active": "on",
+        "input_boolean.meal_prep_done": "on",
+        "input_text.meal_prep_snooze_until": "2026-07-23 18:30:00+00:00",
+        "input_text.meal_prep_session_key": "2026-07-22|recipe-123",
+    }
+
+    evaluated = evaluate(stale_identity)
+
+    assert evaluated["sensor.meal_prep_session_state"] == "planned"
+
+
+def test_expired_snooze_returns_to_the_matching_active_session(ready_meal):
+    evaluated = evaluate(
+        ready_meal
+        | {
+            "input_boolean.meal_prep_active": "on",
+            "input_text.meal_prep_snooze_until": "2026-07-23 17:59:00+00:00",
+        }
+    )
+
+    assert evaluated["sensor.meal_prep_session_state"] == "active"
+
+
+def test_package_is_source_independent_and_limits_actions_to_manual_controls():
     package = load_package()
     package_text = PACKAGE.read_text()
 
-    assert set(package) == {"input_boolean", "input_datetime", "input_text", "template"}
+    assert set(package) == {"input_boolean", "input_datetime", "input_text", "script", "template"}
     assert "rest:" not in package_text
     assert "automation:" not in package_text
-    assert "script:" not in package_text
-    assert "service:" not in package_text
     assert "#209" in package_text
     assert "#208/#210" in package_text
     assert "180 minutes" in PACKAGE_README.read_text()
