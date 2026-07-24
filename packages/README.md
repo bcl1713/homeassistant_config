@@ -31,7 +31,8 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `garage_door_monitoring.yaml` | Garage-door open-duration monitoring, reminder/escalation helpers, actionable notifications, and related scripts/templates. |
 | `known_batteries.yaml` | Template sensors that normalize known battery-powered devices into consistent names and attributes for the battery-health package. |
 | `light_groups.yaml` | Logical Home Assistant light groups for easier control by rooms or household areas. |
-| `meal_prep.yaml` | Source-independent kitchen meal-preparation state model. It owns persistent helper seams for a future Mealie normalizer and read-only meal/status/step/session sensors; it makes no live API calls or automatic transitions. |
+| `meal_prep.yaml` | Kitchen meal-preparation state model. It owns persistent helper seams and read-only normalized meal/status/step/session/recipe-context sensors. |
+| `mealie_read_only.yaml` | Read-only Mealie GET adapter. It refreshes a bounded today/upcoming plan and linked recipe into `meal_prep.yaml` helpers every 15 minutes. |
 | `notifications.yaml` | Shared notification automations that do not belong to a larger feature package, currently including bus/school-day notification handling. |
 | `presence.yaml` | Presence-related behavior, including alarm-panel helpers and lighting automations tied to occupancy/time conditions. |
 | `protected_contacts.yaml` | Canonical, read-only inventory and open-state summary for eight window contacts plus Front Door, Back Door, and Garage Interior Door. Future packages should consume this seam rather than duplicate the protected-contact roster. |
@@ -90,8 +91,36 @@ meal: the operator check is that `sensor.meal_prep_source_status` is
 `unavailable` or `idle`. A future normalizer must write a coherent `ready`
 snapshot and its timestamp together. A non-`ready` status, a missing or
 unparseable update time, a future-dated timestamp, or a timestamp more than
-180 minutes old fails closed. The package has no automation that changes these
-helpers; source updates and manual controls belong to later cards.
+180 minutes old fails closed. `mealie_read_only.yaml` is the only automated
+writer for source helpers; manual controls belong to later cards.
+
+### Mealie read-only wiring
+
+`mealie_read_only.yaml` uses only `GET` requests: the today endpoint first, then
+one bounded today-to-seven-day range only when today is empty, and one linked
+recipe request for the selected entry. It refreshes at Home Assistant startup
+and every 15 minutes (a 15-minute cadence); the single automation mode prevents
+overlapping API calls. No meal, recipe, shopping, or food write endpoint is configured.
+
+Before deploying, the operator must add these values to the existing Home
+Assistant `secrets.yaml` (never commit that file):
+
+- `mealie_authorization_header`: the complete OAuth2 `Bearer ...` header value.
+- `mealie_today_url`: the full `/api/households/mealplans/today` URL.
+- `mealie_range_url`: the full bounded range URL containing literal Jinja
+  `{{ mealie_range_start }}` and `{{ mealie_range_end }}` placeholders.
+- `mealie_recipe_url`: the full recipe URL containing literal
+  `{{ mealie_recipe_id }}`.
+
+The adapter accepts the verified camelCase fields only (`entryType`, `recipeId`,
+`prepTime`, `cookTime`, `totalTime`, `recipeIngredient`, and
+`recipeInstructions`). It stores at most two instruction strings, six concise
+ingredient labels / 255 characters, and a 160-character timing/servings
+summary. Empty plans become the explicit ready/no-meal state. Missing recipe
+links, malformed payloads, auth errors, timeouts, and server errors fail closed.
+A prior snapshot may remain visible only for its 180-minute freshness bound and
+its source reason explicitly says it is a fresh cached snapshot after a Mealie
+failure; it is never presented as a newly fetched result.
 
 ## Notifications
 

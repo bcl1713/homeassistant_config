@@ -112,8 +112,10 @@ def test_kitchen_prep_dashboard_is_concise_and_fail_closed_when_source_is_unavai
     assert "## {{ states('sensor.meal_prep_current_step') }}" in current_step
     assert "No instruction is shown" in current_step
     assert "states('sensor.meal_prep_next_step')" in next_step
-    assert "Prep time, cook time, servings, and concise ingredient context" in recipe_context
-    assert "deferred to the read-only Mealie normalizer in #209" in recipe_context
+    assert "Timing / servings:" in recipe_context
+    assert "Ingredients:" in recipe_context
+    assert "sensor.meal_prep_recipe_summary" in recipe_context
+    assert "sensor.meal_prep_ingredient_context" in recipe_context
     assert "full recipe" not in DASHBOARD.read_text().lower()
 
 
