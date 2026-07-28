@@ -1,0 +1,30 @@
+# packages/master_bedroom_closet_light.yaml
+#
+# Controls the master bedroom closet light directly from its contact sensor.
+
+automation:
+  - alias: "master_bedroom_closet_light_on_open"
+    id: "master_bedroom_closet_light_on_open"
+    description: "Turn on the closet light when the closet door opens."
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.master_bathroom_master_bedroom_closet
+        to: "on"
+    action:
+      - service: light.turn_on
+        target:
+          entity_id: light.master_bathroom_master_bathroom_closet
+    mode: single
+
+  - alias: "master_bedroom_closet_light_off_close"
+    id: "master_bedroom_closet_light_off_close"
+    description: "Turn off the closet light when the closet door closes."
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.master_bathroom_master_bedroom_closet
+        to: "off"
+    action:
+      - service: light.turn_off
+        target:
+          entity_id: light.master_bathroom_master_bathroom_closet
+    mode: single
