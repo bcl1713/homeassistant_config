@@ -111,7 +111,7 @@ See `DEVELOPMENT.md` for implementation standards and `CONTRIBUTING.md` for the 
 
 For documentation-only changes, verify the package inventory and run a Markdown/link sanity check when available. For configuration changes, prefer static validation first and only run Home Assistant config checks when the task or environment provides a known-safe local command.
 
-The GitHub Actions workflow in `.github/workflows/validate.yaml` prepares dummy credential files and runs a Home Assistant Core configuration check with `frenck/action-home-assistant`.
+The GitHub Actions workflow in `.github/workflows/validate.yaml` prepares dummy credential files and non-secret package-secret placeholders, then runs a required Home Assistant Core configuration check with `frenck/action-home-assistant`.
 
 ## License
 

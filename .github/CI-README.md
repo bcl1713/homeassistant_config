@@ -11,10 +11,11 @@ The current job is:
 1. **Home Assistant Core Configuration Check**
    - Checks out the repository.
    - Creates a dummy `SERVICE_ACCOUNT.json` with the fields required by `configuration.yaml`.
+   - Creates a non-secret `secrets.yaml` fixture for every active package secret reference.
    - Creates `.storage/` for Home Assistant runtime expectations.
    - Runs `frenck/action-home-assistant@v1.4.1` with `version: stable`.
 
-The workflow currently sets `continue-on-error: true` on the Home Assistant check step, so review the logs even when GitHub reports the job as non-blocking.
+The configuration-check step is required: a Home Assistant configuration error fails the workflow.
 
 ## Local validation
 

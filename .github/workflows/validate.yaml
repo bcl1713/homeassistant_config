@@ -23,12 +23,22 @@ jobs:
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
             "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/dummy.iam.gserviceaccount.com"
           }' > SERVICE_ACCOUNT.json
-          
-          # Create any other required files/directories
+
+          # Placeholder-only configuration for every Home Assistant package
+          # secret. These values are deliberately non-functional and exist
+          # only so the configuration checker can load the repository.
+          cat > secrets.yaml <<'EOF'
+          mealie_today_url: "https://example.invalid/mealie/today"
+          mealie_range_url: "https://example.invalid/mealie/range?start={{ mealie_range_start }}&end={{ mealie_range_end }}"
+          mealie_recipe_url: "https://example.invalid/mealie/recipes/{{ mealie_recipe_id }}"
+          mealie_mark_made_url: "https://example.invalid/mealie/recipes/{{ mealie_recipe_id }}/last-made"
+          mealie_authorization_header: "Bearer placeholder"
+          EOF
+
+          # Create the required runtime directory.
           mkdir -p .storage
       
       - name: Run Home Assistant Configuration Check
         uses: frenck/action-home-assistant@v1.4.1
         with:
           version: stable
-        continue-on-error: true  # Continue even if there are expected errors
