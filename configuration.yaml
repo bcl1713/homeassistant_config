@@ -12,12 +12,13 @@ automation: !include_dir_merge_list automation
 input_boolean: !include_dir_merge_named input_boolean
 scene: !include scenes.yaml
 
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    # Interim issue #93 fix: trust only the current server-VLAN CIDR until
-    # Cloudflare tunnel traffic is bound to a single stable proxy IP.
-    - 10.10.50.0/24
+# Legacy HTTP configuration migrated to Settings -> System -> Network.
+# http:
+#   use_x_forwarded_for: true
+#   trusted_proxies:
+#     Interim issue #93 fix: trust only the current server-VLAN CIDR until
+#     Cloudflare tunnel traffic is bound to a single stable proxy IP.
+#     - 10.10.50.0/24
 
 google_assistant:
   project_id: homeassistant-32654
