@@ -24,7 +24,7 @@ The system currently emphasizes:
 - Device health monitoring for batteries, stale devices, Z-Wave health, and integration availability.
 - Household safety and security flows for cameras, garage doors, secure-house sanity checks, security lighting, routines, and notifications.
 - Weather, air-quality, seasonal, school, and window-ventilation advice driven by templates and helper entities.
-- ESPHome/device-specific configuration, currently including a RATGDO garage-door controller YAML file.
+- ESPHome/device-specific configuration, including a RATGDO garage-door controller and Bluetooth proxy YAML files.
 
 ## Repository layout
 
