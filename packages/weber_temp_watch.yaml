@@ -1,0 +1,43 @@
+# TEMP: Remove this package after the current Weber grill test.
+automation:
+  - alias: "TEMP Weber Grill Temperature Watch"
+    id: "temp_weber_grill_temperature_watch"
+    description: >
+      Temporary notification-only monitoring for Weber Connect Hub grill and
+      food probe temperature thresholds during the current grill test.
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.back_yard_weber_connect_hub_probe_1
+        above: 260
+        id: probe_1_above_260
+      - platform: numeric_state
+        entity_id: sensor.back_yard_weber_connect_hub_probe_1
+        below: 240
+        id: probe_1_below_240
+      - platform: numeric_state
+        entity_id: sensor.back_yard_weber_connect_hub_grill_temp_derivative
+        above: 0.5
+        id: grill_temp_rising_fast
+      - platform: numeric_state
+        entity_id: sensor.back_yard_weber_connect_hub_grill_temp_derivative
+        below: -0.5
+        id: grill_temp_falling_fast
+      - platform: numeric_state
+        entity_id: sensor.back_yard_weber_connect_hub_probe_2
+        above: 165
+        for: "00:01:00"
+        id: probe_2_above_165_for_one_minute
+    action:
+      - action: notify.mobile_app_brian_phone
+        data:
+          title: "TEMP Weber Grill Watch"
+          message: >-
+            {% set conditions = {
+              'probe_1_above_260': 'Probe 1 rose above 260 °F.',
+              'probe_1_below_240': 'Probe 1 fell below 240 °F.',
+              'grill_temp_rising_fast': 'Grill temperature is rising faster than +0.5 °F/min.',
+              'grill_temp_falling_fast': 'Grill temperature is falling faster than -0.5 °F/min.',
+              'probe_2_above_165_for_one_minute': 'Probe 2 has remained above 165 °F for one minute.'
+            } %}
+            {{ conditions[trigger.id] }} Current value: {{ states(trigger.entity_id) }} {{ state_attr(trigger.entity_id, 'unit_of_measurement') | default('', true) }}.
+    mode: single

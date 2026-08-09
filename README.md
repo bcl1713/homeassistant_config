@@ -73,6 +73,7 @@ All active package files under `packages/*.yaml` are documented in `packages/REA
 - `shared_infrastructure.yaml` - shared notifier/dashboard contracts for packages.
 - `towner_notifications.yaml` - school arrival/departure notification state handling.
 - `trash_recycling_reminder.yaml` - municipal calendar-driven Zooz wall-switch/dimmer LED reminder with per-device snapshot and midnight restore.
+- `weber_temp_watch.yaml` - temporary notification-only Weber Connect Hub temperature watch for the current grill test; remove after the test.
 - `weather.yaml` - weather caching, MQTT data, forecasts, and weather-driven automation.
 - `window_ventilation.yaml` - advisory ventilation recommendations and notification-only open-window HVAC warnings.
 
