@@ -47,6 +47,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `shared_infrastructure.yaml` | Shared package contracts: `notify.all_mobile_devices` and YAML-managed Lovelace dashboards for climate control, ventilation advice, and Kitchen Prep. |
 | `towner_notifications.yaml` | School arrival/departure notification workflow that handles infrequent location updates, race conditions, verification windows, and timeout/reset states. |
 | `trash_recycling_reminder.yaml` | Municipality-calendar-driven trash/recycling-night Zooz LED reminder. It snapshots and restores explicitly scoped wall-switch/dimmer LED settings, shows blue for garbage-only and green when recycling is also listed, and safely ignores unknown or recycling-only calendar text. |
+| `weber_temp_watch.yaml` | Temporary, notification-only Weber Connect Hub temperature watch for the current grill test. Remove this package after the test. |
 | `weather.yaml` | Weather processing and cache helpers, including MQTT weather data, forecast sensors, and an open-window rain alert that names affected monitored windows and clears after they all close. |
 | `window_ventilation.yaml` | Advisory window-ventilation recommendations using indoor/outdoor comfort, dew point, rain forecast, HVAC state, and relative air-quality context. |
 
