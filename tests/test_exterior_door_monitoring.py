@@ -35,9 +35,7 @@ def automation_by_id(package, automation_id):
 
 def test_exterior_door_contacts_include_the_garage_interior_contact():
     package = load_package()
-    contacts = package["homeassistant"]["customize"]["package.node_anchors"][
-        "exterior_door_contacts"
-    ]
+    contacts = package["automation"][0]["variables"]["door_contacts"]
 
     assert contacts == CONTACTS
     assert len({contact["tag"] for contact in contacts.values()}) == len(contacts)

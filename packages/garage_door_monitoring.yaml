@@ -10,12 +10,6 @@
 # - Respects presence to avoid unnecessary notifications
 # - Automatically dismisses notifications when door closes
 
-homeassistant:
-  customize:
-    package.node_anchors:
-      garage_door_entity: &garage_door cover.garage_door
-      obstruction_sensor: &obstruction_sensor binary_sensor.garage_door_obstruction
-
 input_number:
   garage_door_open_timeout:
     name: "Garage Door Open Timeout"
@@ -49,7 +43,7 @@ automation:
     description: "Notify when garage door has been open too long"
     trigger:
       - platform: state
-        entity_id: *garage_door
+        entity_id: &garage_door cover.garage_door
         to: "open"
         for:
           minutes: "{{ states('input_number.garage_door_open_timeout') | int }}"
@@ -201,7 +195,7 @@ automation:
               # Double-check no obstruction before closing
               - if:
                   - condition: state
-                    entity_id: *obstruction_sensor
+                    entity_id: binary_sensor.garage_door_obstruction
                     state: "off"
                 then:
                   - service: cover.close_cover

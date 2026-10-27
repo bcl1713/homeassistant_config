@@ -15,98 +15,6 @@ input_boolean:
     name: Trash and Recycling LED Reminder Active
     icon: mdi:trash-can-outline
 
-homeassistant:
-  customize:
-    package.node_anchors:
-      trash_recycling_led_snapshot_entities: &trash_recycling_led_snapshot_entities
-        - select.master_bathroom_master_bathroom_closet_led_indicator
-        - select.master_bathroom_master_bathroom_closet_led_indicator_color
-        - select.master_bathroom_master_bathroom_closet_led_indicator_brightness
-        - select.dining_room_table_light_led_indicator
-        - select.dining_room_table_light_led_indicator_color
-        - select.dining_room_table_light_led_indicator_brightness
-        - select.entry_led_indicator
-        - select.entry_led_indicator_color
-        - select.entry_led_indicator_brightness
-        - select.living_room_right_led_indicator
-        - select.living_room_right_led_indicator_color
-        - select.living_room_right_led_indicator_brightness
-        - select.living_room_left_led_indicator
-        - select.living_room_left_led_indicator_color
-        - select.living_room_left_led_indicator_brightness
-        - select.living_room_center_led_indicator
-        - select.living_room_center_led_indicator_color
-        - select.living_room_center_led_indicator_brightness
-        - select.towners_room_light_led_indicator
-        - select.towners_room_light_led_indicator_color
-        - select.towners_room_light_led_indicator_brightness
-        - select.back_yard_light_led_indicator
-        - select.back_yard_light_led_indicator_color
-        - select.back_yard_light_led_indicator_brightness
-        - select.kitchen_fan_light_led_indicator
-        - select.kitchen_fan_light_led_indicator_color
-        - select.kitchen_fan_light_led_indicator_brightness
-        - select.kitchen_bar_lights_led_indicator
-        - select.kitchen_bar_lights_led_indicator_color
-        - select.kitchen_bar_lights_led_indicator_brightness
-        - select.kitchen_counter_lights_led_indicator_2
-        - select.kitchen_counter_lights_led_indicator_color_2
-        - select.kitchen_counter_lights_led_indicator_brightness_2
-        - select.dimmer_led_indicator
-        - select.dimmer_led_indicator_color
-        - select.dimmer_led_indicator_brightness
-        - select.front_yard_lights_led_indicator
-        - select.front_yard_lights_led_indicator_color
-        - select.front_yard_lights_led_indicator_brightness
-        - select.coridor_led_indicator
-        - select.coridor_led_indicator_color
-        - select.coridor_led_indicator_brightness
-      trash_recycling_led_mode_entities: &trash_recycling_led_mode_entities
-        - select.master_bathroom_master_bathroom_closet_led_indicator
-        - select.dining_room_table_light_led_indicator
-        - select.entry_led_indicator
-        - select.living_room_right_led_indicator
-        - select.living_room_left_led_indicator
-        - select.living_room_center_led_indicator
-        - select.towners_room_light_led_indicator
-        - select.back_yard_light_led_indicator
-        - select.kitchen_fan_light_led_indicator
-        - select.kitchen_bar_lights_led_indicator
-        - select.kitchen_counter_lights_led_indicator_2
-        - select.dimmer_led_indicator
-        - select.front_yard_lights_led_indicator
-        - select.coridor_led_indicator
-      trash_recycling_led_color_entities: &trash_recycling_led_color_entities
-        - select.master_bathroom_master_bathroom_closet_led_indicator_color
-        - select.dining_room_table_light_led_indicator_color
-        - select.entry_led_indicator_color
-        - select.living_room_right_led_indicator_color
-        - select.living_room_left_led_indicator_color
-        - select.living_room_center_led_indicator_color
-        - select.towners_room_light_led_indicator_color
-        - select.back_yard_light_led_indicator_color
-        - select.kitchen_fan_light_led_indicator_color
-        - select.kitchen_bar_lights_led_indicator_color
-        - select.kitchen_counter_lights_led_indicator_color_2
-        - select.dimmer_led_indicator_color
-        - select.front_yard_lights_led_indicator_color
-        - select.coridor_led_indicator_color
-      trash_recycling_led_brightness_entities: &trash_recycling_led_brightness_entities
-        - select.master_bathroom_master_bathroom_closet_led_indicator_brightness
-        - select.dining_room_table_light_led_indicator_brightness
-        - select.entry_led_indicator_brightness
-        - select.living_room_right_led_indicator_brightness
-        - select.living_room_left_led_indicator_brightness
-        - select.living_room_center_led_indicator_brightness
-        - select.towners_room_light_led_indicator_brightness
-        - select.back_yard_light_led_indicator_brightness
-        - select.kitchen_fan_light_led_indicator_brightness
-        - select.kitchen_bar_lights_led_indicator_brightness
-        - select.kitchen_counter_lights_led_indicator_brightness_2
-        - select.dimmer_led_indicator_brightness
-        - select.front_yard_lights_led_indicator_brightness
-        - select.coridor_led_indicator_brightness
-
 automation:
   - alias: "Trash and Recycling LED Reminder Start"
     id: trash_recycling_led_reminder_start
@@ -138,20 +46,104 @@ automation:
       - action: scene.create
         data:
           scene_id: trash_recycling_led_reminder_prior_settings
-          snapshot_entities: *trash_recycling_led_snapshot_entities
+          snapshot_entities:
+            - select.master_bathroom_master_bathroom_closet_led_indicator
+            - select.master_bathroom_master_bathroom_closet_led_indicator_color
+            - select.master_bathroom_master_bathroom_closet_led_indicator_brightness
+            - select.dining_room_table_light_led_indicator
+            - select.dining_room_table_light_led_indicator_color
+            - select.dining_room_table_light_led_indicator_brightness
+            - select.entry_led_indicator
+            - select.entry_led_indicator_color
+            - select.entry_led_indicator_brightness
+            - select.living_room_right_led_indicator
+            - select.living_room_right_led_indicator_color
+            - select.living_room_right_led_indicator_brightness
+            - select.living_room_left_led_indicator
+            - select.living_room_left_led_indicator_color
+            - select.living_room_left_led_indicator_brightness
+            - select.living_room_center_led_indicator
+            - select.living_room_center_led_indicator_color
+            - select.living_room_center_led_indicator_brightness
+            - select.towners_room_light_led_indicator
+            - select.towners_room_light_led_indicator_color
+            - select.towners_room_light_led_indicator_brightness
+            - select.back_yard_light_led_indicator
+            - select.back_yard_light_led_indicator_color
+            - select.back_yard_light_led_indicator_brightness
+            - select.kitchen_fan_light_led_indicator
+            - select.kitchen_fan_light_led_indicator_color
+            - select.kitchen_fan_light_led_indicator_brightness
+            - select.kitchen_bar_lights_led_indicator
+            - select.kitchen_bar_lights_led_indicator_color
+            - select.kitchen_bar_lights_led_indicator_brightness
+            - select.kitchen_counter_lights_led_indicator_2
+            - select.kitchen_counter_lights_led_indicator_color_2
+            - select.kitchen_counter_lights_led_indicator_brightness_2
+            - select.dimmer_led_indicator
+            - select.dimmer_led_indicator_color
+            - select.dimmer_led_indicator_brightness
+            - select.front_yard_lights_led_indicator
+            - select.front_yard_lights_led_indicator_color
+            - select.front_yard_lights_led_indicator_brightness
+            - select.coridor_led_indicator
+            - select.coridor_led_indicator_color
+            - select.coridor_led_indicator_brightness
       - action: select.select_option
         target:
-          entity_id: *trash_recycling_led_mode_entities
+          entity_id:
+            - select.master_bathroom_master_bathroom_closet_led_indicator
+            - select.dining_room_table_light_led_indicator
+            - select.entry_led_indicator
+            - select.living_room_right_led_indicator
+            - select.living_room_left_led_indicator
+            - select.living_room_center_led_indicator
+            - select.towners_room_light_led_indicator
+            - select.back_yard_light_led_indicator
+            - select.kitchen_fan_light_led_indicator
+            - select.kitchen_bar_lights_led_indicator
+            - select.kitchen_counter_lights_led_indicator_2
+            - select.dimmer_led_indicator
+            - select.front_yard_lights_led_indicator
+            - select.coridor_led_indicator
         data:
           option: "Always on"
       - action: select.select_option
         target:
-          entity_id: *trash_recycling_led_color_entities
+          entity_id:
+            - select.master_bathroom_master_bathroom_closet_led_indicator_color
+            - select.dining_room_table_light_led_indicator_color
+            - select.entry_led_indicator_color
+            - select.living_room_right_led_indicator_color
+            - select.living_room_left_led_indicator_color
+            - select.living_room_center_led_indicator_color
+            - select.towners_room_light_led_indicator_color
+            - select.back_yard_light_led_indicator_color
+            - select.kitchen_fan_light_led_indicator_color
+            - select.kitchen_bar_lights_led_indicator_color
+            - select.kitchen_counter_lights_led_indicator_color_2
+            - select.dimmer_led_indicator_color
+            - select.front_yard_lights_led_indicator_color
+            - select.coridor_led_indicator_color
         data:
           option: "{{ reminder_color }}"
       - action: select.select_option
         target:
-          entity_id: *trash_recycling_led_brightness_entities
+          entity_id:
+            - select.master_bathroom_master_bathroom_closet_led_indicator_brightness
+            - select.dining_room_table_light_led_indicator_brightness
+            - select.entry_led_indicator_brightness
+            - select.living_room_right_led_indicator_brightness
+            - select.living_room_left_led_indicator_brightness
+            - select.living_room_center_led_indicator_brightness
+            - select.towners_room_light_led_indicator_brightness
+            - select.back_yard_light_led_indicator_brightness
+            - select.kitchen_fan_light_led_indicator_brightness
+            - select.kitchen_bar_lights_led_indicator_brightness
+            - select.kitchen_counter_lights_led_indicator_brightness_2
+            - select.dimmer_led_indicator_brightness
+            - select.front_yard_lights_led_indicator_brightness
+            - select.coridor_led_indicator_brightness
         data:
           option: "Bright (100%)"
       - action: input_boolean.turn_on

@@ -11,10 +11,14 @@
 # The trigger is intentionally contact-state-only: arming the alarm while a door
 # is already open must not generate a duplicate alert.
 
-homeassistant:
-  customize:
-    package.node_anchors:
-      security_door_contacts: &security_door_contacts
+automation:
+  - id: "armed_security_door_open_alert"
+    alias: "Armed Security Door Open Alert"
+    description: >
+      Immediately alert only when a configured security-boundary door opens
+      while the alarm is armed away or armed night and guest mode is off.
+    variables:
+      door_contacts: &security_door_contacts
         binary_sensor.entry_front_door:
           name: "Front Door"
           tag_suffix: "front"
@@ -48,15 +52,6 @@ homeassistant:
         binary_sensor.office_window:
           name: "Office Window"
           tag_suffix: "office-window"
-
-automation:
-  - id: "armed_security_door_open_alert"
-    alias: "Armed Security Door Open Alert"
-    description: >
-      Immediately alert only when a configured security-boundary door opens
-      while the alarm is armed away or armed night and guest mode is off.
-    variables:
-      door_contacts: *security_door_contacts
       security_mode: "{{ states('alarm_control_panel.home_alarm') }}"
       security_mode_label: "{{ 'away' if security_mode == 'armed_away' else 'night' }}"
       notification_tag: "{{ 'security-door-open-' ~ door_contacts[trigger.entity_id]['tag_suffix'] ~ '-' ~ security_mode_label }}"

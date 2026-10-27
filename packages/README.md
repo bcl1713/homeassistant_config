@@ -29,7 +29,7 @@ Complex domains should stay split by responsibility. Climate is the current mode
 | `device_connectivity.yaml` | Device health monitoring for stale devices, Z-Wave node health, integration availability, and conservative alerting. |
 | `exterior_door_monitoring.yaml` | Two-minute continuous-open household alerts and matching per-door tagged clears for the front, back, and garage interior contacts. Immediate armed-security and secure-house checks remain in their separate packages. |
 | `garage_door_monitoring.yaml` | Garage-door open-duration monitoring, reminder/escalation helpers, actionable notifications, and related scripts/templates. |
-| `known_batteries.yaml` | Template sensors that normalize known battery-powered devices into consistent names and attributes for the battery-health package. |
+| `known_batteries.yaml` | Stable battery wrappers preserving percentage sources/IDs; optional supported charging, no invented health/cycles. See [#244 operator guidance](../docs/repairs/244-spook-cleanup.md) for unknown semantics, gated phone identities and separately authorized Areas apply/rollback. |
 | `light_groups.yaml` | Logical Home Assistant light groups for easier control by rooms or household areas. |
 | `meal_prep.yaml` | Kitchen meal-preparation state model and deterministic manual Start/Done/Skip/Snooze/Finish/display/clear script seams. It owns persistent helper seams and read-only normalized meal/status/step/session/recipe-context sensors. |
 | `meal_prep_target_policy.yaml` | Explicit Kitchen Prep target-time resolution: valid Mealie scheduled timestamp, matching local per-day/per-meal override, then household default dinner time; no usable value remains unconfigured. |
