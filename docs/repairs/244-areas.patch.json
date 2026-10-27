@@ -1,8 +1,43 @@
 [
   {
     "op": "test",
+    "path": "/strategy/areas_options/basement/groups_options/security/hidden/0",
+    "value": "camera.birdseye"
+  },
+  {
+    "op": "test",
+    "path": "/strategy/areas_options/dining_room/groups_options/climate/order/0",
+    "value": "climate.thermostat_2"
+  },
+  {
+    "op": "test",
     "path": "/strategy/areas_options/dining_room/groups_options/climate/hidden/0",
     "value": "humidifier.thermostat"
+  },
+  {
+    "op": "test",
+    "path": "/strategy/areas_options/hallway/groups_options/security/hidden/0",
+    "value": "camera.front_doorbell_main"
+  },
+  {
+    "op": "test",
+    "path": "/strategy/areas_options/hallway/groups_options/security/hidden/1",
+    "value": "binary_sensor.front_doorbell_door_status"
+  },
+  {
+    "op": "test",
+    "path": "/strategy/areas_options/hallway/groups_options/security/hidden/2",
+    "value": "camera.front_doorbell_sub"
+  },
+  {
+    "op": "test",
+    "path": "/strategy/areas_options/hallway/groups_options/security/order/0",
+    "value": "camera.front_doorbell"
+  },
+  {
+    "op": "test",
+    "path": "/strategy/areas_options/kitchen/groups_options/others/order/0",
+    "value": "vacuum.sally"
   },
   {
     "op": "test",
@@ -10,8 +45,44 @@
     "value": "lock.ratgdov25i_0cd7df_lock_remotes"
   },
   {
-    "op": "remove",
-    "path": "/strategy/areas_options/dining_room/groups_options/climate/hidden/0"
+    "op": "replace",
+    "path": "/strategy/areas_options/basement/groups_options/security/hidden/0",
+    "value": "camera.system_birdseye"
+  },
+  {
+    "op": "replace",
+    "path": "/strategy/areas_options/dining_room/groups_options/climate/order/0",
+    "value": "climate.dining_room_thermostat"
+  },
+  {
+    "op": "replace",
+    "path": "/strategy/areas_options/dining_room/groups_options/climate/hidden/0",
+    "value": "humidifier.dining_room_humidistat"
+  },
+  {
+    "op": "replace",
+    "path": "/strategy/areas_options/hallway/groups_options/security/hidden/0",
+    "value": "camera.front_door_doorbell_camera_main"
+  },
+  {
+    "op": "replace",
+    "path": "/strategy/areas_options/hallway/groups_options/security/hidden/1",
+    "value": "binary_sensor.front_door_doorbell_door_status"
+  },
+  {
+    "op": "replace",
+    "path": "/strategy/areas_options/hallway/groups_options/security/hidden/2",
+    "value": "camera.front_door_doorbell_camera_sub"
+  },
+  {
+    "op": "replace",
+    "path": "/strategy/areas_options/hallway/groups_options/security/order/0",
+    "value": "camera.front_door_doorbell_camera"
+  },
+  {
+    "op": "replace",
+    "path": "/strategy/areas_options/kitchen/groups_options/others/order/0",
+    "value": "vacuum.kitchen_roomba"
   },
   {
     "op": "remove",

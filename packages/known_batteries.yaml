@@ -3,11 +3,11 @@
 # Individual Battery Template Sensors
 #
 # This file contains template sensors for each known battery in the system.
-# Preserve wrapper unique IDs and percentage sources for existing history.
+# Preserve wrapper names/unique IDs for history; use verified current sources.
 # Include optional charging only with a supported source; no invented health/cycles.
 # on/charging -> true; off/discharging/not_charging/full -> false.
 # Missing, unavailable and unrecognized charging states -> unknown, never false.
-# Brian/Hester stay on existing level/state pairs: _2 identity is not verified.
+# Brian/Hester use verified current Pixel level/state _2 pairs together.
 #
 # TO ADD A NEW BATTERY:
 # 1. Copy the template below and modify:
@@ -70,35 +70,35 @@ template:
       # Mobile Phones
       - name: "Battery Hester Phone"
         unique_id: battery_hester_phone
-        state: "{{ states('sensor.hester_phone_battery_level') }}"
+        state: "{{ states('sensor.hester_phone_battery_level_2') }}"
         unit_of_measurement: "%"
         device_class: battery
         state_class: measurement
         icon: mdi:cellphone
         attributes:
-          entity_id: "sensor.hester_phone_battery_level"
+          entity_id: "sensor.hester_phone_battery_level_2"
           friendly_name: "Hester's Phone"
-          domain: "{{ states.sensor.hester_phone_battery_level.domain }}"
+          domain: "{{ states.sensor.hester_phone_battery_level_2.domain }}"
           is_charging: >-
             {{ {'charging': true, 'discharging': false, 'not_charging': false, 'full': false}.get(
-              states('sensor.hester_phone_battery_state'), 'unknown') }}
-          last_updated: "{{ states.sensor.hester_phone_battery_level.last_updated }}"
+              states('sensor.hester_phone_battery_state_2'), 'unknown') }}
+          last_updated: "{{ states.sensor.hester_phone_battery_level_2.last_updated }}"
 
       - name: "Battery Brian Phone"
         unique_id: battery_brian_phone
-        state: "{{ states('sensor.brian_phone_battery_level') }}"
+        state: "{{ states('sensor.brian_phone_battery_level_2') }}"
         unit_of_measurement: "%"
         device_class: battery
         state_class: measurement
         icon: mdi:cellphone
         attributes:
-          entity_id: "sensor.brian_phone_battery_level"
+          entity_id: "sensor.brian_phone_battery_level_2"
           friendly_name: "Brian's Phone"
-          domain: "{{ states.sensor.brian_phone_battery_level.domain }}"
+          domain: "{{ states.sensor.brian_phone_battery_level_2.domain }}"
           is_charging: >-
             {{ {'charging': true, 'discharging': false, 'not_charging': false, 'full': false}.get(
-              states('sensor.brian_phone_battery_state'), 'unknown') }}
-          last_updated: "{{ states.sensor.brian_phone_battery_level.last_updated }}"
+              states('sensor.brian_phone_battery_state_2'), 'unknown') }}
+          last_updated: "{{ states.sensor.brian_phone_battery_level_2.last_updated }}"
 
       - name: "Battery Towner Phone"
         unique_id: battery_towner_phone
