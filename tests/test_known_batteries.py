@@ -9,8 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCES = {
     "battery_hester_remote": ("sensor.bedroom_remote_hester_battery_level", "binary_sensor.bedroom_remote_hester_battery_is_charging", "binary"),
     "battery_brian_remote": ("sensor.bedroom_remote_brian_battery_level", "binary_sensor.bedroom_remote_brian_battery_is_charging", "binary"),
-    "battery_hester_phone": ("sensor.hester_phone_battery_level", "sensor.hester_phone_battery_state", "phone"),
-    "battery_brian_phone": ("sensor.brian_phone_battery_level", "sensor.brian_phone_battery_state", "phone"),
+    "battery_hester_phone": ("sensor.hester_phone_battery_level_2", "sensor.hester_phone_battery_state_2", "phone"),
+    "battery_brian_phone": ("sensor.brian_phone_battery_level_2", "sensor.brian_phone_battery_state_2", "phone"),
     "battery_towner_phone": ("sensor.tk_galaxy_a16_battery_level", "sensor.tk_galaxy_a16_battery_state", "phone"),
     "battery_front_door": ("sensor.front_door_battery", None, None),
     "battery_master_bedroom_sensor": ("sensor.master_bedroom_battery", None, None),
@@ -62,6 +62,31 @@ def test_supported_charging_distinguishes_false_from_unknown(uid, value):
     actual = render(sensors()[uid]["attributes"]["is_charging"], {} if value is None else {source: value})
     assert actual == expected
     assert type(actual) is type(expected)
+
+
+@pytest.mark.parametrize("person", ["brian", "hester"])
+@pytest.mark.parametrize("level,charging,expected", [
+    (37, "charging", True), (82, "discharging", False),
+    ("unavailable", "unavailable", "unknown"),
+    ("unknown", "unknown", "unknown"), (None, None, "unknown"),
+])
+def test_current_phone_pair_never_falls_back_to_stale_handset(person, level, charging, expected):
+    sensor = sensors()[f"battery_{person}_phone"]
+    old_level = f"sensor.{person}_phone_battery_level"
+    old_state = f"sensor.{person}_phone_battery_state"
+    values = {old_level: 99, old_state: "discharging" if expected is True else "charging"}
+    if level is not None:
+        values[f"{old_level}_2"] = level
+        values[f"{old_state}_2"] = charging
+    assert sensor["name"] == f"Battery {person.title()} Phone"
+    assert sensor["unique_id"] == f"battery_{person}_phone"
+    assert render(sensor["state"], values) == ("unknown" if level is None else level)
+    actual = render(sensor["attributes"]["is_charging"], values)
+    assert actual == expected
+    assert type(actual) is type(expected)
+    assert sensor["attributes"]["entity_id"] == f"{old_level}_2"
+    assert sensor["attributes"]["domain"] == "{{ states." + old_level + "_2.domain }}"
+    assert sensor["attributes"]["last_updated"] == "{{ states." + old_level + "_2.last_updated }}"
 
 
 def test_unused_sally_direct_is_retired_without_replacement_count():
