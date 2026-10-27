@@ -66,13 +66,12 @@ def test_collection_classifier_uses_tomorrows_actual_calendar_event_text():
 
 def test_start_automation_snapshots_and_sets_explicit_switch_style_targets():
     package = load_package()
-    anchors = package["homeassistant"]["customize"]["package.node_anchors"]
     start = automation_by_id("trash_recycling_led_reminder_start")
 
-    snapshot = anchors["trash_recycling_led_snapshot_entities"]
-    mode_entities = anchors["trash_recycling_led_mode_entities"]
-    color_entities = anchors["trash_recycling_led_color_entities"]
-    brightness_entities = anchors["trash_recycling_led_brightness_entities"]
+    snapshot = start["action"][0]["data"]["snapshot_entities"]
+    mode_entities = start["action"][1]["target"]["entity_id"]
+    color_entities = start["action"][2]["target"]["entity_id"]
+    brightness_entities = start["action"][3]["target"]["entity_id"]
 
     assert len(mode_entities) == len(color_entities) == len(brightness_entities) == 14
     assert mode_entities[0] == "select.master_bathroom_master_bathroom_closet_led_indicator"

@@ -62,9 +62,7 @@ def automation_by_id(package, automation_id):
 
 def test_armed_security_contacts_include_doors_and_every_required_window():
     package = load_package()
-    contacts = package["homeassistant"]["customize"]["package.node_anchors"][
-        "security_door_contacts"
-    ]
+    contacts = package["automation"][0]["variables"]["door_contacts"]
 
     assert contacts == CONTACTS
     assert len({contact["tag_suffix"] for contact in contacts.values()}) == len(CONTACTS)

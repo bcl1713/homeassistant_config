@@ -1,0 +1,20 @@
+[
+  {
+    "op": "test",
+    "path": "/strategy/areas_options/dining_room/groups_options/climate/hidden/0",
+    "value": "humidifier.thermostat"
+  },
+  {
+    "op": "test",
+    "path": "/strategy/areas_options/garage/groups_options/security/hidden/0",
+    "value": "lock.ratgdov25i_0cd7df_lock_remotes"
+  },
+  {
+    "op": "remove",
+    "path": "/strategy/areas_options/dining_room/groups_options/climate/hidden/0"
+  },
+  {
+    "op": "remove",
+    "path": "/strategy/areas_options/garage/groups_options/security/hidden/0"
+  }
+]

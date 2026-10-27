@@ -1,0 +1,6 @@
+# Repository tests (run on isolated Forge, not the live HA host).
+pytest==9.1.1
+PyYAML==6.0.3
+Jinja2==3.1.6
+requests==2.34.2
+jsonpatch==1.38

@@ -7,13 +7,6 @@
 # - Canonical battery inventory consumed by summary sensors and alerts
 # - Maintenance scheduling and tracking
 
-homeassistant:
-  customize:
-    package.node_anchors:
-      critical_battery_threshold: &critical_threshold 15
-      warning_battery_threshold: &warning_threshold 30
-      low_battery_threshold: &low_threshold 5
-
 input_boolean:
   device_health_monitoring_enabled:
     name: "Device Health Monitoring"
@@ -38,7 +31,7 @@ input_number:
     step: 1
     unit_of_measurement: "%"
     icon: mdi:battery-20
-    initial: *critical_threshold
+    initial: 15
 
   device_health_warning_threshold:
     name: "Warning Battery Threshold"
@@ -47,7 +40,7 @@ input_number:
     step: 5
     unit_of_measurement: "%"
     icon: mdi:battery-30
-    initial: *warning_threshold
+    initial: 30
 
   device_health_low_threshold:
     name: "Low Battery Threshold"
@@ -56,7 +49,7 @@ input_number:
     step: 1
     unit_of_measurement: "%"
     icon: mdi:battery-alert-variant-outline
-    initial: *low_threshold
+    initial: 5
 
 template:
   - sensor:

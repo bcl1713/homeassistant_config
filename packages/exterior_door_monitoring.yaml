@@ -9,10 +9,14 @@
 # household reminder. Its immediate armed-security and secure-house workflows
 # remain separately owned by their respective packages.
 
-homeassistant:
-  customize:
-    package.node_anchors:
-      exterior_door_contacts: &exterior_door_contacts
+automation:
+  - id: "exterior_door_open_two_minute_alert"
+    alias: "Exterior Door Open Two-Minute Alert"
+    description: >
+      Alert the household once when a monitored exterior door remains open for
+      two continuous minutes.
+    variables:
+      door_contacts: &exterior_door_contacts
         binary_sensor.entry_front_door:
           name: "Front Door"
           tag: "exterior-door-open-front"
@@ -22,15 +26,6 @@ homeassistant:
         binary_sensor.garage_garage_interior_door:
           name: "Garage Interior Door"
           tag: "exterior-door-open-garage-interior"
-
-automation:
-  - id: "exterior_door_open_two_minute_alert"
-    alias: "Exterior Door Open Two-Minute Alert"
-    description: >
-      Alert the household once when a monitored exterior door remains open for
-      two continuous minutes.
-    variables:
-      door_contacts: *exterior_door_contacts
     trigger:
       - platform: state
         entity_id:

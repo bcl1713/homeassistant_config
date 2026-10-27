@@ -14,13 +14,6 @@
 # - sensor.thermostat_carbon_dioxide
 # - sensor.thermostat_vocs
 
-homeassistant:
-  customize:
-    package.node_anchors:
-      co2_alert_threshold: &co2_threshold 1000
-      voc_high_threshold: &voc_threshold 500
-      aqi_poor_threshold: &aqi_threshold 101
-
 input_boolean:
   air_quality_monitoring_enabled:
     name: "Air Quality Monitoring"
@@ -40,7 +33,7 @@ input_number:
     step: 50
     unit_of_measurement: "ppm"
     icon: mdi:molecule-co2
-    initial: *co2_threshold
+    initial: 1000
 
   air_quality_voc_threshold:
     name: "VOC Alert Threshold"
@@ -49,7 +42,7 @@ input_number:
     step: 50
     unit_of_measurement: "µg/m³"
     icon: mdi:gas-cylinder
-    initial: *voc_threshold
+    initial: 500
 
   air_quality_aqi_threshold:
     name: "AQI Alert Threshold"
@@ -58,7 +51,7 @@ input_number:
     step: 10
     unit_of_measurement: "AQI"
     icon: mdi:air-filter
-    initial: *aqi_threshold
+    initial: 101
 
 sensor:
   # Ecobee air-quality sensors update frequently enough that 1-hour statistics

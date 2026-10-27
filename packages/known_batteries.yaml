@@ -3,7 +3,11 @@
 # Individual Battery Template Sensors
 #
 # This file contains template sensors for each known battery in the system.
-# Each sensor provides a standardized interface with consistent naming and attributes.
+# Preserve wrapper unique IDs and percentage sources for existing history.
+# Include optional charging only with a supported source; no invented health/cycles.
+# on/charging -> true; off/discharging/not_charging/full -> false.
+# Missing, unavailable and unrecognized charging states -> unknown, never false.
+# Brian/Hester stay on existing level/state pairs: _2 identity is not verified.
 #
 # TO ADD A NEW BATTERY:
 # 1. Copy the template below and modify:
@@ -23,9 +27,9 @@
 #     entity_id: "SOURCE_ENTITY_ID"
 #     friendly_name: "Descriptive Device Name"
 #     domain: "{{ states.SOURCE_ENTITY_ID.domain }}"
-#     is_charging: "{{ state_attr('SOURCE_ENTITY_ID', 'is_charging') or false }}"
-#     battery_health: "{{ state_attr('SOURCE_ENTITY_ID', 'battery_health') or 'unknown' }}"
-#     cycle_count: "{{ state_attr('SOURCE_ENTITY_ID', 'battery_cycle_count') or 'unknown' }}"
+#     # Optional charging example (verify this entity exists for the device):
+#     is_charging: >-
+#       {{ {'on': true, 'off': false}.get(states('binary_sensor.DEVICE_CHARGING'), 'unknown') }}
 #     last_updated: "{{ states.SOURCE_ENTITY_ID.last_updated }}"
 
 template:
@@ -42,9 +46,9 @@ template:
           entity_id: "sensor.bedroom_remote_hester_battery_level"
           friendly_name: "Hester's Bedroom Remote"
           domain: "{{ states.sensor.bedroom_remote_hester_battery_level.domain }}"
-          is_charging: "{{ state_attr('sensor.bedroom_remote_hester_battery_level', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.bedroom_remote_hester_battery_level', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.bedroom_remote_hester_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          is_charging: >-
+            {{ {'on': true, 'off': false}.get(
+              states('binary_sensor.bedroom_remote_hester_battery_is_charging'), 'unknown') }}
           last_updated: "{{ states.sensor.bedroom_remote_hester_battery_level.last_updated }}"
 
       - name: "Battery Brian Remote"
@@ -58,9 +62,9 @@ template:
           entity_id: "sensor.bedroom_remote_brian_battery_level"
           friendly_name: "Brian's Bedroom Remote"
           domain: "{{ states.sensor.bedroom_remote_brian_battery_level.domain }}"
-          is_charging: "{{ state_attr('sensor.bedroom_remote_brian_battery_level', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.bedroom_remote_brian_battery_level', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.bedroom_remote_brian_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          is_charging: >-
+            {{ {'on': true, 'off': false}.get(
+              states('binary_sensor.bedroom_remote_brian_battery_is_charging'), 'unknown') }}
           last_updated: "{{ states.sensor.bedroom_remote_brian_battery_level.last_updated }}"
 
       # Mobile Phones
@@ -75,9 +79,9 @@ template:
           entity_id: "sensor.hester_phone_battery_level"
           friendly_name: "Hester's Phone"
           domain: "{{ states.sensor.hester_phone_battery_level.domain }}"
-          is_charging: "{{ state_attr('sensor.hester_phone_battery_level', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.hester_phone_battery_level', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.hester_phone_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          is_charging: >-
+            {{ {'charging': true, 'discharging': false, 'not_charging': false, 'full': false}.get(
+              states('sensor.hester_phone_battery_state'), 'unknown') }}
           last_updated: "{{ states.sensor.hester_phone_battery_level.last_updated }}"
 
       - name: "Battery Brian Phone"
@@ -91,9 +95,9 @@ template:
           entity_id: "sensor.brian_phone_battery_level"
           friendly_name: "Brian's Phone"
           domain: "{{ states.sensor.brian_phone_battery_level.domain }}"
-          is_charging: "{{ state_attr('sensor.brian_phone_battery_level', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.brian_phone_battery_level', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.brian_phone_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          is_charging: >-
+            {{ {'charging': true, 'discharging': false, 'not_charging': false, 'full': false}.get(
+              states('sensor.brian_phone_battery_state'), 'unknown') }}
           last_updated: "{{ states.sensor.brian_phone_battery_level.last_updated }}"
 
       - name: "Battery Towner Phone"
@@ -107,9 +111,9 @@ template:
           entity_id: "sensor.tk_galaxy_a16_battery_level"
           friendly_name: "Towner's Phone"
           domain: "{{ states.sensor.tk_galaxy_a16_battery_level.domain }}"
-          is_charging: "{{ state_attr('sensor.tk_galaxy_a16_battery_level', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.tk_galaxy_a16_battery_level', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.tk_galaxy_a16_battery_level', 'battery_cycle_count') or 'unknown' }}"
+          is_charging: >-
+            {{ {'charging': true, 'discharging': false, 'not_charging': false, 'full': false}.get(
+              states('sensor.tk_galaxy_a16_battery_state'), 'unknown') }}
           last_updated: "{{ states.sensor.tk_galaxy_a16_battery_level.last_updated }}"
 
       # Security & Access
@@ -124,9 +128,6 @@ template:
           entity_id: "sensor.front_door_battery"
           friendly_name: "Front Door Lock"
           domain: "{{ states.sensor.front_door_battery.domain }}"
-          is_charging: "{{ state_attr('sensor.front_door_battery', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.front_door_battery', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.front_door_battery', 'battery_cycle_count') or 'unknown' }}"
           last_updated: "{{ states.sensor.front_door_battery.last_updated }}"
 
       - name: "Battery Master Bedroom Sensor"
@@ -140,9 +141,6 @@ template:
           entity_id: "sensor.master_bedroom_battery"
           friendly_name: "Master Bedroom Motion Sensor"
           domain: "{{ states.sensor.master_bedroom_battery.domain }}"
-          is_charging: "{{ state_attr('sensor.master_bedroom_battery', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.master_bedroom_battery', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.master_bedroom_battery', 'battery_cycle_count') or 'unknown' }}"
           last_updated: "{{ states.sensor.master_bedroom_battery.last_updated }}"
 
       # Cleaning Devices
@@ -157,24 +155,7 @@ template:
           entity_id: "sensor.sally_battery"
           friendly_name: "Sally Robot Vacuum"
           domain: "{{ states.sensor.sally_battery.domain }}"
-          is_charging: "{{ state_attr('sensor.sally_battery', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('sensor.sally_battery', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('sensor.sally_battery', 'battery_cycle_count') or 'unknown' }}"
+          is_charging: >-
+            {{ {'on': true, 'off': false}.get(
+              states('binary_sensor.kitchen_kitchen_roomba_charging'), 'unknown') }}
           last_updated: "{{ states.sensor.sally_battery.last_updated }}"
-
-      # Special handling for vacuum entity with battery_level attribute
-      - name: "Battery Sally Vacuum Direct"
-        unique_id: battery_sally_vacuum_direct
-        state: "{{ state_attr('vacuum.sally', 'battery_level') }}"
-        unit_of_measurement: "%"
-        device_class: battery
-        state_class: measurement
-        icon: mdi:robot-vacuum
-        attributes:
-          entity_id: "vacuum.sally"
-          friendly_name: "Sally Robot Vacuum (Direct)"
-          domain: "{{ states.vacuum.sally.domain }}"
-          is_charging: "{{ state_attr('vacuum.sally', 'is_charging') or false }}"
-          battery_health: "{{ state_attr('vacuum.sally', 'battery_health') or 'unknown' }}"
-          cycle_count: "{{ state_attr('vacuum.sally', 'battery_cycle_count') or 'unknown' }}"
-          last_updated: "{{ states.vacuum.sally.last_updated }}"

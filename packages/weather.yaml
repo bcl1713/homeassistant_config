@@ -26,22 +26,6 @@ input_number:
     icon: mdi:clock-outline
     initial: 30
 
-homeassistant:
-  customize:
-    package.node_anchors:
-      # Home Assistant state triggers require entity IDs to be known while the
-      # automation is configured. Names and open-state evaluation below consume
-      # the canonical protected-contact inventory instead of this trigger list.
-      rain_window_trigger_entity_ids: &rain_window_trigger_entity_ids
-        - binary_sensor.kitchen_kitchen_porch_window
-        - binary_sensor.kitchen_kitchen_sink_window
-        - binary_sensor.living_room_living_room_window
-        - binary_sensor.master_bedroom_brian_s_window
-        - binary_sensor.master_bedroom_hester_s_window
-        - binary_sensor.porter_s_room_porter_s_window
-        - binary_sensor.towner_s_room_towner_s_window
-        - binary_sensor.office_window
-
 automation:
   - alias: "Rain Forecast Alert"
     id: "notification_rain_forecast"
@@ -95,8 +79,17 @@ automation:
           - "snowy-rainy"
         id: "weather_fallback"
       # Re-check an already-rainy forecast if a monitored window is opened.
+      # State triggers need static IDs; names/categories come from the inventory.
       - platform: state
-        entity_id: *rain_window_trigger_entity_ids
+        entity_id: &rain_window_trigger_entity_ids
+          - binary_sensor.kitchen_kitchen_porch_window
+          - binary_sensor.kitchen_kitchen_sink_window
+          - binary_sensor.living_room_living_room_window
+          - binary_sensor.master_bedroom_brian_s_window
+          - binary_sensor.master_bedroom_hester_s_window
+          - binary_sensor.porter_s_room_porter_s_window
+          - binary_sensor.towner_s_room_towner_s_window
+          - binary_sensor.office_window
         from: "off"
         to: "on"
         id: "window_open_trigger"
